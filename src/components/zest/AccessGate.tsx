@@ -6,6 +6,27 @@ import { event } from "@/data/mock-event";
 
 const EVENT_CODE = "SABRINA-THOMAS";
 
+function Badge({
+  tone,
+  children,
+}: {
+  tone: "required" | "recommended" | "optional";
+  children: React.ReactNode;
+}) {
+  const styles = {
+    required: "bg-primary/10 text-primary",
+    recommended: "bg-accent/15 text-accent-foreground",
+    optional: "bg-muted text-muted-foreground",
+  }[tone];
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles}`}
+    >
+      {children}
+    </span>
+  );
+}
+
 const schema = z.object({
   code: z
     .string()
