@@ -61,9 +61,6 @@ function Index() {
       {/* Hero */}
       <EventHero />
 
-      {/* Détails */}
-      <EventDetails />
-
       {/* Stats */}
       <EventStats
         guests={stats.guests}
