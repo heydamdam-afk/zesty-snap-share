@@ -12,6 +12,27 @@ import {
 } from "@/lib/zest-session";
 import { loginToEvent } from "@/lib/zest-actions";
 
+export type { GuestSession };
+
+const GUEST_STORAGE_KEY = "zeste_guest_session";
+
+export function loadGuest(): GuestSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as GuestSession;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGuest(s: GuestSession | null) {
+  if (typeof window === "undefined") return;
+  if (!s) localStorage.removeItem(GUEST_STORAGE_KEY);
+  else localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(s));
+}
+
 const MAX_ATTEMPTS = 3;
 const LOCKOUT_MS = 5 * 60 * 1000;
 
