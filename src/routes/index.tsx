@@ -18,6 +18,7 @@ import {
   loadGuest,
   type GuestSession,
 } from "@/components/zest/AccessGate";
+import { ProfileMenu } from "@/components/zest/ProfileMenu";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,6 +38,7 @@ function Index() {
   const [tab, setTab] = useState<TabId>("feed");
   const [guest, setGuest] = useState<GuestSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
 
   useEffect(() => {
     setGuest(loadGuest());
@@ -56,10 +58,30 @@ function Index() {
   if (!hydrated) return null;
   if (!guest) return <AccessGate onEnter={setGuest} />;
 
+  const visiblePhotos = onlyMine
+    ? photos.filter((p) => p.author.toLowerCase().startsWith(guest.prenom.toLowerCase()))
+    : photos;
+
   return (
     <div className="relative min-h-screen bg-background pb-32">
       {/* Hero */}
-      <EventHero />
+      <div className="relative">
+        <EventHero />
+        <ProfileMenu
+          guest={guest}
+          onAvatarChange={(url) =>
+            setGuest((g) => (g ? { ...g, avatarUrl: url } : g))
+          }
+          onShowMyPhotos={() => {
+            setOnlyMine(true);
+            setTab("gallery");
+          }}
+          onLeave={() => {
+            setGuest(null);
+            setOnlyMine(false);
+          }}
+        />
+      </div>
 
       {/* Stats */}
       <EventStats
@@ -98,7 +120,21 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="-mx-3"
             >
-              <Gallery photos={photos} />
+              {onlyMine && (
+                <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-xs">
+                  <span className="font-medium text-foreground">
+                    Mes photos ({visiblePhotos.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOnlyMine(false)}
+                    className="font-semibold text-primary"
+                  >
+                    Voir tout
+                  </button>
+                </div>
+              )}
+              <Gallery photos={visiblePhotos} />
             </motion.div>
           )}
           {tab === "guests" && (
