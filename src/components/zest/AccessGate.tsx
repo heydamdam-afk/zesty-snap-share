@@ -102,6 +102,9 @@ export function AccessGate({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Clear any stale lockout from previous (buggy) login flow
+    localStorage.removeItem(LOGIN_KEYS.attempts);
+    localStorage.removeItem(LOGIN_KEYS.lockUntil);
     const a = readAttempts();
     if (a.locked) setLockUntil(a.lockUntil);
   }, []);
