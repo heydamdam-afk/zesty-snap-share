@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      post_photos: {
+        Row: {
+          created_at: string
+          event_id: string
+          height: number | null
+          id: string
+          position: number
+          post_id: string
+          url: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          height?: number | null
+          id?: string
+          position?: number
+          post_id: string
+          url: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          height?: number | null
+          id?: string
+          position?: number
+          post_id?: string
+          url?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_photos_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          author_initials: string | null
+          author_name: string
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          event_id: string
+          id: string
+          likes: number
+          text: string | null
+        }
+        Insert: {
+          author_initials?: string | null
+          author_name: string
+          avatar_url?: string | null
+          created_at?: string
+          device_id: string
+          event_id: string
+          id?: string
+          likes?: number
+          text?: string | null
+        }
+        Update: {
+          author_initials?: string | null
+          author_name?: string
+          avatar_url?: string | null
+          created_at?: string
+          device_id?: string
+          event_id?: string
+          id?: string
+          likes?: number
+          text?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
