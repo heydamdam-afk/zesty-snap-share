@@ -20,8 +20,10 @@ const schema = z.object({
   email: z
     .string()
     .trim()
+    .max(255, "Email trop long")
     .email("Email invalide")
-    .max(255, "Email trop long"),
+    .optional()
+    .or(z.literal("")),
 });
 
 export type GuestSession = {
