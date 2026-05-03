@@ -1,8 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { z } from "zod";
-import { Camera, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import { ZestLogo } from "./Logo";
 import { event } from "@/data/mock-event";
+
+function Badge({
+  tone,
+  children,
+}: {
+  tone: "required" | "recommended" | "optional";
+  children: React.ReactNode;
+}) {
+  const styles = {
+    required: "bg-primary/10 text-primary",
+    recommended: "bg-accent/15 text-accent-foreground",
+    optional: "bg-muted text-muted-foreground",
+  }[tone];
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 const EVENT_CODE = "JULIE2026";
 const MAX_ATTEMPTS = 3;
@@ -252,58 +274,65 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
   };
 
   const inputClass = (hasError?: boolean) =>
-    `w-full rounded-lg border bg-card px-4 py-3 text-base text-foreground placeholder:text-[color:var(--text-disabled)] focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+    `w-full rounded-xl border bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 ${
       hasError
-        ? "border-primary focus:border-primary"
+        ? "border-destructive focus:border-destructive"
         : "border-border focus:border-primary"
     }`;
 
   return (
-    <div className="relative min-h-screen bg-background">
-      {/* Cover floutée en arrière-plan */}
+    <div className="relative min-h-screen overflow-hidden bg-[image:var(--gradient-warm)]">
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-15"
+        className="absolute inset-0 -z-10 opacity-25"
         style={{
           backgroundImage: `url(${event.cover})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "blur(28px) saturate(1.05)",
+          filter: "blur(24px) saturate(1.1)",
         }}
       />
+      <div className="absolute inset-0 -z-10 bg-background/40" />
 
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pb-8 pt-8">
-        {/* Logo Zeste */}
-        <div className="mb-6 flex justify-center">
-          <span
-            className="font-display text-3xl font-bold tracking-tight text-primary"
-            style={{ fontWeight: 700 }}
-          >
-            Zeste
-          </span>
-        </div>
-
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="rounded-2xl bg-card p-6 shadow-card"
+          transition={{ duration: 0.4 }}
+          className="w-full rounded-3xl bg-card/95 p-7 shadow-card backdrop-blur"
         >
-          <h1 className="font-display text-2xl font-bold leading-tight text-foreground">
+          <div className="mb-6 flex items-center justify-between">
+            <ZestLogo />
+            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+              Galerie privée
+            </span>
+          </div>
+
+          <h1 className="font-display text-3xl leading-tight text-foreground">
             {event.title}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {event.date} · {event.location}
           </p>
 
-          <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+          <div className="my-6 h-px bg-border" />
+
+          <p className="mb-5 text-sm text-foreground/80">
+            Entre le code reçu sur ton invitation et ton prénom pour rejoindre
+            la galerie.
+          </p>
+
+          <form onSubmit={submit} className="space-y-4" noValidate>
             {/* Code */}
             <div>
-              <label
-                htmlFor="code"
-                className="mb-1.5 block text-sm font-semibold text-foreground"
-              >
-                Code d'accès
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="code"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Code d'accès
+                </label>
+                <Badge tone="required">Obligatoire</Badge>
+              </div>
               <input
                 id="code"
                 value={code}
@@ -321,7 +350,7 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
                 className={`${inputClass(!!errors.code)} font-mono uppercase tracking-wider`}
               />
               {errors.code && (
-                <p className="mt-1.5 text-xs font-medium text-primary" role="alert">
+                <p className="mt-1.5 text-xs font-medium text-destructive" role="alert">
                   {errors.code}
                 </p>
               )}
@@ -329,12 +358,15 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
 
             {/* Prénom */}
             <div>
-              <label
-                htmlFor="prenom"
-                className="mb-1.5 block text-sm font-semibold text-foreground"
-              >
-                Votre prénom
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="prenom"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Votre prénom
+                </label>
+                <Badge tone="required">Obligatoire</Badge>
+              </div>
               <input
                 id="prenom"
                 value={prenom}
@@ -351,87 +383,23 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
                 className={inputClass(!!errors.prenom)}
               />
               {errors.prenom && (
-                <p className="mt-1.5 text-xs font-medium text-primary" role="alert">
+                <p className="mt-1.5 text-xs font-medium text-destructive" role="alert">
                   {errors.prenom}
                 </p>
               )}
             </div>
 
-            {/* Photo de profil (optionnelle) */}
-            <div>
-              <span className="mb-2 block text-sm font-semibold text-foreground">
-                Photo de profil{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optionnelle)
-                </span>
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={isLocked}
-                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-card"
-                  style={{
-                    backgroundColor: avatar ? "transparent" : previewColor,
-                  }}
-                  aria-label="Ajouter une photo de profil"
-                >
-                  {avatar ? (
-                    <img
-                      src={avatar}
-                      alt="Aperçu"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center font-display text-xl font-bold text-white">
-                      {previewInitial}
-                    </span>
-                  )}
-                </button>
-                <div className="flex-1 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={isLocked}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary/70"
-                  >
-                    <Camera className="h-4 w-4" />
-                    {avatar ? "Changer" : "Ajouter ma photo"}
-                  </button>
-                  {avatar && (
-                    <button
-                      type="button"
-                      onClick={() => setAvatar(undefined)}
-                      className="ml-2 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Retirer
-                    </button>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Sinon, votre initiale sera utilisée.
-                  </p>
-                </div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => onPickAvatar(e.target.files?.[0])}
-                />
-              </div>
-            </div>
-
             {/* Email (optionnel) */}
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-sm font-semibold text-foreground"
-              >
-                Email{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optionnel)
-                </span>
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Email
+                </label>
+                <Badge tone="recommended">Recommandé</Badge>
+              </div>
               <input
                 id="email"
                 type="email"
@@ -450,18 +418,18 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
                 className={inputClass(!!errors.email)}
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Pour recevoir vos photos après l'event
+                Pour recevoir vos photos après l'event.
               </p>
               {errors.email && (
-                <p className="mt-1 text-xs font-medium text-primary" role="alert">
+                <p className="mt-1 text-xs font-medium text-destructive" role="alert">
                   {errors.email}
                 </p>
               )}
 
               {/* Checkbox RGPD */}
               <label
-                className={`mt-3 flex cursor-pointer items-start gap-2.5 rounded-lg p-2 transition ${
-                  email ? "bg-secondary/50" : "opacity-60"
+                className={`mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-background/60 p-3 transition ${
+                  email ? "" : "opacity-60"
                 }`}
               >
                 <span
@@ -487,9 +455,73 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
               </label>
             </div>
 
+            {/* Photo de profil (optionnelle) */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Photo de profil
+                </span>
+                <Badge tone="optional">Optionnelle</Badge>
+              </div>
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-background/60 p-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={isLocked}
+                  className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-card transition hover:opacity-90"
+                  style={{
+                    backgroundColor: avatar ? "transparent" : previewColor,
+                  }}
+                  aria-label="Ajouter une photo de profil"
+                >
+                  {avatar ? (
+                    <img
+                      src={avatar}
+                      alt="Aperçu de votre photo de profil"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-white">
+                      {previewInitial}
+                    </span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    JPG ou PNG · 5 Mo max
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {avatar ? "Changer" : "Choisir une photo"}
+                    </button>
+                    {avatar && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatar(undefined)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => onPickAvatar(e.target.files?.[0])}
+                />
+              </div>
+            </div>
+
             {errors.global && (
               <p
-                className="rounded-lg bg-primary-soft px-3 py-2 text-sm font-medium text-primary"
+                className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
                 role="alert"
               >
                 {errors.global}
@@ -497,7 +529,7 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
             )}
 
             {isLocked && (
-              <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm font-medium text-primary">
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
                 Trop de tentatives. Réessayez dans {remainingMin} min.
               </p>
             )}
@@ -505,17 +537,19 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
             <button
               type="submit"
               disabled={loading || isLocked}
-              className="mt-2 w-full rounded-lg bg-primary px-4 py-3.5 text-base font-semibold text-primary-foreground transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60"
-              style={{ fontFamily: "var(--font-sans)" }}
+              className="mt-2 w-full rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-primary-foreground shadow-soft transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60"
             >
               {loading ? "Connexion…" : "Accéder à la galerie"}
             </button>
           </form>
+
+          <p className="mt-5 text-center text-xs text-muted-foreground">
+            Pas de compte à créer. Ton prénom sera affiché sur tes photos.
+          </p>
         </motion.div>
 
-        <p className="mt-5 text-center text-xs text-muted-foreground">
-          Code de démo :{" "}
-          <span className="font-mono text-foreground">{EVENT_CODE}</span>
+        <p className="mt-6 text-xs text-muted-foreground">
+          Code de démo : <span className="font-mono">{EVENT_CODE}</span>
         </p>
       </div>
     </div>
