@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { z } from "zod";
 import { ZestLogo } from "./Logo";
@@ -17,9 +17,20 @@ const schema = z.object({
     .trim()
     .min(2, "Prénom trop court")
     .max(40, "Prénom trop long"),
+  email: z
+    .string()
+    .trim()
+    .email("Email invalide")
+    .max(255, "Email trop long"),
 });
 
-export type GuestSession = { name: string; initials: string; code: string };
+export type GuestSession = {
+  name: string;
+  initials: string;
+  code: string;
+  email: string;
+  avatar?: string;
+};
 
 const STORAGE_KEY = "zest.guest";
 
@@ -49,13 +60,31 @@ function makeInitials(name: string) {
 export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatar, setAvatar] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onPickAvatar = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Le fichier doit être une image");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image trop lourde (max 5 Mo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setAvatar(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const parsed = schema.safeParse({ code, name });
+    const parsed = schema.safeParse({ code, name, email });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Champs invalides");
       return;
@@ -69,6 +98,8 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
         name: cleanName,
         initials: makeInitials(cleanName) || "?",
         code: parsed.data.code.toUpperCase(),
+        email: parsed.data.email.toLowerCase(),
+        avatar,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
       onEnter(session);
@@ -117,6 +148,49 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
           </p>
 
           <form onSubmit={submit} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-secondary/60 transition hover:border-primary hover:bg-secondary"
+                aria-label="Ajouter une photo de profil"
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt="Aperçu de votre photo de profil"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground group-hover:text-primary">
+                    +
+                  </span>
+                )}
+              </button>
+              <div className="text-sm">
+                <p className="font-medium text-foreground">Photo de profil</p>
+                <p className="text-xs text-muted-foreground">
+                  Optionnelle · JPG ou PNG · 5 Mo max
+                </p>
+                {avatar && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatar(undefined)}
+                    className="mt-1 text-xs text-primary hover:underline"
+                  >
+                    Retirer
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => onPickAvatar(e.target.files?.[0])}
+              />
+            </div>
+
             <div>
               <label
                 htmlFor="code"
@@ -151,6 +225,28 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
                 maxLength={40}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="camille@email.com"
+                autoComplete="email"
+                maxLength={255}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Pour recevoir l'album souvenir après l'événement.
+              </p>
             </div>
 
             {error && (
