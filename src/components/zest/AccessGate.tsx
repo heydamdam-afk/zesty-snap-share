@@ -30,7 +30,7 @@ export type GuestSession = {
   name: string;
   initials: string;
   code: string;
-  email: string;
+  email?: string;
   avatar?: string;
 };
 
@@ -100,7 +100,9 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
         name: cleanName,
         initials: makeInitials(cleanName) || "?",
         code: parsed.data.code.toUpperCase(),
-        email: parsed.data.email.toLowerCase(),
+        email: parsed.data.email
+          ? parsed.data.email.toLowerCase()
+          : undefined,
         avatar,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
