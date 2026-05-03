@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EventHeader } from "@/components/zest/EventHeader";
 import { Sidebar } from "@/components/zest/Sidebar";
 import { ComposeBar } from "@/components/zest/ComposeBar";
@@ -8,6 +8,11 @@ import { Gallery } from "@/components/zest/Gallery";
 import { ZestLogo } from "@/components/zest/Logo";
 import { photos, event } from "@/data/mock-event";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AccessGate,
+  loadGuest,
+  type GuestSession,
+} from "@/components/zest/AccessGate";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,9 +30,20 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [tab, setTab] = useState<"gallery" | "feed">("feed");
+  const [guest, setGuest] = useState<GuestSession | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setGuest(loadGuest());
+    setHydrated(true);
+  }, []);
+
   const handleUpload = () => {
     console.log("upload clicked — TODO: open upload modal");
   };
+
+  if (!hydrated) return null;
+  if (!guest) return <AccessGate onEnter={setGuest} />;
 
   return (
     <div className="min-h-screen bg-[image:var(--gradient-warm)] pb-20">
