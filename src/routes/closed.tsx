@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Download } from "lucide-react";
-import { ZestLogo } from "@/components/zest/Logo";
+import { Footer } from "@/components/zest/Footer";
 
 export const Route = createFileRoute("/closed")({
   head: () => ({
@@ -67,11 +67,7 @@ function ClosedGallery() {
         )}
       </div>
 
-      <footer className="pt-10">
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          Propulsé par <ZestLogo />
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }
