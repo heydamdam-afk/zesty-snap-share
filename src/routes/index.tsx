@@ -10,6 +10,7 @@ import { StickyTabs, type TabId } from "@/components/zest/StickyTabs";
 import { FloatingUploadButton } from "@/components/zest/FloatingUploadButton";
 import { GuestsList } from "@/components/zest/GuestsList";
 import { QrPanel } from "@/components/zest/QrPanel";
+import { ComposeBar } from "@/components/zest/ComposeBar";
 import { photos, event } from "@/data/mock-event";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -85,6 +86,7 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
+              <ComposeBar onUpload={() => console.log("compose upload")} />
               {photos.map((p) => (
                 <PostCard key={p.id} photo={p} />
               ))}
@@ -111,6 +113,12 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="-mx-3"
             >
+              <EventDetails />
+              <EventStats
+                guests={stats.guests}
+                photos={stats.photos}
+                likes={stats.likes}
+              />
               <GuestsList />
             </motion.div>
           )}
@@ -129,8 +137,8 @@ function Index() {
         </AnimatePresence>
       </main>
 
-      {/* Bouton upload flottant */}
-      <FloatingUploadButton onPick={handleUpload} />
+      {/* Bouton upload flottant — galerie uniquement */}
+      {tab === "gallery" && <FloatingUploadButton onPick={handleUpload} />}
 
       {/* Footer */}
       <footer className="mt-10 px-4 pb-24 text-center">
