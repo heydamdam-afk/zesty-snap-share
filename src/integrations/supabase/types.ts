@@ -14,41 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      post_photos: {
+      commentaires: {
         Row: {
+          contenu: string
           created_at: string
-          event_id: string
-          height: number | null
           id: string
-          position: number
-          post_id: string
-          url: string
-          width: number | null
+          invite_id: string
+          photo_id: string
         }
         Insert: {
+          contenu: string
           created_at?: string
-          event_id: string
-          height?: number | null
           id?: string
-          position?: number
-          post_id: string
-          url: string
-          width?: number | null
+          invite_id: string
+          photo_id: string
         }
         Update: {
+          contenu?: string
           created_at?: string
-          event_id?: string
-          height?: number | null
           id?: string
-          position?: number
-          post_id?: string
-          url?: string
-          width?: number | null
+          invite_id?: string
+          photo_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "post_photos_post_id_fkey"
-            columns: ["post_id"]
+            foreignKeyName: "commentaires_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commentaires_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          code_acces: string
+          commentaires_actifs: boolean
+          created_at: string
+          expire_at: string | null
+          id: string
+          likes_actifs: boolean
+          slug: string
+          status: Database["public"]["Enums"]["event_status"]
+          telechargement_actif: boolean
+          titre: string
+        }
+        Insert: {
+          code_acces: string
+          commentaires_actifs?: boolean
+          created_at?: string
+          expire_at?: string | null
+          id?: string
+          likes_actifs?: boolean
+          slug: string
+          status?: Database["public"]["Enums"]["event_status"]
+          telechargement_actif?: boolean
+          titre: string
+        }
+        Update: {
+          code_acces?: string
+          commentaires_actifs?: boolean
+          created_at?: string
+          expire_at?: string | null
+          id?: string
+          likes_actifs?: boolean
+          slug?: string
+          status?: Database["public"]["Enums"]["event_status"]
+          telechargement_actif?: boolean
+          titre?: string
+        }
+        Relationships: []
+      }
+      invites: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          email: string | null
+          event_id: string
+          id: string
+          prenom: string
+          rgpd_consent: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          device_id: string
+          email?: string | null
+          event_id: string
+          id?: string
+          prenom: string
+          rgpd_consent?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          device_id?: string
+          email?: string | null
+          event_id?: string
+          id?: string
+          prenom?: string
+          rgpd_consent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          invite_id: string
+          photo_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_id: string
+          photo_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "likes_photo_id_fkey"
+            columns: ["photo_id"]
             isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
@@ -57,49 +171,71 @@ export type Database = {
       }
       posts: {
         Row: {
-          author_initials: string | null
-          author_name: string
-          avatar_url: string | null
+          contenu_texte: string | null
           created_at: string
-          device_id: string
           event_id: string
           id: string
-          likes: number
-          text: string | null
+          invite_id: string
+          nb_likes: number
+          url_full: string | null
+          url_medium: string | null
+          url_miniature: string | null
         }
         Insert: {
-          author_initials?: string | null
-          author_name: string
-          avatar_url?: string | null
+          contenu_texte?: string | null
           created_at?: string
-          device_id: string
           event_id: string
           id?: string
-          likes?: number
-          text?: string | null
+          invite_id: string
+          nb_likes?: number
+          url_full?: string | null
+          url_medium?: string | null
+          url_miniature?: string | null
         }
         Update: {
-          author_initials?: string | null
-          author_name?: string
-          avatar_url?: string | null
+          contenu_texte?: string | null
           created_at?: string
-          device_id?: string
           event_id?: string
           id?: string
-          likes?: number
-          text?: string | null
+          invite_id?: string
+          nb_likes?: number
+          url_full?: string | null
+          url_medium?: string | null
+          url_miniature?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_own_commentaire: {
+        Args: { _commentaire_id: string; _device_id: string }
+        Returns: boolean
+      }
+      delete_own_like: {
+        Args: { _device_id: string; _photo_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      event_status: "active" | "expired" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -226,6 +362,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      event_status: ["active", "expired", "archived"],
+    },
   },
 } as const
