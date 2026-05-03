@@ -19,6 +19,7 @@ import {
   type GuestSession,
 } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
+import { Footer } from "@/components/zest/Footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -169,11 +170,9 @@ function Index() {
       {tab === "gallery" && <FloatingUploadButton onPick={handleUpload} />}
 
       {/* Footer */}
-      <footer className="mt-10 px-4 pb-24 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          Propulsé par <ZestLogo />
-        </div>
-      </footer>
+      <div className="mt-10 pb-20">
+        <Footer />
+      </div>
     </div>
   );
 }
