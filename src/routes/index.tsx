@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { EventHeader } from "@/components/zest/EventHeader";
-import { Sidebar } from "@/components/zest/Sidebar";
-import { ComposeBar } from "@/components/zest/ComposeBar";
+import { useEffect, useMemo, useState } from "react";
 import { PostCard } from "@/components/zest/PostCard";
 import { Gallery } from "@/components/zest/Gallery";
 import { ZestLogo } from "@/components/zest/Logo";
+import { EventHero } from "@/components/zest/EventHero";
+import { EventDetails } from "@/components/zest/EventDetails";
+import { EventStats } from "@/components/zest/EventStats";
+import { StickyTabs, type TabId } from "@/components/zest/StickyTabs";
+import { FloatingUploadButton } from "@/components/zest/FloatingUploadButton";
+import { GuestsList } from "@/components/zest/GuestsList";
+import { QrPanel } from "@/components/zest/QrPanel";
 import { photos, event } from "@/data/mock-event";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,7 +33,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [tab, setTab] = useState<"gallery" | "feed">("feed");
+  const [tab, setTab] = useState<TabId>("feed");
   const [guest, setGuest] = useState<GuestSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -38,66 +42,101 @@ function Index() {
     setHydrated(true);
   }, []);
 
-  const handleUpload = () => {
-    console.log("upload clicked — TODO: open upload modal");
+  const stats = useMemo(() => {
+    const guests = new Set(photos.map((p) => p.author)).size;
+    const likes = photos.reduce((s, p) => s + p.likes, 0);
+    return { guests, photos: photos.length, likes };
+  }, []);
+
+  const handleUpload = (files: FileList) => {
+    console.log("upload", files.length, "files — TODO: open drawer");
   };
 
   if (!hydrated) return null;
   if (!guest) return <AccessGate onEnter={setGuest} />;
 
   return (
-    <div className="min-h-screen bg-[image:var(--gradient-warm)] pb-20">
-      <EventHeader tab={tab} onTab={setTab} onCreate={handleUpload} />
+    <div className="relative min-h-screen bg-background pb-32">
+      {/* Hero */}
+      <EventHero />
 
-      <main className="mx-auto mt-6 grid max-w-6xl grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[340px_1fr]">
-        <Sidebar onUpload={handleUpload} />
+      {/* Détails */}
+      <EventDetails />
 
-        <section className="space-y-4">
-          <ComposeBar onUpload={handleUpload} />
+      {/* Stats */}
+      <EventStats
+        guests={stats.guests}
+        photos={stats.photos}
+        likes={stats.likes}
+      />
 
-          <AnimatePresence mode="wait">
-            {tab === "feed" ? (
-              <motion.div
-                key="feed"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-4"
-              >
-                {photos.map((p) => (
-                  <PostCard key={p.id} photo={p} />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="gallery"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-              >
-                <Gallery photos={photos} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </section>
+      {/* Onglets sticky */}
+      <StickyTabs active={tab} onChange={setTab} />
+
+      {/* Contenu */}
+      <main className="px-3 pt-3">
+        <AnimatePresence mode="wait">
+          {tab === "feed" && (
+            <motion.div
+              key="feed"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {photos.map((p) => (
+                <PostCard key={p.id} photo={p} />
+              ))}
+            </motion.div>
+          )}
+          {tab === "gallery" && (
+            <motion.div
+              key="gallery"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="-mx-3"
+            >
+              <Gallery photos={photos} />
+            </motion.div>
+          )}
+          {tab === "guests" && (
+            <motion.div
+              key="guests"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="-mx-3"
+            >
+              <GuestsList />
+            </motion.div>
+          )}
+          {tab === "qr" && (
+            <motion.div
+              key="qr"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="-mx-3"
+            >
+              <QrPanel />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
-      <footer className="mx-auto mt-12 max-w-6xl px-4 sm:px-6">
-        <div className="flex flex-col items-start gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            Propulsé par <ZestLogo />
-          </div>
-          <button className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-medium text-foreground shadow-card transition hover:shadow-soft">
-            Créer mon événement
-            <span className="text-primary">→</span>
-          </button>
+      {/* Bouton upload flottant */}
+      <FloatingUploadButton onPick={handleUpload} />
+
+      {/* Footer */}
+      <footer className="mt-10 px-4 pb-24 text-center">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          Propulsé par <ZestLogo />
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Galerie active jusqu'au {event.date}. Toutes les photos seront ensuite
-          exportées vers Google Drive.
-        </p>
       </footer>
     </div>
   );
