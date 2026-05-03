@@ -13,6 +13,16 @@ export async function findEventBySlug(slug: string) {
   return data;
 }
 
+export async function findEventByCode(code: string) {
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .ilike("code_acces", code.trim())
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function findInvite(eventId: string, deviceId: string) {
   const { data, error } = await supabase
     .from("invites")
@@ -33,11 +43,9 @@ export async function loginToEvent(args: {
   deviceId: string;
   avatarUrl?: string;
 }) {
-  const event = await findEventBySlug(args.slug);
-  if (!event) return { ok: false as const, reason: "event_not_found" };
-  if (event.code_acces.toUpperCase() !== args.code.trim().toUpperCase()) {
-    return { ok: false as const, reason: "bad_code" };
-  }
+  // L'invité ne connaît que le code d'accès — on retrouve l'event par code.
+  const event = await findEventByCode(args.code);
+  if (!event) return { ok: false as const, reason: "bad_code" };
 
   const existing = await findInvite(event.id, args.deviceId);
   if (existing) return { ok: true as const, event, invite: existing };
