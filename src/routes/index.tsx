@@ -16,11 +16,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   AccessGate,
   loadGuest,
+  saveGuest,
   type GuestSession,
 } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
 import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
+import { useEventFeed } from "@/hooks/useEventFeed";
+
+const EVENT_SLUG = "JULIE2026";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,6 +51,15 @@ function Index() {
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    saveGuest(guest);
+  }, [guest]);
+
+  const { posts: livePosts, reload } = useEventFeed(
+    guest?.event.id ?? null,
+    guest?.invite.id ?? null,
+  );
+
   const stats = useMemo(() => {
     const guests = new Set(photos.map((p) => p.author)).size;
     const likes = photos.reduce((s, p) => s + p.likes, 0);
@@ -62,10 +75,12 @@ function Index() {
   };
 
   if (!hydrated) return null;
-  if (!guest) return <AccessGate onEnter={setGuest} />;
+  if (!guest) return <AccessGate slug={EVENT_SLUG} onEnter={setGuest} />;
 
   const visiblePhotos = onlyMine
-    ? photos.filter((p) => p.author.toLowerCase().startsWith(guest.prenom.toLowerCase()))
+    ? photos.filter((p) =>
+        p.author.toLowerCase().startsWith(guest.invite.prenom.toLowerCase()),
+      )
     : photos;
 
   const quotaFull = event.quota.used >= event.quota.total;
@@ -116,9 +131,9 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
-              <ComposeBar onUpload={() => console.log("compose upload")} />
-              {photos.map((p) => (
-                <PostCard key={p.id} photo={p} />
+              <ComposeBar guest={guest} onPosted={reload} />
+              {livePosts.map((p) => (
+                <PostCard key={p.id} post={p} guest={guest} />
               ))}
             </motion.div>
           )}
