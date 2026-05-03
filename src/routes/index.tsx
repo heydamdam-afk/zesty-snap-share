@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PostCard } from "@/components/zest/PostCard";
 import { Gallery } from "@/components/zest/Gallery";
-import { ZestLogo } from "@/components/zest/Logo";
 import { EventHero } from "@/components/zest/EventHero";
 import { EventDetails } from "@/components/zest/EventDetails";
 import { EventStats } from "@/components/zest/EventStats";
@@ -11,7 +10,6 @@ import { FloatingUploadButton } from "@/components/zest/FloatingUploadButton";
 import { GuestsList } from "@/components/zest/GuestsList";
 import { QrPanel } from "@/components/zest/QrPanel";
 import { ComposeBar } from "@/components/zest/ComposeBar";
-import { photos, event } from "@/data/mock-event";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AccessGate,
@@ -22,18 +20,20 @@ import {
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
 import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
-import { useEventFeed } from "@/hooks/useEventFeed";
+import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
+import { createPost } from "@/lib/zest-actions";
 
 const EVENT_SLUG = "JULIE2026";
+const QUOTA_TOTAL = 500;
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${"Mariage de Sabrina & Thomas"} — Zest` },
+      { title: "Zest — Galerie photo de votre événement" },
       {
         name: "description",
         content:
-          "Galerie photo éphémère du mariage de Sabrina & Thomas — partagez vos photos en temps réel avec Zest.",
+          "Galerie photo éphémère partagée en temps réel — postez vos plus beaux moments avec Zest.",
       },
     ],
   }),
@@ -55,48 +55,59 @@ function Index() {
     saveGuest(guest);
   }, [guest]);
 
-  const { posts: livePosts, reload } = useEventFeed(
+  const { posts, reload } = useEventFeed(
     guest?.event.id ?? null,
     guest?.invite.id ?? null,
   );
 
   const stats = useMemo(() => {
-    const guests = new Set(photos.map((p) => p.author)).size;
-    const likes = photos.reduce((s, p) => s + p.likes, 0);
-    return { guests, photos: photos.length, likes };
-  }, []);
+    const guests = new Set(posts.map((p) => p.invite_id)).size;
+    const photoCount = posts.filter((p) => p.url_medium).length;
+    const likes = posts.reduce((s, p) => s + p.nb_likes, 0);
+    return { guests, photos: photoCount, likes };
+  }, [posts]);
 
-  const handleUpload = (files: FileList) => {
-    if (event.quota.used >= event.quota.total) {
+  const quotaUsed = stats.photos;
+  const quotaFull = quotaUsed >= QUOTA_TOTAL;
+
+  const handleUpload = async (files: FileList) => {
+    if (!guest) return;
+    if (quotaFull) {
       window.alert(QUOTA_FULL_MESSAGE);
       return;
     }
-    console.log("upload", files.length, "files — TODO: open drawer");
+    try {
+      await createPost({
+        eventId: guest.event.id,
+        inviteId: guest.invite.id,
+        files: Array.from(files),
+      });
+      await reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Upload impossible, réessayez.");
+    }
   };
 
   if (!hydrated) return null;
   if (!guest) return <AccessGate slug={EVENT_SLUG} onEnter={setGuest} />;
 
-  const visiblePhotos = onlyMine
-    ? photos.filter((p) =>
-        p.author.toLowerCase().startsWith(guest.invite.prenom.toLowerCase()),
-      )
-    : photos;
-
-  const quotaFull = event.quota.used >= event.quota.total;
+  const visiblePosts: FeedPost[] = onlyMine
+    ? posts.filter((p) => p.invite_id === guest.invite.id)
+    : posts;
 
   return (
     <div className="relative min-h-screen bg-background pb-32">
-      {/* Bandeau quota */}
-      <QuotaBanner used={event.quota.used} total={event.quota.total} />
+      <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
-      {/* Hero */}
       <div className="relative">
-        <EventHero />
+        <EventHero title={guest.event.titre} dateIso={guest.event.expire_at} />
         <ProfileMenu
           guest={guest}
           onAvatarChange={(url) =>
-            setGuest((g) => (g ? { ...g, avatarUrl: url } : g))
+            setGuest((g) =>
+              g ? { ...g, invite: { ...g.invite, avatar_url: url } } : g,
+            )
           }
           onShowMyPhotos={() => {
             setOnlyMine(true);
@@ -109,17 +120,14 @@ function Index() {
         />
       </div>
 
-      {/* Stats */}
       <EventStats
         guests={stats.guests}
         photos={stats.photos}
         likes={stats.likes}
       />
 
-      {/* Onglets sticky */}
       <StickyTabs active={tab} onChange={setTab} />
 
-      {/* Contenu */}
       <main className="px-3 pt-3">
         <AnimatePresence mode="wait">
           {tab === "feed" && (
@@ -132,9 +140,14 @@ function Index() {
               className="space-y-3"
             >
               <ComposeBar guest={guest} onPosted={reload} />
-              {livePosts.map((p) => (
+              {visiblePosts.map((p) => (
                 <PostCard key={p.id} post={p} guest={guest} />
               ))}
+              {visiblePosts.length === 0 && (
+                <p className="px-6 py-12 text-center text-sm text-muted-foreground">
+                  Aucun post pour le moment.
+                </p>
+              )}
             </motion.div>
           )}
           {tab === "gallery" && (
@@ -149,7 +162,7 @@ function Index() {
               {onlyMine && (
                 <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-xs">
                   <span className="font-medium text-foreground">
-                    Mes photos ({visiblePhotos.length})
+                    Mes photos ({visiblePosts.filter((p) => p.url_medium).length})
                   </span>
                   <button
                     type="button"
@@ -160,7 +173,7 @@ function Index() {
                   </button>
                 </div>
               )}
-              <Gallery photos={visiblePhotos} />
+              <Gallery posts={visiblePosts} />
             </motion.div>
           )}
           {tab === "guests" && (
@@ -172,8 +185,8 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="-mx-3"
             >
-              <EventDetails />
-              <GuestsList />
+              <EventDetails dateIso={guest.event.expire_at} />
+              <GuestsList posts={posts} />
             </motion.div>
           )}
           {tab === "qr" && (
@@ -185,18 +198,20 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="-mx-3"
             >
-              <QrPanel />
+              <QrPanel
+                title={guest.event.titre}
+                code={guest.event.code_acces}
+                dateIso={guest.event.expire_at}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Bouton upload flottant — galerie uniquement */}
       {tab === "gallery" && (
         <FloatingUploadButton onPick={handleUpload} disabled={quotaFull} />
       )}
 
-      {/* Footer */}
       <div className="mt-10 pb-20">
         <Footer />
       </div>
