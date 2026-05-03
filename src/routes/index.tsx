@@ -111,11 +111,6 @@ function Index() {
               className="-mx-3"
             >
               <EventDetails />
-              <EventStats
-                guests={stats.guests}
-                photos={stats.photos}
-                likes={stats.likes}
-              />
               <GuestsList />
             </motion.div>
           )}
