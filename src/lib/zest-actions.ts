@@ -168,9 +168,9 @@ export async function updateOwnInvite(args: {
   const { data, error } = await supabase.rpc("update_own_invite", {
     _device_id: args.deviceId,
     _event_id: args.eventId,
-    _avatar_url: args.avatarUrl ?? null,
-    _email: args.email ?? null,
-    _rgpd_consent: args.rgpdConsent ?? null,
+    _avatar_url: args.avatarUrl,
+    _email: args.email,
+    _rgpd_consent: args.rgpdConsent,
   });
   if (error) throw error;
   return data as Tables<"invites">;
