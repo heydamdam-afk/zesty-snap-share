@@ -152,56 +152,16 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
           </p>
 
           <form onSubmit={submit} className="space-y-4">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-secondary/60 transition hover:border-primary hover:bg-secondary"
-                aria-label="Ajouter une photo de profil"
-              >
-                {avatar ? (
-                  <img
-                    src={avatar}
-                    alt="Aperçu de votre photo de profil"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground group-hover:text-primary">
-                    +
-                  </span>
-                )}
-              </button>
-              <div className="text-sm">
-                <p className="font-medium text-foreground">Photo de profil</p>
-                <p className="text-xs text-muted-foreground">
-                  Optionnelle · JPG ou PNG · 5 Mo max
-                </p>
-                {avatar && (
-                  <button
-                    type="button"
-                    onClick={() => setAvatar(undefined)}
-                    className="mt-1 text-xs text-primary hover:underline"
-                  >
-                    Retirer
-                  </button>
-                )}
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => onPickAvatar(e.target.files?.[0])}
-              />
-            </div>
-
             <div>
-              <label
-                htmlFor="code"
-                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                Code de l'événement
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="code"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Code de l'événement
+                </label>
+                <Badge tone="required">Obligatoire</Badge>
+              </div>
               <input
                 id="code"
                 value={code}
@@ -214,12 +174,15 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
             </div>
 
             <div>
-              <label
-                htmlFor="name"
-                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                Ton prénom
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="name"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Ton prénom
+                </label>
+                <Badge tone="required">Obligatoire</Badge>
+              </div>
               <input
                 id="name"
                 value={name}
@@ -232,12 +195,15 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
             </div>
 
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                Email
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Email
+                </label>
+                <Badge tone="recommended">Recommandé</Badge>
+              </div>
               <input
                 id="email"
                 type="email"
@@ -251,6 +217,65 @@ export function AccessGate({ onEnter }: { onEnter: (g: GuestSession) => void }) 
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Pour recevoir l'album souvenir après l'événement.
               </p>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Photo de profil
+                </span>
+                <Badge tone="optional">Optionnelle</Badge>
+              </div>
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-background/60 p-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-secondary/60 transition hover:border-primary hover:bg-secondary"
+                  aria-label="Ajouter une photo de profil"
+                >
+                  {avatar ? (
+                    <img
+                      src={avatar}
+                      alt="Aperçu de votre photo de profil"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground group-hover:text-primary">
+                      +
+                    </span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    JPG ou PNG · 5 Mo max
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {avatar ? "Changer" : "Choisir une photo"}
+                    </button>
+                    {avatar && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatar(undefined)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => onPickAvatar(e.target.files?.[0])}
+                />
+              </div>
             </div>
 
             {error && (
