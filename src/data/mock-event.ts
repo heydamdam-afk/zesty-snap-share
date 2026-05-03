@@ -48,6 +48,7 @@ export const event = {
   description:
     "Le plus beau jour de notre vie partagé avec vous tous. Postez vos photos, vos vidéos et vos plus beaux moments — on garde tout pour l'éternité.",
   countdown: "31 DÉC",
+  quota: { used: 462, total: 500 },
 };
 
 export const photos: Photo[] = [
