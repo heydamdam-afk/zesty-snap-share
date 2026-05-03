@@ -9,11 +9,20 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
+import { createPost } from "@/lib/zest-actions";
+import type { GuestSession } from "@/lib/zest-session";
 
-export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
+export function ComposeBar({
+  guest,
+  onPosted,
+}: {
+  guest: GuestSession;
+  onPosted?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const previews = files.map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
@@ -23,12 +32,25 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
     setFiles([]);
   };
 
-  const submit = () => {
-    if (!text.trim() && files.length === 0) return;
-    console.log("post", { text, files });
-    onUpload?.();
-    reset();
-    setOpen(false);
+  const submit = async () => {
+    if ((!text.trim() && files.length === 0) || busy) return;
+    setBusy(true);
+    try {
+      await createPost({
+        eventId: guest.event.id,
+        inviteId: guest.invite.id,
+        contenuTexte: text,
+        files,
+      });
+      reset();
+      setOpen(false);
+      onPosted?.();
+    } catch (e) {
+      console.error(e);
+      alert("Publication impossible, réessayez.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -37,7 +59,7 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
         onClick={() => setOpen(true)}
         className="flex w-full items-center gap-3 rounded-full bg-card p-2 pl-2 pr-3 text-left shadow-card transition hover:bg-card/80"
       >
-        <Avatar initials="ML" />
+        <Avatar initials={guest.initial} />
         <span className="flex-1 text-sm text-muted-foreground">Écrire un message</span>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-coral text-primary-foreground shadow-soft">
           <Pencil className="h-4 w-4" />
@@ -56,12 +78,12 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
           </DrawerHeader>
 
           <div className="flex items-start gap-3">
-            <Avatar initials="ML" />
+            <Avatar initials={guest.initial} />
             <Textarea
               autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Quoi de neuf, Michelle ?"
+              placeholder={`Quoi de neuf, ${guest.invite.prenom} ?`}
               className="min-h-[120px] resize-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
             />
           </div>
@@ -73,8 +95,7 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
                   <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
                   <button
                     onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
-                    aria-label="Retirer"
-                    className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-background/90 text-foreground shadow"
+                    className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-background/90"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -86,7 +107,7 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/heic,image/webp"
+            accept="image/jpeg,image/png,image/webp"
             multiple
             className="hidden"
             onChange={(e) => {
@@ -100,18 +121,18 @@ export function ComposeBar({ onUpload }: { onUpload?: () => void }) {
           <div className="mt-4 flex items-center justify-between gap-2">
             <button
               onClick={() => inputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground transition hover:bg-secondary/80"
+              className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
             >
               <ImagePlus className="h-4 w-4" />
               Ajouter des photos
             </button>
             <button
               onClick={submit}
-              disabled={!text.trim() && files.length === 0}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+              disabled={busy || (!text.trim() && files.length === 0)}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
-              Publier
+              {busy ? "Publication…" : "Publier"}
             </button>
           </div>
         </DrawerContent>
