@@ -22,15 +22,13 @@ export function GuestsList() {
       <p className="px-1 pb-3 text-center text-base font-bold text-foreground">
         {list.length} invités connectés · {totalPhotos} photos partagées
       </p>
-      <ul className="overflow-hidden rounded-2xl bg-card shadow-card">
-        {list.map((g, i) => (
+      <ul className="grid grid-cols-2 gap-3">
+        {list.map((g) => (
           <li
             key={g.author}
-            className={`flex items-center gap-3 px-4 py-3 ${
-              i < list.length - 1 ? "border-b border-border" : ""
-            }`}
+            className="flex items-center gap-2 rounded-2xl bg-card p-2 shadow-card"
           >
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-coral text-sm font-bold text-primary-foreground">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-coral text-xs font-bold text-primary-foreground">
               {g.initials}
             </span>
             <div className="min-w-0 flex-1">
@@ -41,7 +39,6 @@ export function GuestsList() {
                 {g.count} photo{g.count > 1 ? "s" : ""}
               </p>
             </div>
-            <span className="text-muted-foreground">→</span>
           </li>
         ))}
       </ul>
