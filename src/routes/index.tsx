@@ -20,6 +20,7 @@ import {
 } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
 import { Footer } from "@/components/zest/Footer";
+import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,6 +54,10 @@ function Index() {
   }, []);
 
   const handleUpload = (files: FileList) => {
+    if (event.quota.used >= event.quota.total) {
+      window.alert(QUOTA_FULL_MESSAGE);
+      return;
+    }
     console.log("upload", files.length, "files — TODO: open drawer");
   };
 
@@ -63,8 +68,13 @@ function Index() {
     ? photos.filter((p) => p.author.toLowerCase().startsWith(guest.prenom.toLowerCase()))
     : photos;
 
+  const quotaFull = event.quota.used >= event.quota.total;
+
   return (
     <div className="relative min-h-screen bg-background pb-32">
+      {/* Bandeau quota */}
+      <QuotaBanner used={event.quota.used} total={event.quota.total} />
+
       {/* Hero */}
       <div className="relative">
         <EventHero />
@@ -167,7 +177,9 @@ function Index() {
       </main>
 
       {/* Bouton upload flottant — galerie uniquement */}
-      {tab === "gallery" && <FloatingUploadButton onPick={handleUpload} />}
+      {tab === "gallery" && (
+        <FloatingUploadButton onPick={handleUpload} disabled={quotaFull} />
+      )}
 
       {/* Footer */}
       <div className="mt-10 pb-20">
