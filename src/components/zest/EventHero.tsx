@@ -1,11 +1,31 @@
-import { event } from "@/data/mock-event";
+import cover from "@/assets/event-cover.jpg";
 
-export function EventHero() {
+function formatDate(iso?: string | null) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+export function EventHero({
+  title,
+  dateIso,
+}: {
+  title: string;
+  dateIso?: string | null;
+}) {
+  const date = formatDate(dateIso);
   return (
     <div className="relative h-[220px] w-full overflow-hidden">
       <img
-        src={event.cover}
-        alt={event.title}
+        src={cover}
+        alt={title}
         className="h-full w-full object-cover"
       />
       {/* Gradient bas */}
@@ -19,9 +39,9 @@ export function EventHero() {
       {/* Titre */}
       <div className="absolute inset-x-0 bottom-0 p-4">
         <h1 className="font-display text-[28px] font-bold leading-tight text-white">
-          {event.title}
+          {title}
         </h1>
-        <p className="mt-1 text-sm text-white/80">📅 {event.date}</p>
+        {date && <p className="mt-1 text-sm text-white/80">📅 {date}</p>}
       </div>
     </div>
   );

@@ -1,8 +1,26 @@
 import { useState } from "react";
-import { ChevronDown, Calendar, MapPin, User } from "lucide-react";
-import { event } from "@/data/mock-event";
+import { ChevronDown, Calendar, User } from "lucide-react";
 
-export function EventDetails() {
+function formatDate(iso?: string | null) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+export function EventDetails({
+  dateIso,
+  host,
+}: {
+  dateIso?: string | null;
+  host?: string | null;
+}) {
   const [open, setOpen] = useState(true);
   return (
     <div className="mx-3 mt-3 rounded-2xl bg-card p-4 shadow-card">
@@ -25,16 +43,14 @@ export function EventDetails() {
         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
-            <span>{event.date} — 19h00</span>
+            <span>{formatDate(dateIso)}</span>
           </li>
-          <li className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <span>{event.location}</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <User className="h-4 w-4 shrink-0" />
-            <span>Organisé par {event.host}</span>
-          </li>
+          {host && (
+            <li className="flex items-center gap-2">
+              <User className="h-4 w-4 shrink-0" />
+              <span>Organisé par {host}</span>
+            </li>
+          )}
         </ul>
       )}
     </div>
