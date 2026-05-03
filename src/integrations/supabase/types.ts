@@ -233,6 +233,31 @@ export type Database = {
         Args: { _device_id: string; _photo_id: string }
         Returns: boolean
       }
+      update_own_invite: {
+        Args: {
+          _avatar_url?: string
+          _device_id: string
+          _email?: string
+          _event_id: string
+          _rgpd_consent?: boolean
+        }
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          email: string | null
+          event_id: string
+          id: string
+          prenom: string
+          rgpd_consent: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       event_status: "active" | "expired" | "archived"
