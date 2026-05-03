@@ -1,18 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Calendar, MapPin, User, Share2, Check } from "lucide-react";
-import { event } from "@/data/mock-event";
+import { Calendar, Share2, Check } from "lucide-react";
 
-const EVENT_CODE = "JULIE2026";
+function formatDate(iso?: string | null) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
 
-export function QrPanel() {
+export function QrPanel({
+  title,
+  code,
+  dateIso,
+}: {
+  title: string;
+  code: string;
+  dateIso?: string | null;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
 
   const url =
     typeof window !== "undefined"
-      ? `${window.location.origin}/?code=${EVENT_CODE}`
-      : `https://zeste.app/?code=${EVENT_CODE}`;
+      ? `${window.location.origin}/?code=${code}`
+      : `https://zeste.app/?code=${code}`;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -27,8 +45,8 @@ export function QrPanel() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: event.title,
-          text: `Rejoignez la galerie photo : ${event.title}`,
+          title,
+          text: `Rejoignez la galerie photo : ${title}`,
           url,
         });
         return;
@@ -45,6 +63,7 @@ export function QrPanel() {
     }
   };
 
+  const date = formatDate(dateIso);
   return (
     <div className="px-6 pb-32 pt-6 text-center">
       <h2 className="font-display text-xl font-bold text-foreground">
@@ -58,20 +77,16 @@ export function QrPanel() {
         Code d'accès
       </p>
       <p className="font-display text-2xl font-bold text-primary">
-        {EVENT_CODE}
+        {code}
       </p>
 
-      <ul className="mx-auto mt-5 inline-flex flex-col gap-2 text-left text-sm text-muted-foreground">
-        <li className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" /> {event.date}
-        </li>
-        <li className="flex items-center gap-2">
-          <MapPin className="h-4 w-4" /> {event.location}
-        </li>
-        <li className="flex items-center gap-2">
-          <User className="h-4 w-4" /> Contact : {event.host}
-        </li>
-      </ul>
+      {date && (
+        <ul className="mx-auto mt-5 inline-flex flex-col gap-2 text-left text-sm text-muted-foreground">
+          <li className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> {date}
+          </li>
+        </ul>
+      )}
 
       <button
         type="button"
