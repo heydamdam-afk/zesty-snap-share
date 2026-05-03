@@ -61,6 +61,13 @@ function Index() {
       {/* Hero */}
       <EventHero />
 
+      {/* Stats */}
+      <EventStats
+        guests={stats.guests}
+        photos={stats.photos}
+        likes={stats.likes}
+      />
+
       {/* Onglets sticky */}
       <StickyTabs active={tab} onChange={setTab} />
 
