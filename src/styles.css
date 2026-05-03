@@ -5,11 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Zest design system — warm coral palette inspired by Buzy reference.
+ * Zeste design system — Front Event Invité v1.0
+ * Palette : coral #FF4842 sur blanc, fonds neutres #F4F6F8.
+ * Typo : Josefin Sans (display) + Public Sans (UI/body).
  * Use semantic tokens only. Never hardcode colors in components.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@600;700&family=Public+Sans:wght@400;600;700&display=swap");
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -54,40 +56,55 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Josefin Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --radius: 1rem;
+  /* Cards 16px, boutons/inputs 8px → base 0.5rem, cards via radius-2xl */
+  --radius: 0.5rem;
 
-  --background: oklch(0.985 0.005 60);
-  --foreground: oklch(0.22 0.03 30);
+  /* #FFFFFF */
+  --background: oklch(1 0 0);
+  /* #212B36 */
+  --foreground: oklch(0.286 0.021 256);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.03 30);
+  --card-foreground: oklch(0.286 0.021 256);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.03 30);
+  --popover-foreground: oklch(0.286 0.021 256);
 
-  /* Coral primary */
-  --primary: oklch(0.68 0.19 28);
-  --primary-foreground: oklch(0.99 0.005 60);
-  --primary-soft: oklch(0.93 0.05 30);
-  --primary-soft-foreground: oklch(0.45 0.18 28);
+  /* Primary #FF4842 */
+  --primary: oklch(0.658 0.214 27.5);
+  --primary-foreground: oklch(1 0 0);
+  /* rgba(255, 72, 66, 0.12) */
+  --primary-soft: oklch(0.658 0.214 27.5 / 0.12);
+  --primary-soft-foreground: oklch(0.5 0.21 27.5);
 
-  --secondary: oklch(0.96 0.015 50);
-  --secondary-foreground: oklch(0.28 0.04 30);
-  --muted: oklch(0.965 0.012 60);
-  --muted-foreground: oklch(0.5 0.02 30);
-  --accent: oklch(0.93 0.05 30);
-  --accent-foreground: oklch(0.4 0.15 28);
+  /* Bg neutre #F4F6F8 */
+  --secondary: oklch(0.967 0.003 248);
+  --secondary-foreground: oklch(0.286 0.021 256);
+  --muted: oklch(0.967 0.003 248);
+  /* #637381 */
+  --muted-foreground: oklch(0.524 0.022 256);
+  --accent: oklch(0.658 0.214 27.5 / 0.12);
+  --accent-foreground: oklch(0.5 0.21 27.5);
 
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(0.99 0.005 60);
+  --destructive: oklch(0.658 0.214 27.5);
+  --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.92 0.012 50);
-  --input: oklch(0.92 0.012 50);
-  --ring: oklch(0.68 0.19 28);
+  /* rgba(145, 158, 171, 0.32) */
+  --border: oklch(0.708 0.014 256 / 0.32);
+  --input: oklch(0.708 0.014 256 / 0.32);
+  --ring: oklch(0.658 0.214 27.5);
+
+  /* Tokens additionnels Zeste */
+  --primary-dark: oklch(0.5 0.205 27.5); /* #B72420 */
+  --text-secondary: oklch(0.524 0.022 256); /* #637381 */
+  --text-disabled: oklch(0.683 0.014 256); /* #919EAB */
+  --bg-neutral: oklch(0.967 0.003 248); /* #F4F6F8 */
+  --blue-dark: oklch(0.349 0.05 256); /* #203758 */
+  --warning: oklch(0.78 0.15 70); /* #FFA000 */
 
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -95,21 +112,23 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
 
-  --sidebar: oklch(0.99 0.005 60);
-  --sidebar-foreground: oklch(0.22 0.03 30);
-  --sidebar-primary: oklch(0.68 0.19 28);
-  --sidebar-primary-foreground: oklch(0.99 0.005 60);
-  --sidebar-accent: oklch(0.96 0.015 50);
-  --sidebar-accent-foreground: oklch(0.28 0.04 30);
-  --sidebar-border: oklch(0.92 0.012 50);
-  --sidebar-ring: oklch(0.68 0.19 28);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.286 0.021 256);
+  --sidebar-primary: oklch(0.658 0.214 27.5);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.967 0.003 248);
+  --sidebar-accent-foreground: oklch(0.286 0.021 256);
+  --sidebar-border: oklch(0.708 0.014 256 / 0.32);
+  --sidebar-ring: oklch(0.658 0.214 27.5);
 
-  /* Effects */
-  --gradient-coral: linear-gradient(135deg, oklch(0.74 0.18 35), oklch(0.65 0.21 22));
-  --gradient-warm: linear-gradient(180deg, oklch(0.985 0.01 60), oklch(0.96 0.025 40));
-  --shadow-soft: 0 4px 20px -8px oklch(0.5 0.15 28 / 0.18);
-  --shadow-card: 0 2px 12px -4px oklch(0.3 0.05 30 / 0.08);
-  --shadow-pop: 0 12px 40px -12px oklch(0.5 0.18 28 / 0.35);
+  /* Effects — spec Zeste */
+  --gradient-coral: linear-gradient(135deg, oklch(0.7 0.21 30), oklch(0.6 0.22 25));
+  --gradient-warm: linear-gradient(180deg, oklch(1 0 0), oklch(0.967 0.003 248));
+  --gradient-hero-overlay: linear-gradient(to bottom, transparent 40%, oklch(0 0 0 / 0.7) 100%);
+  /* Card spec : 0px 0px 2px rgba(145,158,171,0.2), 0px 12px 24px -4px rgba(145,158,171,0.12) */
+  --shadow-card: 0 0 2px oklch(0.708 0.014 256 / 0.2), 0 12px 24px -4px oklch(0.708 0.014 256 / 0.12);
+  --shadow-soft: 0 4px 12px -4px oklch(0.708 0.014 256 / 0.18);
+  --shadow-pop: 0 8px 16px oklch(0.658 0.214 27.5 / 0.4);
 }
 
 .dark {
@@ -119,10 +138,10 @@
   --card-foreground: oklch(0.97 0.01 60);
   --popover: oklch(0.22 0.025 30);
   --popover-foreground: oklch(0.97 0.01 60);
-  --primary: oklch(0.72 0.18 30);
+  --primary: oklch(0.72 0.2 28);
   --primary-foreground: oklch(0.18 0.02 30);
-  --primary-soft: oklch(0.32 0.08 28);
-  --primary-soft-foreground: oklch(0.85 0.12 30);
+  --primary-soft: oklch(0.72 0.2 28 / 0.18);
+  --primary-soft-foreground: oklch(0.85 0.15 30);
   --secondary: oklch(0.28 0.03 30);
   --secondary-foreground: oklch(0.97 0.01 60);
   --muted: oklch(0.28 0.025 30);
