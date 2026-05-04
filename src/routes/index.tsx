@@ -22,10 +22,9 @@ import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
 import {
-  uploadPhotosBatch,
+  uploadGalleryBatch,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
-  MAX_PHOTOS_PER_POST,
   type UploadProgress,
 } from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -158,10 +157,6 @@ function Index() {
       return;
     }
     const arr = Array.from(files);
-    if (arr.length > MAX_PHOTOS_PER_POST) {
-      window.alert(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication.`);
-      return;
-    }
     // Client-side validation.
     const tooBig = arr.find((f) => f.size > MAX_PHOTO_BYTES);
     if (tooBig) {
@@ -186,7 +181,7 @@ function Index() {
       })),
     );
     try {
-      const res = await uploadPhotosBatch({
+      const res = await uploadGalleryBatch({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
         files: arr,
