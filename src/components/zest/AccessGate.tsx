@@ -512,6 +512,9 @@ export function AccessGate({
             </button>
           </form>
         </motion.div>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Propulsé par <span className="font-semibold">Zeste</span>
+        </p>
       </div>
     </div>
   );
