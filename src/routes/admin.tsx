@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
+import { AdminBookmark, ADMIN_ONBOARDED_KEY } from "@/components/zest/AdminBookmark";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -21,6 +22,7 @@ function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [showBookmark, setShowBookmark] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -48,7 +50,12 @@ function AdminLogin() {
         });
         if (error) throw error;
       }
-      navigate({ to: "/" });
+      const seen = localStorage.getItem(ADMIN_ONBOARDED_KEY);
+      if (!seen) {
+        setShowBookmark(true);
+      } else {
+        navigate({ to: "/" });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de connexion");
     } finally {
@@ -60,6 +67,17 @@ function AdminLogin() {
     await supabase.auth.signOut();
     setSessionEmail(null);
   };
+
+  if (showBookmark) {
+    return (
+      <AdminBookmark
+        onContinue={() => {
+          localStorage.setItem(ADMIN_ONBOARDED_KEY, "true");
+          navigate({ to: "/" });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[image:var(--gradient-warm)]">
