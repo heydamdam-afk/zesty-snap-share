@@ -38,6 +38,27 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: Index,
+  errorComponent: ({ error, reset }) => (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <h1 className="font-display text-2xl text-foreground">Une erreur est survenue</h1>
+      <p className="max-w-md text-sm text-muted-foreground">{error.message}</p>
+      <button
+        type="button"
+        onClick={() => {
+          try {
+            localStorage.removeItem("zeste_guest_session");
+            localStorage.removeItem("zeste_login_attempts");
+            localStorage.removeItem("zeste_login_lock_until");
+          } catch {/* noop */}
+          reset();
+          window.location.reload();
+        }}
+        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
+      >
+        Réinitialiser et recharger
+      </button>
+    </div>
+  ),
 });
 
 function Index() {
