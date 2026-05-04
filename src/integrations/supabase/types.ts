@@ -121,9 +121,13 @@ export type Database = {
         Row: {
           code_acces: string
           commentaires_actifs: boolean
+          contact: string | null
+          cover_url: string | null
           created_at: string
+          event_date: string | null
           expire_at: string | null
           id: string
+          lieu: string | null
           likes_actifs: boolean
           slug: string
           status: Database["public"]["Enums"]["event_status"]
@@ -133,9 +137,13 @@ export type Database = {
         Insert: {
           code_acces: string
           commentaires_actifs?: boolean
+          contact?: string | null
+          cover_url?: string | null
           created_at?: string
+          event_date?: string | null
           expire_at?: string | null
           id?: string
+          lieu?: string | null
           likes_actifs?: boolean
           slug: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -145,9 +153,13 @@ export type Database = {
         Update: {
           code_acces?: string
           commentaires_actifs?: boolean
+          contact?: string | null
+          cover_url?: string | null
           created_at?: string
+          event_date?: string | null
           expire_at?: string | null
           id?: string
+          lieu?: string | null
           likes_actifs?: boolean
           slug?: string
           status?: Database["public"]["Enums"]["event_status"]

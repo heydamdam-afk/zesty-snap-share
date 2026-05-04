@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Calendar, Share2, Check } from "lucide-react";
+import { Calendar, Share2, Check, MapPin, Mail } from "lucide-react";
 
 function formatDate(iso?: string | null) {
   if (!iso) return "";
@@ -19,10 +19,14 @@ export function QrPanel({
   title,
   code,
   dateIso,
+  lieu,
+  contact,
 }: {
   title: string;
   code: string;
   dateIso?: string | null;
+  lieu?: string | null;
+  contact?: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
@@ -80,11 +84,23 @@ export function QrPanel({
         {code}
       </p>
 
-      {date && (
+      {(date || lieu || contact) && (
         <ul className="mx-auto mt-5 inline-flex flex-col gap-2 text-left text-sm text-muted-foreground">
-          <li className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> {date}
-          </li>
+          {date && (
+            <li className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> {date}
+            </li>
+          )}
+          {lieu && (
+            <li className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> {lieu}
+            </li>
+          )}
+          {contact && (
+            <li className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> {contact}
+            </li>
+          )}
         </ul>
       )}
 
