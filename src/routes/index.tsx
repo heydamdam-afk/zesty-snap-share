@@ -21,7 +21,12 @@ import { ProfileMenu } from "@/components/zest/ProfileMenu";
 import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
-import { createPost } from "@/lib/zest-actions";
+import {
+  uploadPhotosBatch,
+  ACCEPTED_PHOTO_TYPES,
+  MAX_PHOTO_BYTES,
+  type UploadProgress,
+} from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
@@ -72,6 +77,8 @@ function Index() {
   const [guest, setGuest] = useState<GuestSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [uploads, setUploads] = useState<UploadProgress[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     setGuest(loadGuest());
@@ -146,16 +153,51 @@ function Index() {
       window.alert(QUOTA_FULL_MESSAGE);
       return;
     }
+    const arr = Array.from(files);
+    // Client-side validation.
+    const tooBig = arr.find((f) => f.size > MAX_PHOTO_BYTES);
+    if (tooBig) {
+      window.alert(`Le fichier « ${tooBig.name} » dépasse 50 Mo.`);
+      return;
+    }
+    const badType = arr.find(
+      (f) => !ACCEPTED_PHOTO_TYPES.includes((f.type || "").toLowerCase()),
+    );
+    if (badType) {
+      window.alert(`Format non supporté : ${badType.name}`);
+      return;
+    }
+    setUploading(true);
+    setUploads(
+      arr.map((f, i) => ({
+        index: i,
+        total: arr.length,
+        fileName: f.name,
+        status: "pending" as const,
+        percent: 0,
+      })),
+    );
     try {
-      await createPost({
+      const res = await uploadPhotosBatch({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
-        files: Array.from(files),
+        files: arr,
+        onProgress: (p) =>
+          setUploads((list) => list.map((it) => (it.index === p.index ? p : it))),
       });
       await reload();
+      if (res.errors.length > 0) {
+        window.alert(
+          `${res.ok}/${arr.length} photos envoyées. Erreurs :\n` +
+            res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
+        );
+      }
     } catch (e) {
       console.error(e);
       window.alert("Upload impossible, réessayez.");
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploads([]), 1500);
     }
   };
 
@@ -297,6 +339,46 @@ function Index() {
 
       {tab === "gallery" && (
         <FloatingUploadButton onPick={handleUpload} disabled={quotaFull} />
+      )}
+
+      {uploads.length > 0 && (
+        <div className="fixed inset-x-0 bottom-24 z-50 mx-auto w-full max-w-[360px] space-y-1 px-4">
+          <div className="rounded-2xl bg-card p-3 shadow-card">
+            <p className="mb-2 text-xs font-semibold text-foreground">
+              {uploading ? "Envoi en cours…" : "Envoi terminé"}
+            </p>
+            <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+              {uploads.map((u) => (
+                <li key={u.index} className="text-[11px]">
+                  <div className="flex justify-between gap-2">
+                    <span className="truncate text-foreground/80">{u.fileName}</span>
+                    <span
+                      className={
+                        u.status === "error"
+                          ? "text-destructive"
+                          : u.status === "done"
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                      }
+                    >
+                      {u.status === "error"
+                        ? "✗"
+                        : u.status === "done"
+                          ? "✓"
+                          : `${u.percent}%`}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className={`h-full transition-all ${u.status === "error" ? "bg-destructive" : "bg-primary"}`}
+                      style={{ width: `${u.status === "done" ? 100 : u.percent}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
 
       <div className="mt-10 pb-20">
