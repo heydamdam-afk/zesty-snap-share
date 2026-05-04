@@ -135,21 +135,43 @@ function AdminEventLogin() {
     };
   }, [slug]);
 
-  // Si déjà connecté, on tente directement la vérif d'admin.
+  // Si déjà connecté, on vérifie d'abord l'accès admin avant d'afficher le login.
   useEffect(() => {
     if (!event) return;
-    let cancel = false;
-    void supabase.auth.getSession().then(async ({ data }) => {
-      const sessionEmail = data.session?.user.email;
-      if (!sessionEmail) return;
-      const res = await checkAdminMembership(event.id, sessionEmail);
-      if (cancel) return;
-      if (res.kind === "ok") {
-        navigate({ to: "/$slug/admin/dashboard", params: { slug } });
+    let cancelled = false;
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+
+        if (session?.user?.email) {
+          const res = await checkAdminMembership(event.id, session.user.email);
+          if (cancelled) return;
+          if (res.kind === "ok") {
+            setAdminSession(res.admin);
+            setShowLoginForm(false);
+            navigate({ to: "/$slug/admin/dashboard", params: { slug } });
+          } else {
+            setAdminSession(null);
+            setShowLoginForm(true);
+          }
+        } else {
+          setAdminSession(null);
+          setShowLoginForm(true);
+        }
+      } catch (err) {
+        console.error("[slug admin] session check failed", err);
+        if (!cancelled) {
+          setAdminSession(null);
+          setShowLoginForm(true);
+        }
+      } finally {
+        if (!cancelled) setSessionLoading(false);
       }
-    });
+    };
+    void checkSession();
     return () => {
-      cancel = true;
+      cancelled = true;
     };
   }, [event, navigate, slug]);
 
@@ -210,7 +232,7 @@ function AdminEventLogin() {
       }
 
       clearAttempts(slug, email);
-      toast.success(`Bienvenue ! Rôle : ${res.role}`);
+      toast.success(`Bienvenue ! Rôle : ${res.admin.role}`);
       navigate({ to: "/$slug/admin/dashboard", params: { slug } });
     } catch (err) {
       const next: AttemptState = {
@@ -225,7 +247,7 @@ function AdminEventLogin() {
     }
   };
 
-  if (eventLoading) {
+  if (eventLoading || sessionLoading || !showLoginForm) {
     return (
       <div className="grid min-h-screen place-items-center bg-secondary">
         <p className="text-sm text-muted-foreground">Chargement…</p>
