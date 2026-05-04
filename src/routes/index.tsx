@@ -143,14 +143,6 @@ function Index() {
           </button>
         </div>
       )}
-      {!isAdmin && (
-        <Link
-          to="/admin"
-          className="absolute right-3 top-3 z-40 hidden text-[10px] font-medium text-muted-foreground hover:text-foreground"
-        >
-          admin
-        </Link>
-      )}
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
       <div className="relative">
