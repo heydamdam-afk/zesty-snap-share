@@ -10,7 +10,7 @@ import {
   pickAvatarColor,
   type GuestSession,
 } from "@/lib/zest-session";
-import { loginToEvent } from "@/lib/zest-actions";
+import { loginToEvent, generatePrenomSuggestions, normalisePrenom } from "@/lib/zest-actions";
 
 export type { GuestSession };
 
@@ -110,6 +110,7 @@ export function AccessGate({
     email?: string;
     global?: string;
   }>({});
+  const [prenomSuggestions, setPrenomSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [lockUntil, setLockUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -144,6 +145,7 @@ export function AccessGate({
     e.preventDefault();
     if (isLocked) return;
     setErrors({});
+    setPrenomSuggestions([]);
     const parsed = schema.safeParse({ code, prenom, email });
     if (!parsed.success) {
       const fe: typeof errors = {};
@@ -171,6 +173,12 @@ export function AccessGate({
       if (!result.ok) {
         if (result.reason === "banned") {
           setErrors({ global: "Accès refusé : cet appareil a été banni de cet événement." });
+          return;
+        }
+        if (result.reason === "prenom_taken") {
+          const norm = normalisePrenom(parsed.data.prenom);
+          setErrors({ prenom: `« ${norm} » est déjà pris dans cet événement.` });
+          setPrenomSuggestions(generatePrenomSuggestions(norm));
           return;
         }
         if (result.reason === "bad_code" || result.reason === "event_not_found") {
