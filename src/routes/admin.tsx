@@ -48,11 +48,15 @@ function AdminLogin() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      if (cancelled) return;
       const email = session?.user.email ?? null;
       setSessionEmail(email);
       if (email) {
-        setAdminSlug(await fetchAdminSlug(email));
+        const slug = await fetchAdminSlug(email);
+        if (cancelled) return;
+        setAdminSlug(slug);
       } else {
         setAdminSlug(null);
       }
@@ -60,15 +64,21 @@ function AdminLogin() {
     void (async () => {
       try {
         const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
         const email = data.session?.user.email ?? null;
         setSessionEmail(email);
         if (!email) return; // guard : pas de session, on n'interroge pas la DB
-        setAdminSlug(await fetchAdminSlug(email));
+        const slug = await fetchAdminSlug(email);
+        if (cancelled) return;
+        setAdminSlug(slug);
       } catch (e) {
         console.error("[admin] init session failed", e);
       }
     })();
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const submit = async (e: React.FormEvent) => {
