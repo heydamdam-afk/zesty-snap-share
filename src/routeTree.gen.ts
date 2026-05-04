@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugAdminRouteImport } from './routes/$slug.admin'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClosedRoute = ClosedRouteImport.update({
   id: '/closed',
   path: '/closed',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/dashboard': typeof DashboardRoute
   '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/dashboard': typeof DashboardRoute
   '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/dashboard': typeof DashboardRoute
   '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
 }
@@ -69,15 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/dashboard'
     | '/$slug/admin'
     | '/$slug/admin/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/closed' | '/$slug/admin' | '/$slug/admin/dashboard'
+  to:
+    | '/'
+    | '/admin'
+    | '/closed'
+    | '/dashboard'
+    | '/$slug/admin'
+    | '/$slug/admin/dashboard'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/closed'
+    | '/dashboard'
     | '/$slug/admin'
     | '/$slug/admin/dashboard'
   fileRoutesById: FileRoutesById
@@ -86,11 +103,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
+  DashboardRoute: typeof DashboardRoute
   SlugAdminRoute: typeof SlugAdminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/closed': {
       id: '/closed'
       path: '/closed'
@@ -145,6 +170,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
+  DashboardRoute: DashboardRoute,
   SlugAdminRoute: SlugAdminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
