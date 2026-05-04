@@ -21,8 +21,22 @@ export function loadGuest(): GuestSession | null {
   try {
     const raw = localStorage.getItem(GUEST_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as GuestSession;
+    const parsed = JSON.parse(raw) as Partial<GuestSession> | null;
+    // Validate shape — old/mock sessions stored under this key would crash the app.
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !parsed.invite ||
+      !parsed.event ||
+      typeof (parsed.event as { id?: unknown }).id !== "string" ||
+      typeof (parsed.invite as { id?: unknown }).id !== "string"
+    ) {
+      localStorage.removeItem(GUEST_STORAGE_KEY);
+      return null;
+    }
+    return parsed as GuestSession;
   } catch {
+    try { localStorage.removeItem(GUEST_STORAGE_KEY); } catch {/* noop */}
     return null;
   }
 }
