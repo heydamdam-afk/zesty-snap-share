@@ -2,9 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { deletePostWithR2 } from "@/server/r2.functions";
 
 export async function deletePost(postId: string, deviceId?: string) {
-  // Use the server fn so the R2 object is also removed and admin auth
-  // (via Bearer header) or owner device_id is verified server-side.
-  await deletePostWithR2({ data: { postId, deviceId } });
+  // Forward the supabase access token so admin auth can be verified server-side.
+  const { data } = await supabase.auth.getSession();
+  const adminToken = data.session?.access_token;
+  await deletePostWithR2({ data: { postId, deviceId, adminToken } });
 }
 
 export async function deleteCommentAsAdmin(commentId: string) {
