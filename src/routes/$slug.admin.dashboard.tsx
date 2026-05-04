@@ -9,6 +9,7 @@ import {
   type AdminRole,
 } from "@/components/zest/admin/AdminContext";
 import { AdminHeader } from "@/components/zest/admin/AdminHeader";
+import { EventSettingsSection } from "@/components/zest/admin/EventSettingsSection";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -114,28 +115,9 @@ function AdminDashboard() {
       <div className="min-h-screen bg-secondary">
         <AdminHeader />
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
-          {/* Sections insérées aux étapes 4 → 9 */}
-          <SectionPlaceholder
-            title="Bienvenue dans votre espace admin"
-            description={`Connecté en tant que ${ctx.email}. Les sections de gestion (Paramètres, Stockage, Offres, Admins, Bannis, Zone dangereuse) seront ajoutées dans les prochaines étapes.`}
-          />
+          <EventSettingsSection />
         </main>
       </div>
     </AdminContext.Provider>
-  );
-}
-
-function SectionPlaceholder({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <section className="rounded-2xl bg-card p-6 shadow-card">
-      <h2 className="font-display text-xl text-foreground">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-    </section>
   );
 }
