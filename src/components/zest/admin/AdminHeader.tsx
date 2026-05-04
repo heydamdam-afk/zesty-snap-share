@@ -10,8 +10,13 @@ export function AdminHeader() {
   const navigate = useNavigate();
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/$slug/admin", params: { slug: event.slug } });
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("[AdminHeader] signOut failed", e);
+    }
+    // Hard reload to clear any cached state and force re-auth on the admin page.
+    window.location.href = `/${event.slug}/admin`;
   };
 
   return (
