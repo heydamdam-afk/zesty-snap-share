@@ -87,32 +87,106 @@ export type Database = {
       }
       event_admins: {
         Row: {
+          added_by: string | null
           created_at: string
+          email: string
           event_id: string
           id: string
-          role: string
-          user_id: string
+          prenom: string | null
+          role: Database["public"]["Enums"]["admin_role"]
+          user_id: string | null
         }
         Insert: {
+          added_by?: string | null
           created_at?: string
+          email: string
           event_id: string
           id?: string
-          role?: string
-          user_id: string
+          prenom?: string | null
+          role?: Database["public"]["Enums"]["admin_role"]
+          user_id?: string | null
         }
         Update: {
+          added_by?: string | null
           created_at?: string
+          email?: string
           event_id?: string
           id?: string
-          role?: string
-          user_id?: string
+          prenom?: string | null
+          role?: Database["public"]["Enums"]["admin_role"]
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_admins_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "event_admins"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_admins_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_bans: {
+        Row: {
+          banni_at: string
+          banni_par: string | null
+          banni_par_prenom: string | null
+          device_id: string
+          event_id: string
+          id: string
+          invite_id: string | null
+          prenom: string | null
+          raison: string | null
+        }
+        Insert: {
+          banni_at?: string
+          banni_par?: string | null
+          banni_par_prenom?: string | null
+          device_id: string
+          event_id: string
+          id?: string
+          invite_id?: string | null
+          prenom?: string | null
+          raison?: string | null
+        }
+        Update: {
+          banni_at?: string
+          banni_par?: string | null
+          banni_par_prenom?: string | null
+          device_id?: string
+          event_id?: string
+          id?: string
+          invite_id?: string | null
+          prenom?: string | null
+          raison?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_bans_banni_par_fkey"
+            columns: ["banni_par"]
+            isOneToOne: false
+            referencedRelation: "event_admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_bans_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_bans_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
             referencedColumns: ["id"]
           },
         ]
@@ -129,10 +203,13 @@ export type Database = {
           id: string
           lieu: string | null
           likes_actifs: boolean
+          quota_mo: number
           slug: string
           status: Database["public"]["Enums"]["event_status"]
           telechargement_actif: boolean
           titre: string
+          uploads_actifs: boolean
+          used_mo: number
         }
         Insert: {
           code_acces: string
@@ -145,10 +222,13 @@ export type Database = {
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
+          quota_mo?: number
           slug: string
           status?: Database["public"]["Enums"]["event_status"]
           telechargement_actif?: boolean
           titre: string
+          uploads_actifs?: boolean
+          used_mo?: number
         }
         Update: {
           code_acces?: string
@@ -161,10 +241,13 @@ export type Database = {
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
+          quota_mo?: number
           slug?: string
           status?: Database["public"]["Enums"]["event_status"]
           telechargement_actif?: boolean
           titre?: string
+          uploads_actifs?: boolean
+          used_mo?: number
         }
         Relationships: []
       }
@@ -343,6 +426,7 @@ export type Database = {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
       }
+      current_admin_email: { Args: never; Returns: string }
       delete_own_commentaire: {
         Args: { _commentaire_id: string; _device_id: string }
         Returns: boolean
@@ -353,6 +437,20 @@ export type Database = {
       }
       is_event_admin: {
         Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_event_admin_email: { Args: { _event_id: string }; Returns: boolean }
+      is_event_organisateur_email: {
+        Args: { _event_id: string }
+        Returns: boolean
+      }
+      link_admin_user_id: { Args: never; Returns: undefined }
+      transfer_organisateur: {
+        Args: {
+          p_current_org_id: string
+          p_event_id: string
+          p_new_org_id: string
+        }
         Returns: boolean
       }
       update_own_invite: {
@@ -382,6 +480,7 @@ export type Database = {
       }
     }
     Enums: {
+      admin_role: "organisateur" | "secondaire"
       event_status: "active" | "expired" | "archived"
     }
     CompositeTypes: {
@@ -510,6 +609,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_role: ["organisateur", "secondaire"],
       event_status: ["active", "expired", "archived"],
     },
   },
