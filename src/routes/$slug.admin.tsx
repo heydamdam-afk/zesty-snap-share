@@ -20,8 +20,14 @@ type EventLite = {
   slug: string;
 };
 
+type AdminSession = {
+  id: string;
+  role: "organisateur" | "secondaire";
+  prenom: string | null;
+};
+
 type AdminCheckResult =
-  | { kind: "ok"; adminId: string; role: "organisateur" | "secondaire" }
+  | { kind: "ok"; admin: AdminSession }
   | { kind: "not_admin" }
   | { kind: "error"; message: string };
 
@@ -69,7 +75,7 @@ async function checkAdminMembership(
 
   const { data, error } = await supabase
     .from("event_admins")
-    .select("id, role")
+    .select("id, role, prenom")
     .eq("event_id", eventId)
     .ilike("email", email)
     .maybeSingle();
@@ -78,8 +84,11 @@ async function checkAdminMembership(
   if (!data) return { kind: "not_admin" };
   return {
     kind: "ok",
-    adminId: data.id,
-    role: data.role as "organisateur" | "secondaire",
+    admin: {
+      id: data.id,
+      role: data.role as "organisateur" | "secondaire",
+      prenom: data.prenom,
+    },
   };
 }
 
@@ -97,6 +106,9 @@ function AdminEventLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [, setAdminSession] = useState<AdminSession | null>(null);
 
   // Charger l'event par slug (= code_acces côté DB).
   useEffect(() => {
