@@ -21,20 +21,33 @@ export function ProfileMenu({
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess.session?.user.id;
-      if (!userId) {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const session = sess.session;
+        if (!session?.user.email) {
+          if (!cancelled) setAdminSlug(null);
+          return;
+        }
+        // Lier user_id si admin invité par email avant inscription
+        await supabase.rpc("link_admin_user_id");
+        const { data, error } = await supabase
+          .from("event_admins")
+          .select("events!inner(slug)")
+          .ilike("email", session.user.email)
+          .limit(1)
+          .maybeSingle();
+        if (error) {
+          console.error("[ProfileMenu] event_admins lookup", error);
+          if (!cancelled) setAdminSlug(null);
+          return;
+        }
+        const slug =
+          (data as { events?: { slug?: string } | null } | null)?.events?.slug ?? null;
+        if (!cancelled) setAdminSlug(slug);
+      } catch (e) {
+        console.error("[ProfileMenu] admin check failed", e);
         if (!cancelled) setAdminSlug(null);
-        return;
       }
-      const { data } = await supabase
-        .from("event_admins")
-        .select("events!inner(slug)")
-        .eq("user_id", userId)
-        .limit(1)
-        .maybeSingle();
-      const slug = (data as { events?: { slug?: string } | null } | null)?.events?.slug ?? null;
-      if (!cancelled) setAdminSlug(slug);
     };
     check();
     const { data: sub } = supabase.auth.onAuthStateChange(() => check());
