@@ -139,7 +139,10 @@ function Index() {
 
   const stats = useMemo(() => {
     const guests = new Set(posts.map((p) => p.invite_id)).size;
-    const photoCount = posts.filter((p) => p.url_medium).length;
+    const photoCount = posts.reduce((sum, p) => {
+      const n = p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0;
+      return sum + n;
+    }, 0);
     const likes = posts.reduce((s, p) => s + p.nb_likes, 0);
     return { guests, photos: photoCount, likes };
   }, [posts]);
@@ -274,7 +277,7 @@ function Index() {
               {onlyMine && (
                 <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-xs">
                   <span className="font-medium text-foreground">
-                    Mes photos ({visiblePosts.filter((p) => p.url_medium).length})
+                    Mes photos ({visiblePosts.reduce((s, p) => s + (p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0), 0)})
                   </span>
                   <button
                     type="button"
