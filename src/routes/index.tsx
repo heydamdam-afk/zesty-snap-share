@@ -243,7 +243,12 @@ function Index() {
                   </button>
                 </div>
               )}
-              <Gallery posts={visiblePosts} isAdmin={isAdmin} onChanged={reload} />
+              <Gallery
+                posts={visiblePosts}
+                isAdmin={isAdmin}
+                currentDeviceId={guest.invite.device_id}
+                onChanged={reload}
+              />
             </motion.div>
           )}
           {tab === "guests" && (
