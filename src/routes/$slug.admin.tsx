@@ -20,8 +20,14 @@ type EventLite = {
   slug: string;
 };
 
+type AdminSession = {
+  id: string;
+  role: "organisateur" | "secondaire";
+  prenom: string | null;
+};
+
 type AdminCheckResult =
-  | { kind: "ok"; adminId: string; role: "organisateur" | "secondaire" }
+  | { kind: "ok"; admin: AdminSession }
   | { kind: "not_admin" }
   | { kind: "error"; message: string };
 
@@ -69,7 +75,7 @@ async function checkAdminMembership(
 
   const { data, error } = await supabase
     .from("event_admins")
-    .select("id, role")
+    .select("id, role, prenom")
     .eq("event_id", eventId)
     .ilike("email", email)
     .maybeSingle();
@@ -78,8 +84,11 @@ async function checkAdminMembership(
   if (!data) return { kind: "not_admin" };
   return {
     kind: "ok",
-    adminId: data.id,
-    role: data.role as "organisateur" | "secondaire",
+    admin: {
+      id: data.id,
+      role: data.role as "organisateur" | "secondaire",
+      prenom: data.prenom,
+    },
   };
 }
 
@@ -97,6 +106,9 @@ function AdminEventLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [, setAdminSession] = useState<AdminSession | null>(null);
 
   // Charger l'event par slug (= code_acces côté DB).
   useEffect(() => {
@@ -123,21 +135,43 @@ function AdminEventLogin() {
     };
   }, [slug]);
 
-  // Si déjà connecté, on tente directement la vérif d'admin.
+  // Si déjà connecté, on vérifie d'abord l'accès admin avant d'afficher le login.
   useEffect(() => {
     if (!event) return;
-    let cancel = false;
-    void supabase.auth.getSession().then(async ({ data }) => {
-      const sessionEmail = data.session?.user.email;
-      if (!sessionEmail) return;
-      const res = await checkAdminMembership(event.id, sessionEmail);
-      if (cancel) return;
-      if (res.kind === "ok") {
-        navigate({ to: "/$slug/admin/dashboard", params: { slug } });
+    let cancelled = false;
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+
+        if (session?.user?.email) {
+          const res = await checkAdminMembership(event.id, session.user.email);
+          if (cancelled) return;
+          if (res.kind === "ok") {
+            setAdminSession(res.admin);
+            setShowLoginForm(false);
+            navigate({ to: "/$slug/admin/dashboard", params: { slug } });
+          } else {
+            setAdminSession(null);
+            setShowLoginForm(true);
+          }
+        } else {
+          setAdminSession(null);
+          setShowLoginForm(true);
+        }
+      } catch (err) {
+        console.error("[slug admin] session check failed", err);
+        if (!cancelled) {
+          setAdminSession(null);
+          setShowLoginForm(true);
+        }
+      } finally {
+        if (!cancelled) setSessionLoading(false);
       }
-    });
+    };
+    void checkSession();
     return () => {
-      cancel = true;
+      cancelled = true;
     };
   }, [event, navigate, slug]);
 
@@ -198,7 +232,7 @@ function AdminEventLogin() {
       }
 
       clearAttempts(slug, email);
-      toast.success(`Bienvenue ! Rôle : ${res.role}`);
+      toast.success(`Bienvenue ! Rôle : ${res.admin.role}`);
       navigate({ to: "/$slug/admin/dashboard", params: { slug } });
     } catch (err) {
       const next: AttemptState = {
@@ -213,7 +247,7 @@ function AdminEventLogin() {
     }
   };
 
-  if (eventLoading) {
+  if (eventLoading || sessionLoading || !showLoginForm) {
     return (
       <div className="grid min-h-screen place-items-center bg-secondary">
         <p className="text-sm text-muted-foreground">Chargement…</p>
