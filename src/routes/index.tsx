@@ -33,6 +33,7 @@ import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { findEventBySlug, findInvite } from "@/lib/zest-actions";
 import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
+import { toast } from "sonner";
 
 const EVENT_SLUG = "JULIE2026";
 const QUOTA_TOTAL = 500;
@@ -153,28 +154,36 @@ function Index() {
   const handleUpload = async (files: FileList) => {
     if (!guest) return;
     if (quotaFull) {
-      window.alert(QUOTA_FULL_MESSAGE);
+      toast.error(QUOTA_FULL_MESSAGE);
       return;
     }
     const arr = Array.from(files);
     // Client-side validation.
-    const tooBig = arr.find((f) => f.size > MAX_PHOTO_BYTES);
-    if (tooBig) {
-      window.alert(`Le fichier « ${tooBig.name} » dépasse 50 Mo.`);
-      return;
-    }
-    const badType = arr.find(
+    const tooBig = arr.filter((f) => f.size > MAX_PHOTO_BYTES);
+    const badType = arr.filter(
       (f) => !ACCEPTED_PHOTO_TYPES.includes((f.type || "").toLowerCase()),
     );
-    if (badType) {
-      window.alert(`Format non supporté : ${badType.name}`);
-      return;
+    const invalid = new Set([...tooBig, ...badType].map((f) => f.name));
+    const valid = arr.filter((f) => !invalid.has(f.name));
+
+    if (tooBig.length > 0) {
+      toast.error(`${tooBig.length} fichier(s) > 50 Mo ignoré(s)`, {
+        description: tooBig.map((f) => `• ${f.name}`).join("\n"),
+        duration: 8000,
+      });
     }
+    if (badType.length > 0) {
+      toast.error(`${badType.length} format(s) non supporté(s) ignoré(s)`, {
+        description: badType.map((f) => `• ${f.name}`).join("\n"),
+        duration: 8000,
+      });
+    }
+    if (valid.length === 0) return;
     setUploading(true);
     setUploads(
-      arr.map((f, i) => ({
+      valid.map((f, i) => ({
         index: i,
-        total: arr.length,
+        total: valid.length,
         fileName: f.name,
         status: "pending" as const,
         percent: 0,
@@ -184,20 +193,33 @@ function Index() {
       const res = await uploadGalleryBatch({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
-        files: arr,
+        files: valid,
         onProgress: (p) =>
           setUploads((list) => list.map((it) => (it.index === p.index ? p : it))),
       });
       await reload();
-      if (res.errors.length > 0) {
-        window.alert(
-          `${res.ok}/${arr.length} photos envoyées. Erreurs :\n` +
+      if (res.errors.length > 0 && res.ok > 0) {
+        toast.warning(`${res.ok}/${valid.length} photo(s) envoyée(s)`, {
+          description:
+            `${res.errors.length} échec(s) :\n` +
             res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
+          duration: 12000,
+        });
+      } else if (res.errors.length > 0) {
+        toast.error(`Aucune photo envoyée (${res.errors.length} échec(s))`, {
+          description: res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
+          duration: 12000,
+        });
+      } else {
+        toast.success(
+          res.ok === 1 ? "Photo envoyée" : `${res.ok} photos envoyées`,
         );
       }
     } catch (e) {
       console.error(e);
-      window.alert("Upload impossible, réessayez.");
+      toast.error("Upload impossible, réessayez.", {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setUploading(false);
       setTimeout(() => setUploads([]), 1500);
