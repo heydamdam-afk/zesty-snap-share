@@ -11,6 +11,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
+import { toast } from "sonner";
 
 export function ComposeBar({
   guest,
@@ -36,18 +37,35 @@ export function ComposeBar({
     if ((!text.trim() && files.length === 0) || busy) return;
     setBusy(true);
     try {
-      await createPost({
+      const res = await createPost({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
         contenuTexte: text,
         files,
       });
+      // createPost returns either a post row (no files) or a batch result.
+      if (res && typeof res === "object" && "errors" in res) {
+        const r = res as { ok: number; errors: { file: string; error: string }[] };
+        if (r.errors.length > 0 && r.ok > 0) {
+          toast.warning(`Post publié — ${r.ok}/${files.length} photo(s) envoyée(s)`, {
+            description:
+              r.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
+            duration: 10000,
+          });
+        } else if (r.errors.length === 0) {
+          toast.success("Post publié");
+        }
+      } else {
+        toast.success("Post publié");
+      }
       reset();
       setOpen(false);
       onPosted?.();
     } catch (e) {
       console.error(e);
-      alert("Publication impossible, réessayez.");
+      toast.error("Publication impossible, réessayez.", {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -115,7 +133,7 @@ export function ComposeBar({
                 setFiles((list) => {
                   const next = [...list, ...Array.from(e.target.files!)];
                   if (next.length > MAX_PHOTOS_PER_POST) {
-                    alert(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication.`);
+                    toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
                     return next.slice(0, MAX_PHOTOS_PER_POST);
                   }
                   return next;
