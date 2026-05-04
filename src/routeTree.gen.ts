@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SlugAdminRouteImport } from './routes/$slug.admin'
 
 const ClosedRoute = ClosedRouteImport.update({
   id: '/closed',
@@ -28,35 +29,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlugAdminRoute = SlugAdminRouteImport.update({
+  id: '/$slug/admin',
+  path: '/$slug/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/$slug/admin': typeof SlugAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/$slug/admin': typeof SlugAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/$slug/admin': typeof SlugAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/closed'
+  fullPaths: '/' | '/admin' | '/closed' | '/$slug/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/closed'
-  id: '__root__' | '/' | '/admin' | '/closed'
+  to: '/' | '/admin' | '/closed' | '/$slug/admin'
+  id: '__root__' | '/' | '/admin' | '/closed' | '/$slug/admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
+  SlugAdminRoute: typeof SlugAdminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$slug/admin': {
+      id: '/$slug/admin'
+      path: '/$slug/admin'
+      fullPath: '/$slug/admin'
+      preLoaderRoute: typeof SlugAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
+  SlugAdminRoute: SlugAdminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
