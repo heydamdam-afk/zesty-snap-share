@@ -171,7 +171,7 @@ function Index() {
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
       <div className="relative">
-        <EventHero title={guest.event.titre} dateIso={guest.event.expire_at} />
+        <EventHero title={guest.event.titre} dateIso={guest.event.event_date ?? guest.event.expire_at} />
         <ProfileMenu
           guest={guest}
           onAvatarChange={(url) =>
@@ -256,7 +256,7 @@ function Index() {
               className="-mx-3"
             >
               <EventDetails
-                dateIso={guest.event.expire_at}
+                dateIso={guest.event.event_date ?? guest.event.expire_at}
                 isAdmin={isAdmin}
                 onEdit={() => window.alert("Édition de l'événement à venir")}
               />
@@ -281,7 +281,9 @@ function Index() {
               <QrPanel
                 title={guest.event.titre}
                 code={guest.event.code_acces}
-                dateIso={guest.event.expire_at}
+                dateIso={guest.event.event_date ?? guest.event.expire_at}
+                lieu={guest.event.lieu}
+                contact={guest.event.contact}
               />
             </motion.div>
           )}
