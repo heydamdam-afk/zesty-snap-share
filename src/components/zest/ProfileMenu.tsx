@@ -1,8 +1,9 @@
 import type { GuestSession } from "@/lib/zest-session";
 import { Avatar } from "./Avatar";
 import { LogOut, Image as ImageIcon, Shield } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 
 export function ProfileMenu({
   guest,
@@ -15,6 +16,34 @@ export function ProfileMenu({
   onLeave?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [adminSlug, setAdminSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user.id;
+      if (!userId) {
+        if (!cancelled) setAdminSlug(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("event_admins")
+        .select("events!inner(slug)")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
+      const slug = (data as { events?: { slug?: string } | null } | null)?.events?.slug ?? null;
+      if (!cancelled) setAdminSlug(slug);
+    };
+    check();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => check());
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <div className="absolute right-3 top-3 z-10">
       <button
@@ -36,14 +65,17 @@ export function ProfileMenu({
             <ImageIcon className="h-4 w-4" />
             Mes photos
           </button>
-          <Link
-            to="/admin"
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary"
-          >
-            <Shield className="h-4 w-4" />
-            Admin
-          </Link>
+          {adminSlug && (
+            <Link
+              to="/$slug/admin/dashboard"
+              params={{ slug: adminSlug }}
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary"
+            >
+              <Shield className="h-4 w-4" />
+              Admin
+            </Link>
+          )}
           <button
             onClick={() => {
               setOpen(false);
