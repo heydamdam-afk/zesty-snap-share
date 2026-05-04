@@ -10,7 +10,12 @@ import {
   pickAvatarColor,
   type GuestSession,
 } from "@/lib/zest-session";
-import { loginToEvent, generatePrenomSuggestions, normalisePrenom } from "@/lib/zest-actions";
+import {
+  loginToEvent,
+  generatePrenomSuggestions,
+  normalisePrenom,
+  checkPrenomAvailability,
+} from "@/lib/zest-actions";
 
 export type { GuestSession };
 
@@ -112,6 +117,8 @@ export function AccessGate({
   }>({});
   const [prenomSuggestions, setPrenomSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [prenomChecking, setPrenomChecking] = useState(false);
+  const [prenomAvailable, setPrenomAvailable] = useState<boolean | null>(null);
   const [lockUntil, setLockUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const fileRef = useRef<HTMLInputElement>(null);
@@ -128,6 +135,38 @@ export function AccessGate({
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [lockUntil]);
+
+  // Vérification temps réel du prénom (debounced) dès que code + prénom valides
+  useEffect(() => {
+    const c = code.trim();
+    const p = prenom.trim();
+    setPrenomAvailable(null);
+    setPrenomSuggestions([]);
+    if (errors.prenom) setErrors((x) => ({ ...x, prenom: undefined }));
+    if (c.length < 3 || p.length < 2) {
+      setPrenomChecking(false);
+      return;
+    }
+    setPrenomChecking(true);
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await checkPrenomAvailability({ code: c, prenom: p });
+      if (cancelled) return;
+      setPrenomChecking(false);
+      if (res.status === "available") {
+        setPrenomAvailable(true);
+      } else if (res.status === "taken") {
+        setPrenomAvailable(false);
+        const norm = normalisePrenom(p);
+        setPrenomSuggestions(generatePrenomSuggestions(norm, res.taken, 3));
+      }
+    }, 450);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, prenom]);
 
   const isLocked = lockUntil > now;
   const remainingMin = Math.ceil((lockUntil - now) / 60000);
@@ -178,7 +217,7 @@ export function AccessGate({
         if (result.reason === "prenom_taken") {
           const norm = normalisePrenom(parsed.data.prenom);
           setErrors({ prenom: `« ${norm} » est déjà pris dans cet événement.` });
-          setPrenomSuggestions(generatePrenomSuggestions(norm));
+          setPrenomSuggestions(generatePrenomSuggestions(norm, [], 3));
           return;
         }
         if (result.reason === "bad_code" || result.reason === "event_not_found") {
