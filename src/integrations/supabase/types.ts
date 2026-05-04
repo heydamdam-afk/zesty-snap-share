@@ -245,6 +245,44 @@ export type Database = {
           },
         ]
       }
+      post_photos: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          post_id: string
+          url_full: string | null
+          url_medium: string | null
+          url_miniature: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          post_id: string
+          url_full?: string | null
+          url_medium?: string | null
+          url_miniature?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          post_id?: string
+          url_full?: string | null
+          url_medium?: string | null
+          url_miniature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_photos_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           contenu_texte: string | null
