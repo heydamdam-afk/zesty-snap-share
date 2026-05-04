@@ -11,6 +11,7 @@ import {
 import { AdminHeader } from "@/components/zest/admin/AdminHeader";
 import { EventSettingsSection } from "@/components/zest/admin/EventSettingsSection";
 import { StorageQuotaSection } from "@/components/zest/admin/StorageQuotaSection";
+import { AdminsSection } from "@/components/zest/admin/AdminsSection";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -118,6 +119,7 @@ function AdminDashboard() {
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
           <EventSettingsSection />
           <StorageQuotaSection />
+          <AdminsSection />
         </main>
       </div>
     </AdminContext.Provider>
