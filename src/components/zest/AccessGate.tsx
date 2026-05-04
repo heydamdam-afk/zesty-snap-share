@@ -289,6 +289,7 @@ export function AccessGate({
                 onChange={(e) => {
                   setPrenom(e.target.value);
                   if (errors.prenom) setErrors((x) => ({ ...x, prenom: undefined }));
+                  if (prenomSuggestions.length) setPrenomSuggestions([]);
                 }}
                 placeholder="Votre prénom"
                 maxLength={40}
@@ -297,6 +298,27 @@ export function AccessGate({
               />
               {errors.prenom && (
                 <p className="mt-1.5 text-xs font-medium text-destructive">{errors.prenom}</p>
+              )}
+              {prenomSuggestions.length > 0 && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-xs text-muted-foreground">Essayez :</p>
+                  <div className="flex flex-wrap gap-2">
+                    {prenomSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          setPrenom(s);
+                          setErrors((x) => ({ ...x, prenom: undefined }));
+                          setPrenomSuggestions([]);
+                        }}
+                        className="rounded-full bg-muted px-3 py-1 text-[13px] font-normal text-foreground hover:bg-muted/70"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
