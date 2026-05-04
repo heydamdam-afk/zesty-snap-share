@@ -98,11 +98,74 @@ export function normalisePrenom(raw: string): string {
   return t.charAt(0).toLocaleUpperCase() + t.slice(1).toLocaleLowerCase();
 }
 
-export function generatePrenomSuggestions(prenom: string): string[] {
+/**
+ * Génère jusqu'à `max` suggestions de prénom qui ne sont PAS dans `taken`
+ * (comparaison insensible à la casse). `taken` peut contenir les prénoms
+ * déjà utilisés dans l'event.
+ */
+export function generatePrenomSuggestions(
+  prenom: string,
+  taken: string[] = [],
+  max = 3,
+): string[] {
   const p = normalisePrenom(prenom);
-  const suggestions = [`${p}2`, `${p} B.`, `${p} bis`];
-  if (p.length > 4) suggestions.push(p.slice(0, 4));
-  return suggestions;
+  if (!p) return [];
+  const takenLc = new Set(taken.map((t) => t.trim().toLocaleLowerCase()));
+  const candidates: string[] = [];
+  // Initiales A → Z
+  for (let c = 65; c <= 90; c++) {
+    candidates.push(`${p} ${String.fromCharCode(c)}.`);
+  }
+  // Variantes "bis", numériques
+  candidates.push(`${p} bis`);
+  for (let n = 2; n <= 9; n++) candidates.push(`${p} ${n}`);
+
+  const out: string[] = [];
+  for (const c of candidates) {
+    if (takenLc.has(c.toLocaleLowerCase())) continue;
+    out.push(c);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/**
+ * Vérifie en temps réel si un prénom est disponible dans l'event identifié
+ * par son code d'accès. Retourne les prénoms déjà pris (utile pour générer
+ * des suggestions intelligentes) si clash.
+ */
+export async function checkPrenomAvailability(args: {
+  code: string;
+  prenom: string;
+}): Promise<
+  | { status: "no_event" }
+  | { status: "empty" }
+  | { status: "available"; eventId: string }
+  | { status: "taken"; eventId: string; taken: string[] }
+> {
+  const prenom = args.prenom.trim();
+  if (!prenom) return { status: "empty" };
+  const event = await findEventByCode(args.code);
+  if (!event) return { status: "no_event" };
+
+  const norm = normalisePrenom(prenom);
+  const { data: clash } = await supabase
+    .from("invites")
+    .select("id")
+    .eq("event_id", event.id)
+    .ilike("prenom", norm)
+    .maybeSingle();
+
+  if (!clash) return { status: "available", eventId: event.id };
+
+  // Récupère tous les prénoms déjà pris (jusqu'à 200, largement suffisant)
+  const { data: rows } = await supabase
+    .from("invites")
+    .select("prenom")
+    .eq("event_id", event.id)
+    .limit(200);
+  const taken = (rows ?? []).map((r) => r.prenom).filter(Boolean) as string[];
+  return { status: "taken", eventId: event.id, taken };
 }
 
 export async function uploadEventPhoto(file: File, eventId: string) {
