@@ -12,6 +12,7 @@ import { AdminHeader } from "@/components/zest/admin/AdminHeader";
 import { EventSettingsSection } from "@/components/zest/admin/EventSettingsSection";
 import { StorageQuotaSection } from "@/components/zest/admin/StorageQuotaSection";
 import { AdminsSection } from "@/components/zest/admin/AdminsSection";
+import { BannedSection } from "@/components/zest/admin/BannedSection";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -120,6 +121,7 @@ function AdminDashboard() {
           <EventSettingsSection />
           <StorageQuotaSection />
           <AdminsSection />
+          <BannedSection />
         </main>
       </div>
     </AdminContext.Provider>
