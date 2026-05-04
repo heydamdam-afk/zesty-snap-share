@@ -115,7 +115,12 @@ function AdminDashboard() {
     return () => {
       cancel = true;
     };
-  }, [slug, navigate, loadEvent]);
+    // Intentionally only depend on `slug`. `navigate` and `loadEvent` are stable
+    // in practice but including them caused the effect to re-run and cancel
+    // itself before the events query could resolve, leaving the dashboard
+    // stuck on the loading screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   if (loading || !ctx) {
     return (
