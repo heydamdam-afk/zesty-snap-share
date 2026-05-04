@@ -5,6 +5,7 @@ import type { Tables } from "@/integrations/supabase/types";
 export type FeedPost = Tables<"posts"> & {
   invites: Pick<Tables<"invites">, "id" | "prenom" | "avatar_url" | "device_id"> | null;
   liked_by_me: boolean;
+  photos: Pick<Tables<"post_photos">, "id" | "position" | "url_miniature" | "url_medium" | "url_full">[];
   comments: (Tables<"commentaires"> & {
     invites: Pick<Tables<"invites">, "id" | "prenom"> | null;
   })[];
@@ -18,7 +19,7 @@ export function useEventFeed(eventId: string | null, inviteId: string | null) {
     if (!eventId) return;
     const { data: postsData, error } = await supabase
       .from("posts")
-      .select("*, invites(id, prenom, avatar_url, device_id)")
+      .select("*, invites(id, prenom, avatar_url, device_id), post_photos(id, position, url_miniature, url_medium, url_full)")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
     if (error) {
@@ -51,7 +52,13 @@ export function useEventFeed(eventId: string | null, inviteId: string | null) {
 
     setPosts(
       (postsData ?? []).map((p) => ({
-        ...(p as Tables<"posts"> & { invites: FeedPost["invites"] }),
+        ...(p as Tables<"posts"> & {
+          invites: FeedPost["invites"];
+          post_photos: FeedPost["photos"];
+        }),
+        photos: ((p as { post_photos?: FeedPost["photos"] }).post_photos ?? [])
+          .slice()
+          .sort((a, b) => a.position - b.position),
         liked_by_me: myLikes.has(p.id),
         comments: comments.filter((c) => c.photo_id === p.id),
       })),
