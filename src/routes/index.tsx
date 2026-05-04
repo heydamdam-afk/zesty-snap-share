@@ -25,6 +25,7 @@ import {
   uploadPhotosBatch,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
+  MAX_PHOTOS_PER_POST,
   type UploadProgress,
 } from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -139,7 +140,10 @@ function Index() {
 
   const stats = useMemo(() => {
     const guests = new Set(posts.map((p) => p.invite_id)).size;
-    const photoCount = posts.filter((p) => p.url_medium).length;
+    const photoCount = posts.reduce((sum, p) => {
+      const n = p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0;
+      return sum + n;
+    }, 0);
     const likes = posts.reduce((s, p) => s + p.nb_likes, 0);
     return { guests, photos: photoCount, likes };
   }, [posts]);
@@ -154,6 +158,10 @@ function Index() {
       return;
     }
     const arr = Array.from(files);
+    if (arr.length > MAX_PHOTOS_PER_POST) {
+      window.alert(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication.`);
+      return;
+    }
     // Client-side validation.
     const tooBig = arr.find((f) => f.size > MAX_PHOTO_BYTES);
     if (tooBig) {
@@ -274,7 +282,7 @@ function Index() {
               {onlyMine && (
                 <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-xs">
                   <span className="font-medium text-foreground">
-                    Mes photos ({visiblePosts.filter((p) => p.url_medium).length})
+                    Mes photos ({visiblePosts.reduce((s, p) => s + (p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0), 0)})
                   </span>
                   <button
                     type="button"

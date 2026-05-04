@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Trash2, Shield } from "lucide-react";
+import { Heart, MessageCircle, Send, Trash2, Shield, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "./Avatar";
 import type { FeedPost } from "@/hooks/useEventFeed";
@@ -108,7 +108,16 @@ export function PostCard({
     }
   };
 
-  const isPhoto = !!post.url_medium;
+  // Prefer the new post_photos[] (sorted by position). Fall back to the
+  // legacy single-photo columns for any historical post that wasn't migrated.
+  const photos = post.photos.length > 0
+    ? post.photos
+    : post.url_medium
+      ? [{ id: "legacy", position: 0, url_miniature: post.url_miniature, url_medium: post.url_medium, url_full: post.url_full }]
+      : [];
+  const isPhoto = photos.length > 0;
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const current = photos[Math.min(photoIdx, photos.length - 1)];
 
   return (
     <motion.article
@@ -135,12 +144,50 @@ export function PostCard({
       )}
 
       {isPhoto && (
-        <img
-          src={post.url_medium!}
-          alt={post.contenu_texte ?? ""}
-          loading="lazy"
-          className="w-full bg-muted object-cover"
-        />
+        <div className="relative w-full bg-muted">
+          <img
+            key={current?.id}
+            src={current?.url_medium ?? current?.url_full ?? ""}
+            alt={post.contenu_texte ?? ""}
+            loading="lazy"
+            className="w-full object-cover"
+          />
+          {photos.length > 1 && (
+            <>
+              {photoIdx > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPhotoIdx((i) => Math.max(0, i - 1))}
+                  aria-label="Photo précédente"
+                  className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              )}
+              {photoIdx < photos.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => setPhotoIdx((i) => Math.min(photos.length - 1, i + 1))}
+                  aria-label="Photo suivante"
+                  className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+              <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+                {photos.map((p, i) => (
+                  <span
+                    key={p.id}
+                    className={`h-1.5 w-1.5 rounded-full ${i === photoIdx ? "bg-white" : "bg-white/50"}`}
+                  />
+                ))}
+              </div>
+              <span className="absolute right-2 top-2 rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                {photoIdx + 1}/{photos.length}
+              </span>
+            </>
+          )}
+        </div>
       )}
 
       <div className="flex items-center gap-1 px-4 py-3">

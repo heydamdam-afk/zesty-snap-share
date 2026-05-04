@@ -12,6 +12,8 @@ export const ACCEPTED_PHOTO_TYPES = [
   "image/heif",
 ];
 
+export const MAX_PHOTOS_PER_POST = 4;
+
 export type UploadProgress = {
   index: number;
   total: number;
@@ -244,8 +246,8 @@ export async function uploadOnePhoto(
 }
 
 /**
- * Upload many files in parallel (concurrency 5) and create a `posts` row per file.
- * If `contenuTexte` is provided, it is attached to the FIRST post only.
+ * Upload up to MAX_PHOTOS_PER_POST files in parallel (concurrency 5) and create
+ * ONE `posts` row plus one `post_photos` row per uploaded file.
  */
 export async function uploadPhotosBatch(args: {
   eventId: string;
@@ -256,29 +258,24 @@ export async function uploadPhotosBatch(args: {
   concurrency?: number;
 }): Promise<{ ok: number; errors: { file: string; error: string }[] }> {
   const { eventId, inviteId, files, contenuTexte } = args;
+  if (files.length > MAX_PHOTOS_PER_POST) {
+    throw new Error(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
+  }
   const concurrency = Math.max(1, Math.min(args.concurrency ?? 5, 5));
   const total = files.length;
   const errors: { file: string; error: string }[] = [];
-  let ok = 0;
   let nextIndex = 0;
+  // index -> uploaded URLs (preserve original order).
+  const uploaded = new Array<UploadedPhoto | null>(total).fill(null);
 
   const runOne = async (i: number) => {
     const f = files[i];
     args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
     try {
-      const uploaded = await uploadOnePhoto(f, eventId, (pct) => {
+      const u = await uploadOnePhoto(f, eventId, (pct) => {
         args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
       });
-      const { error } = await supabase.from("posts").insert({
-        event_id: eventId,
-        invite_id: inviteId,
-        contenu_texte: i === 0 && contenuTexte?.trim() ? contenuTexte.trim() : null,
-        url_miniature: uploaded.urlMini,
-        url_medium: uploaded.urlMedium,
-        url_full: uploaded.urlFull,
-      });
-      if (error) throw error;
-      ok++;
+      uploaded[i] = u;
       args.onProgress?.({ index: i, total, fileName: f.name, status: "done", percent: 100 });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
@@ -297,7 +294,43 @@ export async function uploadPhotosBatch(args: {
   };
   for (let w = 0; w < Math.min(concurrency, total); w++) workers.push(launch());
   await Promise.all(workers);
-  return { ok, errors };
+
+  const ok = uploaded.filter((u): u is UploadedPhoto => !!u);
+  if (ok.length === 0) {
+    return { ok: 0, errors };
+  }
+
+  // Create ONE post for the whole batch — keep legacy single-photo columns in
+  // sync with position 0 so older queries keep working.
+  const first = ok[0];
+  const { data: post, error: postErr } = await supabase
+    .from("posts")
+    .insert({
+      event_id: eventId,
+      invite_id: inviteId,
+      contenu_texte: contenuTexte?.trim() || null,
+      url_miniature: first.urlMini,
+      url_medium: first.urlMedium,
+      url_full: first.urlFull,
+    })
+    .select()
+    .single();
+  if (postErr || !post) {
+    return { ok: 0, errors: [...errors, { file: "post", error: postErr?.message ?? "Création du post impossible" }] };
+  }
+
+  // Insert one row per photo into post_photos (preserve order via position).
+  const rows = uploaded
+    .map((u, idx) => (u ? { post_id: post.id, position: idx, url_miniature: u.urlMini, url_medium: u.urlMedium, url_full: u.urlFull } : null))
+    .filter((r): r is NonNullable<typeof r> => !!r)
+    // Re-position contiguously in case some uploads failed mid-batch.
+    .map((r, i) => ({ ...r, position: i }));
+  const { error: photosErr } = await supabase.from("post_photos").insert(rows);
+  if (photosErr) {
+    errors.push({ file: "post_photos", error: photosErr.message });
+  }
+
+  return { ok: ok.length, errors };
 }
 
 export async function createPost(args: {
