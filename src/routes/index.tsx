@@ -168,24 +168,6 @@ function Index() {
 
   return (
     <div className="relative min-h-screen bg-background pb-32">
-      {isAdmin && (
-        <div className="sticky top-0 z-40 flex items-center justify-between gap-3 bg-foreground px-4 py-2 text-xs text-background">
-          <div className="flex items-center gap-2">
-            <Shield className="h-3.5 w-3.5" />
-            <span className="font-semibold uppercase tracking-wide">Mode admin</span>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              window.location.reload();
-            }}
-            className="font-medium underline-offset-2 hover:underline"
-          >
-            Quitter
-          </button>
-        </div>
-      )}
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
       <div className="relative">
