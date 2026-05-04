@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Calendar, User } from "lucide-react";
+import { ChevronDown, Calendar, User, Pencil } from "lucide-react";
 
 function formatDate(iso?: string | null) {
   if (!iso) return "—";
@@ -17,9 +17,13 @@ function formatDate(iso?: string | null) {
 export function EventDetails({
   dateIso,
   host,
+  isAdmin = false,
+  onEdit,
 }: {
   dateIso?: string | null;
   host?: string | null;
+  isAdmin?: boolean;
+  onEdit?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   return (
@@ -40,6 +44,7 @@ export function EventDetails({
         />
       </button>
       {open && (
+        <>
         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
@@ -52,6 +57,17 @@ export function EventDetails({
             </li>
           )}
         </ul>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Modifier
+          </button>
+        )}
+        </>
       )}
     </div>
   );

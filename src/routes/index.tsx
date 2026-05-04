@@ -261,7 +261,7 @@ function Index() {
                   </button>
                 </div>
               )}
-              <Gallery posts={visiblePosts} />
+              <Gallery posts={visiblePosts} isAdmin={isAdmin} onChanged={reload} />
             </motion.div>
           )}
           {tab === "guests" && (
@@ -273,8 +273,18 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="-mx-3"
             >
-              <EventDetails dateIso={guest.event.expire_at} />
-              <GuestsList posts={posts} />
+              <EventDetails
+                dateIso={guest.event.expire_at}
+                isAdmin={isAdmin}
+                onEdit={() => window.alert("Édition de l'événement à venir")}
+              />
+              <GuestsList
+                posts={posts}
+                eventId={guest.event.id}
+                isAdmin={isAdmin}
+                currentDeviceId={guest.invite.device_id}
+                onChanged={reload}
+              />
             </motion.div>
           )}
           {tab === "qr" && (
