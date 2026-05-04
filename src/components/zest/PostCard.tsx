@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Trash2, Shield, UserX } from "lucide-react";
+import { Heart, MessageCircle, Send, Trash2, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "./Avatar";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
-import { deletePost, deleteCommentAsAdmin, banInvite } from "@/lib/zest-admin";
+import { deletePost, deleteCommentAsAdmin } from "@/lib/zest-admin";
 import type { GuestSession } from "@/lib/zest-session";
 
 function timeAgo(iso: string) {
@@ -95,19 +95,6 @@ export function PostCard({
     }
   };
 
-  const adminBan = async () => {
-    const deviceId = post.invites?.device_id;
-    if (!deviceId) return;
-    if (!window.confirm(`Bannir ${author} ? Tous ses posts et commentaires seront supprimés.`)) return;
-    try {
-      await banInvite(post.event_id, deviceId);
-      await onChanged?.();
-    } catch (e) {
-      console.error(e);
-      window.alert("Bannissement impossible");
-    }
-  };
-
   const isPhoto = !!post.url_medium;
 
   return (
@@ -124,27 +111,9 @@ export function PostCard({
           <p className="text-xs text-muted-foreground">{timeAgo(post.created_at)}</p>
         </div>
         {isAdmin && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={adminBan}
-              title="Bannir cet invité"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <UserX className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={adminDeletePost}
-              title="Supprimer le post"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-foreground/90 px-2 py-0.5 text-[10px] font-semibold text-background">
-              <Shield className="h-3 w-3" /> admin
-            </span>
-          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/90 px-2 py-0.5 text-[10px] font-semibold text-background">
+            <Shield className="h-3 w-3" /> admin
+          </span>
         )}
       </div>
 
@@ -182,6 +151,16 @@ export function PostCard({
           <MessageCircle className="h-5 w-5" />
           <span className="text-sm font-medium">{post.comments.length}</span>
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={adminDeletePost}
+            title="Supprimer ce post"
+            className="ml-auto grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <AnimatePresence initial={false}>
