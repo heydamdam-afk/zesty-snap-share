@@ -85,6 +85,19 @@ export function PostCard({
     }
   };
 
+  const isMine = post.invites?.device_id === guest.invite.device_id;
+
+  const ownerDeletePost = async () => {
+    if (!window.confirm("Supprimer ce post ?")) return;
+    try {
+      await deletePost(post.id, guest.invite.device_id);
+      await onChanged?.();
+    } catch (e) {
+      console.error(e);
+      window.alert("Suppression impossible");
+    }
+  };
+
   const adminDeleteComment = async (id: string) => {
     if (!window.confirm("Supprimer ce commentaire ?")) return;
     try {
@@ -156,6 +169,16 @@ export function PostCard({
             type="button"
             onClick={adminDeletePost}
             title="Supprimer ce post"
+            className="ml-auto grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+        {!isAdmin && isMine && (
+          <button
+            type="button"
+            onClick={ownerDeletePost}
+            title="Supprimer mon post"
             className="ml-auto grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />

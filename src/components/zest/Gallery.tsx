@@ -6,10 +6,12 @@ import { deletePost } from "@/lib/zest-admin";
 export function Gallery({
   posts,
   isAdmin = false,
+  currentDeviceId,
   onChanged,
 }: {
   posts: FeedPost[];
   isAdmin?: boolean;
+  currentDeviceId?: string;
   onChanged?: () => void | Promise<void>;
 }) {
   const photos = posts.filter((p) => p.url_medium);
@@ -20,10 +22,10 @@ export function Gallery({
       </p>
     );
   }
-  const adminDelete = async (id: string) => {
+  const remove = async (id: string, asOwner: boolean) => {
     if (!window.confirm("Supprimer cette photo ?")) return;
     try {
-      await deletePost(id);
+      await deletePost(id, asOwner ? currentDeviceId : undefined);
       await onChanged?.();
     } catch (e) {
       console.error(e);
@@ -54,14 +56,15 @@ export function Gallery({
                 "linear-gradient(to bottom, transparent, rgba(0,0,0,0.55))",
             }}
           />
-          {isAdmin && (
+          {(isAdmin || (currentDeviceId && p.invites?.device_id === currentDeviceId)) && (
             <span
               role="button"
               tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                void adminDelete(p.id);
+                const asOwner = !isAdmin;
+                void remove(p.id, asOwner);
               }}
               title="Supprimer cette photo"
               className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-destructive shadow hover:bg-destructive hover:text-destructive-foreground"
