@@ -9,7 +9,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
-import { createPost } from "@/lib/zest-actions";
+import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
 
 export function ComposeBar({
@@ -112,7 +112,14 @@ export function ComposeBar({
             className="hidden"
             onChange={(e) => {
               if (e.target.files) {
-                setFiles((list) => [...list, ...Array.from(e.target.files!)]);
+                setFiles((list) => {
+                  const next = [...list, ...Array.from(e.target.files!)];
+                  if (next.length > MAX_PHOTOS_PER_POST) {
+                    alert(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication.`);
+                    return next.slice(0, MAX_PHOTOS_PER_POST);
+                  }
+                  return next;
+                });
                 e.target.value = "";
               }
             }}
