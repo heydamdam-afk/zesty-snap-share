@@ -50,55 +50,66 @@ function AdminDashboard() {
   useEffect(() => {
     let cancel = false;
     const init = async () => {
-      const { data: sess } = await supabase.auth.getSession();
-      const sessionEmail = sess.session?.user.email;
-      if (!sessionEmail) {
-        navigate({ to: "/$slug/admin", params: { slug } });
-        return;
-      }
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (cancel) return;
+        const sessionEmail = sess.session?.user.email;
+        if (!sessionEmail) {
+          navigate({ to: "/$slug/admin", params: { slug } });
+          return;
+        }
 
-      const { data: ev, error: evErr } = await supabase
-        .from("events")
-        .select(EVENT_SELECT)
-        .or(`slug.eq.${slug},code_acces.eq.${slug}`)
-        .maybeSingle();
-      if (cancel) return;
-      if (evErr || !ev) {
-        toast.error("Événement introuvable");
-        navigate({ to: "/" });
-        return;
-      }
+        const { data: ev, error: evErr } = await supabase
+          .from("events")
+          .select(EVENT_SELECT)
+          .or(`slug.eq.${slug},code_acces.eq.${slug}`)
+          .maybeSingle();
+        if (cancel) return;
+        if (evErr || !ev) {
+          toast.error("Événement introuvable");
+          navigate({ to: "/" });
+          return;
+        }
 
-      await supabase.rpc("link_admin_user_id");
-      const { data: adm, error: admErr } = await supabase
-        .from("event_admins")
-        .select("id, role")
-        .eq("event_id", ev.id)
-        .ilike("email", sessionEmail)
-        .maybeSingle();
-      if (cancel) return;
-      if (admErr || !adm) {
-        toast.error("Vous n'êtes pas admin de cet événement.");
-        await supabase.auth.signOut();
-        navigate({ to: "/$slug/admin", params: { slug } });
-        return;
-      }
+        await supabase.rpc("link_admin_user_id");
+        if (cancel) return;
+        const { data: adm, error: admErr } = await supabase
+          .from("event_admins")
+          .select("id, role")
+          .eq("event_id", ev.id)
+          .ilike("email", sessionEmail)
+          .maybeSingle();
+        if (cancel) return;
+        if (admErr || !adm) {
+          toast.error("Vous n'êtes pas admin de cet événement.");
+          await supabase.auth.signOut();
+          navigate({ to: "/$slug/admin", params: { slug } });
+          return;
+        }
 
-      const event = ev as AdminEvent;
-      const value: AdminContextValue = {
-        event,
-        adminId: adm.id,
-        role: adm.role as AdminRole,
-        email: sessionEmail,
-        reloadEvent: async () => {
-          const fresh = await loadEvent(event.id);
-          if (fresh) {
-            setCtx((prev) => (prev ? { ...prev, event: fresh } : prev));
-          }
-        },
-      };
-      setCtx(value);
-      setLoading(false);
+        const event = ev as AdminEvent;
+        const value: AdminContextValue = {
+          event,
+          adminId: adm.id,
+          role: adm.role as AdminRole,
+          email: sessionEmail,
+          reloadEvent: async () => {
+            const fresh = await loadEvent(event.id);
+            if (fresh) {
+              setCtx((prev) => (prev ? { ...prev, event: fresh } : prev));
+            }
+          },
+        };
+        setCtx(value);
+      } catch (error) {
+        console.error("[admin dashboard] init failed", error);
+        if (!cancel) {
+          toast.error("Erreur de chargement de l'espace admin.");
+          navigate({ to: "/$slug/admin", params: { slug } });
+        }
+      } finally {
+        if (!cancel) setLoading(false);
+      }
     };
     void init();
     return () => {
