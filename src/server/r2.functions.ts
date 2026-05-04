@@ -71,7 +71,7 @@ export const deletePostWithR2 = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: post, error } = await supabaseAdmin
       .from("posts")
-      .select("id, event_id, url_full, url_medium, url_miniature, invites:invite_id(device_id)")
+      .select("id, event_id, url_full, url_medium, url_miniature, invites:invite_id(device_id), post_photos(url_full, url_medium, url_miniature)")
       .eq("id", data.postId)
       .maybeSingle();
     if (error || !post) throw new Error("Post introuvable");
@@ -106,6 +106,13 @@ export const deletePostWithR2 = createServerFn({ method: "POST" })
     for (const u of [post.url_full, post.url_medium, post.url_miniature]) {
       const k = u ? keyFromPublicUrl(u) : null;
       if (k) keys.add(k);
+    }
+    const photos = (post as { post_photos?: { url_full: string | null; url_medium: string | null; url_miniature: string | null }[] }).post_photos ?? [];
+    for (const ph of photos) {
+      for (const u of [ph.url_full, ph.url_medium, ph.url_miniature]) {
+        const k = u ? keyFromPublicUrl(u) : null;
+        if (k) keys.add(k);
+      }
     }
     for (const k of keys) {
       try { await deleteR2Key(k); } catch (e) { console.error("R2 delete", k, e); }
