@@ -26,6 +26,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { findEventBySlug, findInvite } from "@/lib/zest-actions";
+import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 
 const EVENT_SLUG = "JULIE2026";
 const QUOTA_TOTAL = 500;
@@ -79,6 +81,47 @@ function Index() {
   useEffect(() => {
     saveGuest(guest);
   }, [guest]);
+
+  // Auto-créer une session admin si l'utilisateur est connecté côté Supabase
+  // mais n'a pas (encore) de session guest locale.
+  useEffect(() => {
+    if (!hydrated || guest) return;
+    let cancel = false;
+    (async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      const user = sess.session?.user;
+      if (!user) return;
+      const event = await findEventBySlug(EVENT_SLUG === "JULIE2026" ? "mariage-sabrina-thomas" : EVENT_SLUG);
+      if (!event) return;
+      const { data: adminRow } = await supabase
+        .from("event_admins")
+        .select("id")
+        .eq("event_id", event.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!adminRow) return;
+      const deviceId = getOrCreateDeviceId();
+      let invite = await findInvite(event.id, deviceId);
+      if (!invite) {
+        const prenom = (user.email?.split("@")[0] ?? "Admin").slice(0, 40);
+        const { data: created } = await supabase
+          .from("invites")
+          .insert({
+            event_id: event.id,
+            prenom,
+            email: user.email ?? null,
+            device_id: deviceId,
+            rgpd_consent: false,
+          })
+          .select()
+          .single();
+        invite = created ?? null;
+      }
+      if (!invite || cancel) return;
+      setGuest(buildSession(invite, event));
+    })();
+    return () => { cancel = true; };
+  }, [hydrated, guest]);
 
   const { posts, reload } = useEventFeed(
     guest?.event.id ?? null,
