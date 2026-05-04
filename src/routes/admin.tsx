@@ -23,13 +23,33 @@ function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [showBookmark, setShowBookmark] = useState(false);
+  const [adminSlug, setAdminSlug] = useState<string | null>(null);
+
+  const fetchAdminSlug = async (userId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from("event_admins")
+      .select("events!inner(slug)")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+    const events = (data as { events?: { slug?: string } | null } | null)?.events;
+    return events?.slug ?? null;
+  };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       setSessionEmail(session?.user.email ?? null);
+      if (session?.user) {
+        setAdminSlug(await fetchAdminSlug(session.user.id));
+      } else {
+        setAdminSlug(null);
+      }
     });
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSessionEmail(data.session?.user.email ?? null);
+      if (data.session?.user) {
+        setAdminSlug(await fetchAdminSlug(data.session.user.id));
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -50,9 +70,15 @@ function AdminLogin() {
         });
         if (error) throw error;
       }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      const slug = userId ? await fetchAdminSlug(userId) : null;
+      setAdminSlug(slug);
       const seen = localStorage.getItem(ADMIN_ONBOARDED_KEY);
       if (!seen) {
         setShowBookmark(true);
+      } else if (slug) {
+        navigate({ to: "/$slug/admin/dashboard", params: { slug } });
       } else {
         navigate({ to: "/" });
       }
@@ -73,7 +99,11 @@ function AdminLogin() {
       <AdminBookmark
         onContinue={() => {
           localStorage.setItem(ADMIN_ONBOARDED_KEY, "true");
-          navigate({ to: "/" });
+          if (adminSlug) {
+            navigate({ to: "/$slug/admin/dashboard", params: { slug: adminSlug } });
+          } else {
+            navigate({ to: "/" });
+          }
         }}
       />
     );
@@ -95,12 +125,22 @@ function AdminLogin() {
               <h1 className="font-display text-2xl text-foreground">Connecté</h1>
               <p className="mt-1 text-sm text-muted-foreground">{sessionEmail}</p>
               <div className="mt-6 flex flex-col gap-2">
-                <Link
-                  to="/"
-                  className="w-full rounded-xl bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
-                >
-                  Aller à la galerie
-                </Link>
+                {adminSlug ? (
+                  <Link
+                    to="/$slug/admin/dashboard"
+                    params={{ slug: adminSlug }}
+                    className="w-full rounded-xl bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                  >
+                    Accéder au tableau de bord
+                  </Link>
+                ) : (
+                  <Link
+                    to="/"
+                    className="w-full rounded-xl bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                  >
+                    Aller à la galerie
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={signOut}
