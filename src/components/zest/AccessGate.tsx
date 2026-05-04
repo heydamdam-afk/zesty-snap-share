@@ -333,14 +333,27 @@ export function AccessGate({
                 placeholder="Votre prénom"
                 maxLength={40}
                 disabled={isLocked || loading}
-                className={inputClass(!!errors.prenom)}
+                className={inputClass(!!errors.prenom || prenomAvailable === false)}
               />
-              {errors.prenom && (
+              {prenomChecking && (
+                <p className="mt-1.5 text-xs text-muted-foreground">Vérification…</p>
+              )}
+              {!prenomChecking && prenomAvailable === true && (
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-primary">
+                  <Check className="h-3 w-3" strokeWidth={3} /> Prénom disponible
+                </p>
+              )}
+              {!prenomChecking && prenomAvailable === false && (
+                <p className="mt-1.5 text-xs font-medium text-destructive">
+                  « {normalisePrenom(prenom)} » est déjà pris dans cet événement.
+                </p>
+              )}
+              {errors.prenom && prenomAvailable !== false && (
                 <p className="mt-1.5 text-xs font-medium text-destructive">{errors.prenom}</p>
               )}
               {prenomSuggestions.length > 0 && (
                 <div className="mt-2">
-                  <p className="mb-1.5 text-xs text-muted-foreground">Essayez :</p>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Choisissez une variante :</p>
                   <div className="flex flex-wrap gap-2">
                     {prenomSuggestions.map((s) => (
                       <button
@@ -351,7 +364,7 @@ export function AccessGate({
                           setErrors((x) => ({ ...x, prenom: undefined }));
                           setPrenomSuggestions([]);
                         }}
-                        className="rounded-full bg-muted px-3 py-1 text-[13px] font-normal text-foreground hover:bg-muted/70"
+                        className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-[13px] font-medium text-foreground hover:bg-primary/10"
                       >
                         {s}
                       </button>
