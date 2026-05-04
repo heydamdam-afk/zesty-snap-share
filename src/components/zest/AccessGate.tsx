@@ -310,16 +310,6 @@ export function AccessGate({
           transition={{ duration: 0.4 }}
           className="w-full rounded-3xl bg-card/95 p-7 shadow-card backdrop-blur"
         >
-          <div className="mb-6 flex items-center justify-between">
-            <ZestLogo />
-            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-              Galerie privée
-            </span>
-          </div>
-
-          <h1 className="font-display text-3xl leading-tight text-foreground">
-            Bienvenue
-          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Entrez le code de votre invitation pour rejoindre la galerie.
           </p>
