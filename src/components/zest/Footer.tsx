@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 export function Footer() {
   return (
     <footer
@@ -24,6 +26,18 @@ export function Footer() {
       >
         Zeste
       </span>
+      <span style={{ color: "#919EAB", fontSize: 12 }}>·</span>
+      <Link
+        to="/admin"
+        style={{
+          fontFamily: '"Public Sans", system-ui, sans-serif',
+          fontWeight: 400,
+          fontSize: 12,
+          color: "#919EAB",
+        }}
+      >
+        Admin
+      </Link>
     </footer>
   );
 }

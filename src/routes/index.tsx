@@ -22,6 +22,10 @@ import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
 import { createPost } from "@/lib/zest-actions";
+import { useAdmin } from "@/hooks/useAdmin";
+import { Link } from "@tanstack/react-router";
+import { Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const EVENT_SLUG = "JULIE2026";
 const QUOTA_TOTAL = 500;
@@ -81,6 +85,8 @@ function Index() {
     guest?.invite.id ?? null,
   );
 
+  const { isAdmin } = useAdmin(guest?.event.id ?? null);
+
   const stats = useMemo(() => {
     const guests = new Set(posts.map((p) => p.invite_id)).size;
     const photoCount = posts.filter((p) => p.url_medium).length;
@@ -119,6 +125,24 @@ function Index() {
 
   return (
     <div className="relative min-h-screen bg-background pb-32">
+      {isAdmin && (
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-3 bg-foreground px-4 py-2 text-xs text-background">
+          <div className="flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5" />
+            <span className="font-semibold uppercase tracking-wide">Mode admin</span>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.reload();
+            }}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            Quitter
+          </button>
+        </div>
+      )}
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
       <div className="relative">
@@ -162,7 +186,7 @@ function Index() {
             >
               <ComposeBar guest={guest} onPosted={reload} />
               {visiblePosts.map((p) => (
-                <PostCard key={p.id} post={p} guest={guest} />
+                <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} />
               ))}
               {visiblePosts.length === 0 && (
                 <p className="px-6 py-12 text-center text-sm text-muted-foreground">

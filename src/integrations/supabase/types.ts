@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_invites: {
+        Row: {
+          banned_by: string | null
+          created_at: string
+          device_id: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string
+          device_id: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string
+          device_id?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banned_invites_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commentaires: {
         Row: {
           contenu: string
@@ -49,6 +81,38 @@ export type Database = {
             columns: ["photo_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_admins: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_admins_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -225,12 +289,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ban_invite_cascade: {
+        Args: { _device_id: string; _event_id: string }
+        Returns: boolean
+      }
       delete_own_commentaire: {
         Args: { _commentaire_id: string; _device_id: string }
         Returns: boolean
       }
       delete_own_like: {
         Args: { _device_id: string; _photo_id: string }
+        Returns: boolean
+      }
+      is_event_admin: {
+        Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
       update_own_invite: {

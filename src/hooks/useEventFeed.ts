@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type FeedPost = Tables<"posts"> & {
-  invites: Pick<Tables<"invites">, "id" | "prenom" | "avatar_url"> | null;
+  invites: Pick<Tables<"invites">, "id" | "prenom" | "avatar_url" | "device_id"> | null;
   liked_by_me: boolean;
   comments: (Tables<"commentaires"> & {
     invites: Pick<Tables<"invites">, "id" | "prenom"> | null;
@@ -18,7 +18,7 @@ export function useEventFeed(eventId: string | null, inviteId: string | null) {
     if (!eventId) return;
     const { data: postsData, error } = await supabase
       .from("posts")
-      .select("*, invites(id, prenom, avatar_url)")
+      .select("*, invites(id, prenom, avatar_url, device_id)")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
     if (error) {
