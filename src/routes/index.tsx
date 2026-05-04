@@ -96,37 +96,51 @@ function Index() {
     if (!hydrated || guest) return;
     let cancel = false;
     (async () => {
-      const { data: sess } = await supabase.auth.getSession();
-      const user = sess.session?.user;
-      if (!user) return;
-      const event = await findEventBySlug(EVENT_SLUG === "JULIE2026" ? "mariage-sabrina-thomas" : EVENT_SLUG);
-      if (!event) return;
-      const { data: adminRow } = await supabase
-        .from("event_admins")
-        .select("id")
-        .eq("event_id", event.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!adminRow) return;
-      const deviceId = getOrCreateDeviceId();
-      let invite = await findInvite(event.id, deviceId);
-      if (!invite) {
-        const prenom = (user.email?.split("@")[0] ?? "Admin").slice(0, 40);
-        const { data: created } = await supabase
-          .from("invites")
-          .insert({
-            event_id: event.id,
-            prenom,
-            email: user.email ?? null,
-            device_id: deviceId,
-            rgpd_consent: false,
-          })
-          .select()
-          .single();
-        invite = created ?? null;
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const session = sess.session;
+        const user = session?.user;
+        // Guard : pas de session, on stoppe (pas de requête DB inutile)
+        if (!user?.email) return;
+        const event = await findEventBySlug(
+          EVENT_SLUG === "JULIE2026" ? "mariage-sabrina-thomas" : EVENT_SLUG,
+        );
+        if (!event) return;
+        // Lier user_id si admin invité par email avant inscription
+        await supabase.rpc("link_admin_user_id");
+        const { data: adminRow, error: adminErr } = await supabase
+          .from("event_admins")
+          .select("id")
+          .eq("event_id", event.id)
+          .ilike("email", user.email)
+          .maybeSingle();
+        if (adminErr) {
+          console.error("[index] admin lookup error", adminErr);
+          return;
+        }
+        if (!adminRow) return;
+        const deviceId = getOrCreateDeviceId();
+        let invite = await findInvite(event.id, deviceId);
+        if (!invite) {
+          const prenom = (user.email.split("@")[0] ?? "Admin").slice(0, 40);
+          const { data: created } = await supabase
+            .from("invites")
+            .insert({
+              event_id: event.id,
+              prenom,
+              email: user.email,
+              device_id: deviceId,
+              rgpd_consent: false,
+            })
+            .select()
+            .single();
+          invite = created ?? null;
+        }
+        if (!invite || cancel) return;
+        setGuest(buildSession(invite, event));
+      } catch (e) {
+        console.error("[index] auto admin session failed", e);
       }
-      if (!invite || cancel) return;
-      setGuest(buildSession(invite, event));
     })();
     return () => { cancel = true; };
   }, [hydrated, guest]);
