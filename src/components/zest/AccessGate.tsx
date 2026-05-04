@@ -280,8 +280,30 @@ export function AccessGate({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[image:var(--gradient-warm)]">
+      {eventInfo?.cover_url ? (
+        <img
+          src={eventInfo.cover_url}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-15 blur-sm"
+        />
+      ) : null}
       <div className="absolute inset-0 -z-10 bg-background/40" />
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10">
+        {eventInfo?.titre && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-6 text-center"
+          >
+            <div className="text-3xl">🎉</div>
+            <p className="mt-1 text-sm text-muted-foreground">Bienvenue à</p>
+            <h2 className="font-display text-[26px] font-bold leading-tight text-foreground">
+              {eventInfo.titre}
+            </h2>
+          </motion.div>
+        )}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
