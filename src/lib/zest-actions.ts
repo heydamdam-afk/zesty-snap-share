@@ -59,11 +59,22 @@ export async function loginToEvent(args: {
   const existing = await findInvite(event.id, args.deviceId);
   if (existing) return { ok: true as const, event, invite: existing };
 
+  const prenomNorm = normalisePrenom(args.prenom);
+
+  // Vérifie unicité du prénom dans cet event (insensible à la casse)
+  const { data: clash } = await supabase
+    .from("invites")
+    .select("id")
+    .eq("event_id", event.id)
+    .ilike("prenom", prenomNorm)
+    .maybeSingle();
+  if (clash) return { ok: false as const, reason: "prenom_taken" as const };
+
   const { data, error } = await supabase
     .from("invites")
     .insert({
       event_id: event.id,
-      prenom: args.prenom.trim(),
+      prenom: prenomNorm,
       email: args.email?.trim().toLowerCase() || null,
       device_id: args.deviceId,
       avatar_url: args.avatarUrl ?? null,
@@ -71,8 +82,27 @@ export async function loginToEvent(args: {
     })
     .select()
     .single();
-  if (error) return { ok: false as const, reason: "insert_failed", error };
+  if (error) {
+    // Course concurrente : la contrainte unique a sauté
+    if (error.code === "23505") {
+      return { ok: false as const, reason: "prenom_taken" as const };
+    }
+    return { ok: false as const, reason: "insert_failed", error };
+  }
   return { ok: true as const, event, invite: data };
+}
+
+export function normalisePrenom(raw: string): string {
+  const t = raw.trim();
+  if (!t) return t;
+  return t.charAt(0).toLocaleUpperCase() + t.slice(1).toLocaleLowerCase();
+}
+
+export function generatePrenomSuggestions(prenom: string): string[] {
+  const p = normalisePrenom(prenom);
+  const suggestions = [`${p}2`, `${p} B.`, `${p} bis`];
+  if (p.length > 4) suggestions.push(p.slice(0, 4));
+  return suggestions;
 }
 
 export async function uploadEventPhoto(file: File, eventId: string) {

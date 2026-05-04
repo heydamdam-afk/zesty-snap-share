@@ -10,7 +10,7 @@ import {
   pickAvatarColor,
   type GuestSession,
 } from "@/lib/zest-session";
-import { loginToEvent } from "@/lib/zest-actions";
+import { loginToEvent, generatePrenomSuggestions, normalisePrenom } from "@/lib/zest-actions";
 
 export type { GuestSession };
 
@@ -110,6 +110,7 @@ export function AccessGate({
     email?: string;
     global?: string;
   }>({});
+  const [prenomSuggestions, setPrenomSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [lockUntil, setLockUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -144,6 +145,7 @@ export function AccessGate({
     e.preventDefault();
     if (isLocked) return;
     setErrors({});
+    setPrenomSuggestions([]);
     const parsed = schema.safeParse({ code, prenom, email });
     if (!parsed.success) {
       const fe: typeof errors = {};
@@ -171,6 +173,12 @@ export function AccessGate({
       if (!result.ok) {
         if (result.reason === "banned") {
           setErrors({ global: "Accès refusé : cet appareil a été banni de cet événement." });
+          return;
+        }
+        if (result.reason === "prenom_taken") {
+          const norm = normalisePrenom(parsed.data.prenom);
+          setErrors({ prenom: `« ${norm} » est déjà pris dans cet événement.` });
+          setPrenomSuggestions(generatePrenomSuggestions(norm));
           return;
         }
         if (result.reason === "bad_code" || result.reason === "event_not_found") {
@@ -281,6 +289,7 @@ export function AccessGate({
                 onChange={(e) => {
                   setPrenom(e.target.value);
                   if (errors.prenom) setErrors((x) => ({ ...x, prenom: undefined }));
+                  if (prenomSuggestions.length) setPrenomSuggestions([]);
                 }}
                 placeholder="Votre prénom"
                 maxLength={40}
@@ -289,6 +298,27 @@ export function AccessGate({
               />
               {errors.prenom && (
                 <p className="mt-1.5 text-xs font-medium text-destructive">{errors.prenom}</p>
+              )}
+              {prenomSuggestions.length > 0 && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-xs text-muted-foreground">Essayez :</p>
+                  <div className="flex flex-wrap gap-2">
+                    {prenomSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          setPrenom(s);
+                          setErrors((x) => ({ ...x, prenom: undefined }));
+                          setPrenomSuggestions([]);
+                        }}
+                        className="rounded-full bg-muted px-3 py-1 text-[13px] font-normal text-foreground hover:bg-muted/70"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
