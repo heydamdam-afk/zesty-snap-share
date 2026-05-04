@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Send, Trash2, Shield, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "./Avatar";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
+import { deletePost, deleteCommentAsAdmin, banInvite } from "@/lib/zest-admin";
 import type { GuestSession } from "@/lib/zest-session";
 
 function timeAgo(iso: string) {
@@ -23,9 +24,13 @@ function initialsOf(name?: string | null) {
 export function PostCard({
   post,
   guest,
+  isAdmin = false,
+  onChanged,
 }: {
   post: FeedPost;
   guest: GuestSession;
+  isAdmin?: boolean;
+  onChanged?: () => void | Promise<void>;
 }) {
   const [liked, setLiked] = useState(post.liked_by_me);
   const [count, setCount] = useState(post.nb_likes);
@@ -69,6 +74,40 @@ export function PostCard({
     await deleteOwnComment(id, guest.invite.device_id);
   };
 
+  const adminDeletePost = async () => {
+    if (!window.confirm("Supprimer ce post ?")) return;
+    try {
+      await deletePost(post.id);
+      await onChanged?.();
+    } catch (e) {
+      console.error(e);
+      window.alert("Suppression impossible");
+    }
+  };
+
+  const adminDeleteComment = async (id: string) => {
+    if (!window.confirm("Supprimer ce commentaire ?")) return;
+    try {
+      await deleteCommentAsAdmin(id);
+      await onChanged?.();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const adminBan = async () => {
+    const deviceId = post.invites?.device_id;
+    if (!deviceId) return;
+    if (!window.confirm(`Bannir ${author} ? Tous ses posts et commentaires seront supprimés.`)) return;
+    try {
+      await banInvite(post.event_id, deviceId);
+      await onChanged?.();
+    } catch (e) {
+      console.error(e);
+      window.alert("Bannissement impossible");
+    }
+  };
+
   const isPhoto = !!post.url_medium;
 
   return (
@@ -80,10 +119,33 @@ export function PostCard({
     >
       <div className="flex items-center gap-3 p-4">
         <Avatar initials={initialsOf(author)} />
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">{author}</p>
           <p className="text-xs text-muted-foreground">{timeAgo(post.created_at)}</p>
         </div>
+        {isAdmin && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={adminBan}
+              title="Bannir cet invité"
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <UserX className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={adminDeletePost}
+              title="Supprimer le post"
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-foreground/90 px-2 py-0.5 text-[10px] font-semibold text-background">
+              <Shield className="h-3 w-3" /> admin
+            </span>
+          </div>
+        )}
       </div>
 
       {post.contenu_texte && (
@@ -146,9 +208,9 @@ export function PostCard({
                           <p className="text-[10px] text-muted-foreground">
                             {timeAgo(c.created_at)}
                           </p>
-                          {isMine && (
+                          {(isMine || isAdmin) && (
                             <button
-                              onClick={() => removeComment(c.id)}
+                              onClick={() => isAdmin && !isMine ? adminDeleteComment(c.id) : removeComment(c.id)}
                               className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground hover:text-primary"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
