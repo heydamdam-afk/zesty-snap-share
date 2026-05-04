@@ -1,9 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ZestLogo } from "@/components/zest/Logo";
-import { ArrowLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AdminContext,
+  type AdminContextValue,
+  type AdminEvent,
+  type AdminRole,
+} from "@/components/zest/admin/AdminContext";
+import { AdminHeader } from "@/components/zest/admin/AdminHeader";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -15,19 +20,27 @@ export const Route = createFileRoute("/$slug/admin/dashboard")({
   component: AdminDashboard,
 });
 
-type AdminContext = {
-  eventId: string;
-  eventTitle: string;
-  adminId: string;
-  role: "organisateur" | "secondaire";
-  email: string;
-};
+const EVENT_SELECT =
+  "id, titre, slug, code_acces, lieu, cover_url, commentaires_actifs, likes_actifs, uploads_actifs, quota_mo, used_mo, status";
 
 function AdminDashboard() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
-  const [ctx, setCtx] = useState<AdminContext | null>(null);
+  const [ctx, setCtx] = useState<AdminContextValue | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loadEvent = useCallback(
+    async (eventId: string): Promise<AdminEvent | null> => {
+      const { data, error } = await supabase
+        .from("events")
+        .select(EVENT_SELECT)
+        .eq("id", eventId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as AdminEvent;
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancel = false;
@@ -41,7 +54,7 @@ function AdminDashboard() {
 
       const { data: ev, error: evErr } = await supabase
         .from("events")
-        .select("id, titre")
+        .select(EVENT_SELECT)
         .or(`slug.eq.${slug},code_acces.eq.${slug}`)
         .maybeSingle();
       if (cancel) return;
@@ -66,25 +79,27 @@ function AdminDashboard() {
         return;
       }
 
-      setCtx({
-        eventId: ev.id,
-        eventTitle: ev.titre,
+      const event = ev as AdminEvent;
+      const value: AdminContextValue = {
+        event,
         adminId: adm.id,
-        role: adm.role as "organisateur" | "secondaire",
+        role: adm.role as AdminRole,
         email: sessionEmail,
-      });
+        reloadEvent: async () => {
+          const fresh = await loadEvent(event.id);
+          if (fresh) {
+            setCtx((prev) => (prev ? { ...prev, event: fresh } : prev));
+          }
+        },
+      };
+      setCtx(value);
       setLoading(false);
     };
     void init();
     return () => {
       cancel = true;
     };
-  }, [slug, navigate]);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/$slug/admin", params: { slug } });
-  };
+  }, [slug, navigate, loadEvent]);
 
   if (loading || !ctx) {
     return (
@@ -95,57 +110,32 @@ function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
-      {/* Header fixe */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <ZestLogo />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {ctx.eventTitle}
-            </p>
-            <span
-              className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                ctx.role === "organisateur"
-                  ? "bg-primary/10 text-primary"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {ctx.role === "organisateur" ? "Organisateur" : "Admin secondaire"}
-            </span>
-          </div>
-          <Link
-            to="/"
-            className="hidden items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary sm:inline-flex"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Galerie
-          </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            title="Se déconnecter"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
+    <AdminContext.Provider value={ctx}>
+      <div className="min-h-screen bg-secondary">
+        <AdminHeader />
+        <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
+          {/* Sections insérées aux étapes 4 → 9 */}
+          <SectionPlaceholder
+            title="Bienvenue dans votre espace admin"
+            description={`Connecté en tant que ${ctx.email}. Les sections de gestion (Paramètres, Stockage, Offres, Admins, Bannis, Zone dangereuse) seront ajoutées dans les prochaines étapes.`}
+          />
+        </main>
+      </div>
+    </AdminContext.Provider>
+  );
+}
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <div className="rounded-2xl bg-card p-6 shadow-card">
-          <h2 className="font-display text-xl text-foreground">
-            Espace admin
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Connecté en tant que <span className="font-medium text-foreground">{ctx.email}</span>.
-          </p>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Les sections de gestion (Paramètres, Stockage, Offres, Admins, Bannis, Zone dangereuse)
-            seront ajoutées dans les prochaines étapes.
-          </p>
-        </div>
-      </main>
-    </div>
+function SectionPlaceholder({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <section className="rounded-2xl bg-card p-6 shadow-card">
+      <h2 className="font-display text-xl text-foreground">{title}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+    </section>
   );
 }
