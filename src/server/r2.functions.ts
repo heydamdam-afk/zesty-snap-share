@@ -57,6 +57,7 @@ export const createR2UploadUrl = createServerFn({ method: "POST" })
 const deleteInput = z.object({
   postId: z.string().uuid(),
   deviceId: z.string().min(8).max(128).optional(),
+  adminToken: z.string().optional(),
 });
 
 /**
@@ -82,12 +83,9 @@ export const deletePostWithR2 = createServerFn({ method: "POST" })
     }
 
     if (!allowed) {
-      // Check admin via the auth header on the request (if any).
-      const { getRequestHeader } = await import("@tanstack/react-start/server");
-      const auth = getRequestHeader("authorization");
-      if (auth?.startsWith("Bearer ")) {
-        const token = auth.slice(7);
-        const { data: userRes } = await supabaseAdmin.auth.getUser(token);
+      // Admin check via supabase access token forwarded in payload.
+      if (data.adminToken) {
+        const { data: userRes } = await supabaseAdmin.auth.getUser(data.adminToken);
         const uid = userRes.user?.id;
         if (uid) {
           const { data: adm } = await supabaseAdmin
