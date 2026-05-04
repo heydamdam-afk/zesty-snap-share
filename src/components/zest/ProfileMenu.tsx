@@ -1,7 +1,8 @@
 import type { GuestSession } from "@/lib/zest-session";
 import { Avatar } from "./Avatar";
-import { LogOut, Image as ImageIcon } from "lucide-react";
+import { LogOut, Image as ImageIcon, Shield } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 export function ProfileMenu({
   guest,
@@ -35,6 +36,14 @@ export function ProfileMenu({
             <ImageIcon className="h-4 w-4" />
             Mes photos
           </button>
+          <Link
+            to="/admin"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <Shield className="h-4 w-4" />
+            Admin
+          </Link>
           <button
             onClick={() => {
               setOpen(false);
