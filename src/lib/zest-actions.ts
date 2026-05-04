@@ -1,7 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { createR2UploadUrl } from "@/server/r2.functions";
 
-const BUCKET = "event-photos";
+export const MAX_PHOTO_BYTES = 50 * 1024 * 1024;
+export const ACCEPTED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
+export type UploadProgress = {
+  index: number;
+  total: number;
+  fileName: string;
+  status: "pending" | "uploading" | "done" | "error";
+  percent: number;
+  error?: string;
+};
 
 export async function findEventBySlug(slug: string) {
   const { data, error } = await supabase
@@ -168,17 +186,118 @@ export async function checkPrenomAvailability(args: {
   return { status: "taken", eventId: event.id, taken };
 }
 
-export async function uploadEventPhoto(file: File, eventId: string) {
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `${eventId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: file.type,
+/**
+ * Upload one file directly to Cloudflare R2 via a presigned PUT URL.
+ * Reports progress via XHR.
+ */
+function putToR2(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && onProgress) {
+        onProgress(Math.round((ev.loaded / ev.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload R2 ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("Erreur réseau"));
+    xhr.send(file);
   });
-  if (error) throw error;
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+}
+
+export type UploadedPhoto = {
+  urlMini: string;
+  urlMedium: string;
+  urlFull: string;
+};
+
+export async function uploadOnePhoto(
+  file: File,
+  eventId: string,
+  onProgress?: (percent: number) => void,
+): Promise<UploadedPhoto> {
+  if (file.size > MAX_PHOTO_BYTES) {
+    throw new Error(`Fichier trop volumineux (max 50 Mo) — ${file.name}`);
+  }
+  const type = (file.type || "image/jpeg").toLowerCase();
+  if (!ACCEPTED_PHOTO_TYPES.includes(type)) {
+    throw new Error(`Format non supporté — ${file.name}`);
+  }
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const signed = await createR2UploadUrl({
+    data: { eventId, contentType: type, ext, size: file.size },
+  });
+  await putToR2(signed.uploadUrl, file, onProgress);
+  return {
+    urlMini: signed.urlMini,
+    urlMedium: signed.urlMedium,
+    urlFull: signed.urlFull,
+  };
+}
+
+/**
+ * Upload many files in parallel (concurrency 5) and create a `posts` row per file.
+ * If `contenuTexte` is provided, it is attached to the FIRST post only.
+ */
+export async function uploadPhotosBatch(args: {
+  eventId: string;
+  inviteId: string;
+  files: File[];
+  contenuTexte?: string;
+  onProgress?: (p: UploadProgress) => void;
+  concurrency?: number;
+}): Promise<{ ok: number; errors: { file: string; error: string }[] }> {
+  const { eventId, inviteId, files, contenuTexte } = args;
+  const concurrency = Math.max(1, Math.min(args.concurrency ?? 5, 5));
+  const total = files.length;
+  const errors: { file: string; error: string }[] = [];
+  let ok = 0;
+  let nextIndex = 0;
+
+  const runOne = async (i: number) => {
+    const f = files[i];
+    args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
+    try {
+      const uploaded = await uploadOnePhoto(f, eventId, (pct) => {
+        args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
+      });
+      const { error } = await supabase.from("posts").insert({
+        event_id: eventId,
+        invite_id: inviteId,
+        contenu_texte: i === 0 && contenuTexte?.trim() ? contenuTexte.trim() : null,
+        url_miniature: uploaded.urlMini,
+        url_medium: uploaded.urlMedium,
+        url_full: uploaded.urlFull,
+      });
+      if (error) throw error;
+      ok++;
+      args.onProgress?.({ index: i, total, fileName: f.name, status: "done", percent: 100 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      errors.push({ file: f.name, error: msg });
+      args.onProgress?.({ index: i, total, fileName: f.name, status: "error", percent: 0, error: msg });
+    }
+  };
+
+  const workers: Promise<void>[] = [];
+  const launch = async () => {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= total) return;
+      await runOne(i);
+    }
+  };
+  for (let w = 0; w < Math.min(concurrency, total); w++) workers.push(launch());
+  await Promise.all(workers);
+  return { ok, errors };
 }
 
 export async function createPost(args: {
@@ -186,6 +305,7 @@ export async function createPost(args: {
   inviteId: string;
   contenuTexte?: string;
   files?: File[];
+  onProgress?: (p: UploadProgress) => void;
 }) {
   const trimmed = args.contenuTexte?.trim() || null;
   const files = args.files ?? [];
@@ -193,31 +313,36 @@ export async function createPost(args: {
     throw new Error("Post vide");
   }
 
-  // Pour ce MVP, 1 post = 1 photo (la première). Un post texte = pas de photo.
-  let urls: { miniature: string | null; medium: string | null; full: string | null } = {
-    miniature: null,
-    medium: null,
-    full: null,
-  };
-  if (files[0]) {
-    const url = await uploadEventPhoto(files[0], args.eventId);
-    urls = { miniature: url, medium: url, full: url };
+  if (files.length === 0) {
+    // Pure text post.
+    const { data, error } = await supabase
+      .from("posts")
+      .insert({
+        event_id: args.eventId,
+        invite_id: args.inviteId,
+        contenu_texte: trimmed,
+        url_miniature: null,
+        url_medium: null,
+        url_full: null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 
-  const { data, error } = await supabase
-    .from("posts")
-    .insert({
-      event_id: args.eventId,
-      invite_id: args.inviteId,
-      contenu_texte: trimmed,
-      url_miniature: urls.miniature,
-      url_medium: urls.medium,
-      url_full: urls.full,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  // Photo(s) — upload to R2 in parallel.
+  const result = await uploadPhotosBatch({
+    eventId: args.eventId,
+    inviteId: args.inviteId,
+    files,
+    contenuTexte: trimmed ?? undefined,
+    onProgress: args.onProgress,
+  });
+  if (result.ok === 0) {
+    throw new Error(result.errors[0]?.error ?? "Upload impossible");
+  }
+  return result;
 }
 
 export async function toggleLike(args: {
