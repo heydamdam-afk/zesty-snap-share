@@ -32,8 +32,8 @@ function AdminLogin() {
       .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
-    // @ts-expect-error nested select
-    return data?.events?.slug ?? null;
+    const events = (data as { events?: { slug?: string } | null } | null)?.events;
+    return events?.slug ?? null;
   };
 
   useEffect(() => {
