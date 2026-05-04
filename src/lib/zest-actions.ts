@@ -47,6 +47,15 @@ export async function loginToEvent(args: {
   const event = await findEventByCode(args.code);
   if (!event) return { ok: false as const, reason: "bad_code" };
 
+  // Vérifie si ce device est banni de cet event
+  const { data: ban } = await supabase
+    .from("banned_invites")
+    .select("id")
+    .eq("event_id", event.id)
+    .eq("device_id", args.deviceId)
+    .maybeSingle();
+  if (ban) return { ok: false as const, reason: "banned" };
+
   const existing = await findInvite(event.id, args.deviceId);
   if (existing) return { ok: true as const, event, invite: existing };
 

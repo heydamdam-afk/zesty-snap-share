@@ -169,6 +169,10 @@ export function AccessGate({
       });
 
       if (!result.ok) {
+        if (result.reason === "banned") {
+          setErrors({ global: "Accès refusé : cet appareil a été banni de cet événement." });
+          return;
+        }
         if (result.reason === "bad_code" || result.reason === "event_not_found") {
           const next = Number(localStorage.getItem(LOGIN_KEYS.attempts) || 0) + 1;
           localStorage.setItem(LOGIN_KEYS.attempts, String(next));
