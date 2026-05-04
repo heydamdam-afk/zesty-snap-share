@@ -25,32 +25,49 @@ function AdminLogin() {
   const [showBookmark, setShowBookmark] = useState(false);
   const [adminSlug, setAdminSlug] = useState<string | null>(null);
 
-  const fetchAdminSlug = async (userId: string): Promise<string | null> => {
-    const { data } = await supabase
-      .from("event_admins")
-      .select("events!inner(slug)")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
-    const events = (data as { events?: { slug?: string } | null } | null)?.events;
-    return events?.slug ?? null;
+  const fetchAdminSlug = async (email: string): Promise<string | null> => {
+    try {
+      // Lier user_id si admin invité par email avant inscription
+      await supabase.rpc("link_admin_user_id");
+      const { data, error } = await supabase
+        .from("event_admins")
+        .select("events!inner(slug)")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        console.error("[admin] fetchAdminSlug error", error);
+        return null;
+      }
+      const events = (data as { events?: { slug?: string } | null } | null)?.events;
+      return events?.slug ?? null;
+    } catch (e) {
+      console.error("[admin] fetchAdminSlug failed", e);
+      return null;
+    }
   };
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      setSessionEmail(session?.user.email ?? null);
-      if (session?.user) {
-        setAdminSlug(await fetchAdminSlug(session.user.id));
+      const email = session?.user.email ?? null;
+      setSessionEmail(email);
+      if (email) {
+        setAdminSlug(await fetchAdminSlug(email));
       } else {
         setAdminSlug(null);
       }
     });
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSessionEmail(data.session?.user.email ?? null);
-      if (data.session?.user) {
-        setAdminSlug(await fetchAdminSlug(data.session.user.id));
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const email = data.session?.user.email ?? null;
+        setSessionEmail(email);
+        if (!email) return; // guard : pas de session, on n'interroge pas la DB
+        setAdminSlug(await fetchAdminSlug(email));
+      } catch (e) {
+        console.error("[admin] init session failed", e);
       }
-    });
+    })();
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -71,8 +88,8 @@ function AdminLogin() {
         if (error) throw error;
       }
       const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      const slug = userId ? await fetchAdminSlug(userId) : null;
+      const sessionEmailLocal = sessionData.session?.user.email ?? email;
+      const slug = sessionEmailLocal ? await fetchAdminSlug(sessionEmailLocal) : null;
       setAdminSlug(slug);
       const seen = localStorage.getItem(ADMIN_ONBOARDED_KEY);
       if (!seen) {
