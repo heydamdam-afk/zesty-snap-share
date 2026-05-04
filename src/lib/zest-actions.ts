@@ -333,6 +333,77 @@ export async function uploadPhotosBatch(args: {
   return { ok: ok.length, errors };
 }
 
+/**
+ * Gallery upload — 1 post per photo, no 4-photo cap.
+ * Uploads in parallel (concurrency 5) and creates one `posts` row per file.
+ * Used by the FloatingUploadButton on the Gallery tab.
+ */
+export async function uploadGalleryBatch(args: {
+  eventId: string;
+  inviteId: string;
+  files: File[];
+  onProgress?: (p: UploadProgress) => void;
+  concurrency?: number;
+}): Promise<{ ok: number; errors: { file: string; error: string }[] }> {
+  const { eventId, inviteId, files } = args;
+  const concurrency = Math.max(1, Math.min(args.concurrency ?? 5, 5));
+  const total = files.length;
+  const errors: { file: string; error: string }[] = [];
+  let nextIndex = 0;
+  let okCount = 0;
+
+  const runOne = async (i: number) => {
+    const f = files[i];
+    args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
+    try {
+      const u = await uploadOnePhoto(f, eventId, (pct) => {
+        args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
+      });
+      // Create a dedicated post for this photo.
+      const { data: post, error: postErr } = await supabase
+        .from("posts")
+        .insert({
+          event_id: eventId,
+          invite_id: inviteId,
+          contenu_texte: null,
+          url_miniature: u.urlMini,
+          url_medium: u.urlMedium,
+          url_full: u.urlFull,
+        })
+        .select()
+        .single();
+      if (postErr || !post) throw new Error(postErr?.message ?? "Création du post impossible");
+      const { error: phErr } = await supabase.from("post_photos").insert({
+        post_id: post.id,
+        position: 0,
+        url_miniature: u.urlMini,
+        url_medium: u.urlMedium,
+        url_full: u.urlFull,
+      });
+      if (phErr) throw new Error(phErr.message);
+      okCount++;
+      args.onProgress?.({ index: i, total, fileName: f.name, status: "done", percent: 100 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      errors.push({ file: f.name, error: msg });
+      args.onProgress?.({ index: i, total, fileName: f.name, status: "error", percent: 0, error: msg });
+    }
+  };
+
+  const launch = async () => {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= total) return;
+      await runOne(i);
+    }
+  };
+  const workers: Promise<void>[] = [];
+  for (let w = 0; w < Math.min(concurrency, total); w++) workers.push(launch());
+  await Promise.all(workers);
+
+  return { ok: okCount, errors };
+}
+
 export async function createPost(args: {
   eventId: string;
   inviteId: string;
