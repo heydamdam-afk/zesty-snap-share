@@ -15,7 +15,10 @@ import {
   generatePrenomSuggestions,
   normalisePrenom,
   checkPrenomAvailability,
+  findEventBySlug,
+  findEventByCode,
 } from "@/lib/zest-actions";
+import type { Tables } from "@/integrations/supabase/types";
 
 export type { GuestSession };
 
@@ -109,6 +112,7 @@ export function AccessGate({
   const [email, setEmail] = useState("");
   const [rgpd, setRgpd] = useState(false);
   const [avatar, setAvatar] = useState<string | undefined>();
+  const [eventInfo, setEventInfo] = useState<Tables<"events"> | null>(null);
   const [errors, setErrors] = useState<{
     code?: string;
     prenom?: string;
@@ -130,6 +134,24 @@ export function AccessGate({
     const a = readAttempts();
     if (a.locked) setLockUntil(a.lockUntil);
   }, []);
+
+  // Charge les infos publiques de l'event (titre, cover) depuis le slug ou le code
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const evBySlug = await findEventBySlug(slug).catch(() => null);
+      if (!cancelled && evBySlug) {
+        setEventInfo(evBySlug);
+        return;
+      }
+      const evByCode = await findEventByCode(slug).catch(() => null);
+      if (!cancelled && evByCode) setEventInfo(evByCode);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
   useEffect(() => {
     if (!lockUntil) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
