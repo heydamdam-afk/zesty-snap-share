@@ -407,7 +407,11 @@ function Index() {
       )}
 
       <div className="mt-10 pb-20">
-        <Footer />
+        <Footer
+          eventId={guest?.event.id}
+          eventTitle={guest?.event.titre}
+          slug={guest?.event.slug}
+        />
       </div>
     </div>
   );
