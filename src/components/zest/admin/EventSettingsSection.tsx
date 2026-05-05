@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Image as ImageIcon, Loader2, Upload } from "lucide-react";
+import { Image as ImageIcon, Loader2, Upload, Download } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { z } from "zod";
 
 const settingsSchema = z.object({
@@ -37,6 +38,27 @@ export function EventSettingsSection() {
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const galleryUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/${event.slug}`
+      : `/${event.slug}`;
+
+  const handleDownloadQr = () => {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) {
+      toast.error("QR code indisponible");
+      return;
+    }
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `qr-${event.slug}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   useEffect(() => {
     setTitre(event.titre);
@@ -250,6 +272,41 @@ export function EventSettingsSection() {
             checked={likesActifs}
             onChange={setLikesActifs}
           />
+        </div>
+
+        <div className="rounded-xl border border-border bg-secondary/40 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div
+              ref={qrRef}
+              className="grid place-items-center rounded-lg bg-white p-3"
+            >
+              <QRCodeCanvas
+                value={galleryUrl}
+                size={1024}
+                level="H"
+                includeMargin={false}
+                style={{ width: 128, height: 128 }}
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">
+                QR code de la galerie
+              </p>
+              <p className="mt-1 break-all text-xs text-muted-foreground">
+                {galleryUrl}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={handleDownloadQr}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Télécharger le QR code
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end">
