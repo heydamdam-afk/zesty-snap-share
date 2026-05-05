@@ -81,6 +81,7 @@ function Index() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     setGuest(loadGuest());
