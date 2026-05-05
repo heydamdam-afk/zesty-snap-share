@@ -453,31 +453,58 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_own_invite: {
-        Args: {
-          _avatar_url?: string
-          _device_id: string
-          _email?: string
-          _event_id: string
-          _rgpd_consent?: boolean
-        }
-        Returns: {
-          avatar_url: string | null
-          created_at: string
-          device_id: string
-          email: string | null
-          event_id: string
-          id: string
-          prenom: string
-          rgpd_consent: boolean
-        }
-        SetofOptions: {
-          from: "*"
-          to: "invites"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      update_own_invite:
+        | {
+            Args: {
+              _avatar_url?: string
+              _device_id: string
+              _email?: string
+              _event_id: string
+              _rgpd_consent?: boolean
+            }
+            Returns: {
+              avatar_url: string | null
+              created_at: string
+              device_id: string
+              email: string | null
+              event_id: string
+              id: string
+              prenom: string
+              rgpd_consent: boolean
+            }
+            SetofOptions: {
+              from: "*"
+              to: "invites"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _avatar_url?: string
+              _device_id: string
+              _email?: string
+              _event_id: string
+              _prenom?: string
+              _rgpd_consent?: boolean
+            }
+            Returns: {
+              avatar_url: string | null
+              created_at: string
+              device_id: string
+              email: string | null
+              event_id: string
+              id: string
+              prenom: string
+              rgpd_consent: boolean
+            }
+            SetofOptions: {
+              from: "*"
+              to: "invites"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
     }
     Enums: {
       admin_role: "organisateur" | "secondaire"
