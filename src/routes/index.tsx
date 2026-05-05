@@ -272,6 +272,26 @@ function Index() {
             setOnlyMine(false);
           }}
         />
+        <ProfileDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          guest={guest}
+          onUpdated={(next) =>
+            setGuest((g) =>
+              g
+                ? {
+                    ...g,
+                    invite: {
+                      ...g.invite,
+                      ...(next.prenom !== undefined ? { prenom: next.prenom } : {}),
+                      ...(next.email !== undefined ? { email: next.email } : {}),
+                      ...(next.avatar_url !== undefined ? { avatar_url: next.avatar_url } : {}),
+                    },
+                  }
+                : g,
+            )
+          }
+        />
       </div>
 
       <EventStats
