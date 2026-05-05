@@ -51,7 +51,9 @@ function AdminDashboard() {
     let cancel = false;
     const init = async () => {
       try {
+        console.log("1. init start");
         const { data: sess } = await supabase.auth.getSession();
+        console.log("2. session:", sess.session?.user.email);
         if (cancel) return;
         const sessionEmail = sess.session?.user.email;
         if (!sessionEmail) {
@@ -100,15 +102,18 @@ function AdminDashboard() {
             }
           },
         };
+        console.log("3. ctx avant setCtx:", ctx);
         setCtx(value);
+        console.log("4. setCtx appelé");
       } catch (error) {
-        console.error("[admin dashboard] init failed", error);
+        console.error("ERREUR:", error);
         if (!cancel) {
           toast.error("Erreur de chargement de l'espace admin.");
           navigate({ to: "/$slug/admin", params: { slug } });
         }
       } finally {
         if (!cancel) setLoading(false);
+        console.log("5. setLoading(false) appelé");
       }
     };
     void init();
