@@ -13,7 +13,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SlugAdminRouteImport } from './routes/$slug.admin'
+import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -36,15 +36,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SlugAdminRoute = SlugAdminRouteImport.update({
-  id: '/$slug/admin',
-  path: '/$slug/admin',
+const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
+  id: '/$slug/admin/',
+  path: '/$slug/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SlugAdminDashboardRoute = SlugAdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => SlugAdminRoute,
+  id: '/$slug/admin/dashboard',
+  path: '/$slug/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -52,16 +52,16 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
-  '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
-  '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +69,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
-  '/$slug/admin': typeof SlugAdminRouteWithChildren
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,24 +79,24 @@ export interface FileRouteTypes {
     | '/admin'
     | '/closed'
     | '/dashboard'
-    | '/$slug/admin'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/closed'
     | '/dashboard'
-    | '/$slug/admin'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/closed'
     | '/dashboard'
-    | '/$slug/admin'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,7 +104,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
   DashboardRoute: typeof DashboardRoute
-  SlugAdminRoute: typeof SlugAdminRouteWithChildren
+  SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
+  SlugAdminIndexRoute: typeof SlugAdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -137,42 +138,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$slug/admin': {
-      id: '/$slug/admin'
+    '/$slug/admin/': {
+      id: '/$slug/admin/'
       path: '/$slug/admin'
-      fullPath: '/$slug/admin'
-      preLoaderRoute: typeof SlugAdminRouteImport
+      fullPath: '/$slug/admin/'
+      preLoaderRoute: typeof SlugAdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$slug/admin/dashboard': {
       id: '/$slug/admin/dashboard'
-      path: '/dashboard'
+      path: '/$slug/admin/dashboard'
       fullPath: '/$slug/admin/dashboard'
       preLoaderRoute: typeof SlugAdminDashboardRouteImport
-      parentRoute: typeof SlugAdminRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface SlugAdminRouteChildren {
-  SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
-}
-
-const SlugAdminRouteChildren: SlugAdminRouteChildren = {
-  SlugAdminDashboardRoute: SlugAdminDashboardRoute,
-}
-
-const SlugAdminRouteWithChildren = SlugAdminRoute._addFileChildren(
-  SlugAdminRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
   DashboardRoute: DashboardRoute,
-  SlugAdminRoute: SlugAdminRouteWithChildren,
+  SlugAdminDashboardRoute: SlugAdminDashboardRoute,
+  SlugAdminIndexRoute: SlugAdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
