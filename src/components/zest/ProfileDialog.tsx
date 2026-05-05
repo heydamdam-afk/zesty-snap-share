@@ -97,8 +97,8 @@ export function ProfileDialog({
     const { data, error } = await supabase.rpc("update_own_invite", {
       _device_id: guest.invite.device_id,
       _event_id: guest.event.id,
-      _avatar_url: avatarUrl,
-      _email: parsed.data.email ? parsed.data.email : null,
+      _avatar_url: avatarUrl ?? undefined,
+      _email: parsed.data.email ? parsed.data.email : undefined,
     });
     if (error || !data) {
       setSaving(false);
