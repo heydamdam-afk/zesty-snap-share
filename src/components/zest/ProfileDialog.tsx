@@ -99,26 +99,13 @@ export function ProfileDialog({
       _event_id: guest.event.id,
       _avatar_url: avatarUrl ?? undefined,
       _email: parsed.data.email ? parsed.data.email : undefined,
+      _prenom: parsed.data.prenom,
     });
+    setSaving(false);
     if (error || !data) {
-      setSaving(false);
       toast.error("Échec de l'enregistrement");
       return;
     }
-
-    // Le prénom n'est pas géré par la RPC actuelle : update direct (RLS interdit
-    // l'UPDATE sur invites pour le public, donc on fait un upsert via insert).
-    // Solution propre : update direct uniquement si une policy le permet.
-    // À défaut on tente un update et on ignore l'erreur silencieusement.
-    if (parsed.data.prenom && parsed.data.prenom !== guest.invite.prenom) {
-      await supabase
-        .from("invites")
-        .update({ prenom: parsed.data.prenom })
-        .eq("id", guest.invite.id)
-        .eq("device_id", guest.invite.device_id);
-    }
-
-    setSaving(false);
     toast.success("Profil mis à jour");
     onUpdated({
       prenom: parsed.data.prenom,
