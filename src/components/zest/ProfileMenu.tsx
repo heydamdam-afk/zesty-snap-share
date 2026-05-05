@@ -1,6 +1,6 @@
 import type { GuestSession } from "@/lib/zest-session";
 import { Avatar } from "./Avatar";
-import { LogOut, Image as ImageIcon, Shield } from "lucide-react";
+import { LogOut, Image as ImageIcon, Shield, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 export function ProfileMenu({
   guest,
   onShowMyPhotos,
+  onEditProfile,
   onLeave,
 }: {
   guest: GuestSession;
   onAvatarChange?: (url: string) => void;
   onShowMyPhotos?: () => void;
+  onEditProfile?: () => void;
   onLeave?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,6 +70,16 @@ export function ProfileMenu({
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-2xl bg-card shadow-card">
+          <button
+            onClick={() => {
+              setOpen(false);
+              onEditProfile?.();
+            }}
+            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <UserCog className="h-4 w-4" />
+            Mon profil
+          </button>
           <button
             onClick={() => {
               setOpen(false);

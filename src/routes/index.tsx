@@ -18,6 +18,7 @@ import {
   type GuestSession,
 } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
+import { ProfileDialog } from "@/components/zest/ProfileDialog";
 import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
@@ -80,6 +81,7 @@ function Index() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     setGuest(loadGuest());
@@ -264,10 +266,31 @@ function Index() {
             setOnlyMine(true);
             setTab("gallery");
           }}
+          onEditProfile={() => setProfileOpen(true)}
           onLeave={() => {
             setGuest(null);
             setOnlyMine(false);
           }}
+        />
+        <ProfileDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          guest={guest}
+          onUpdated={(next) =>
+            setGuest((g) =>
+              g
+                ? {
+                    ...g,
+                    invite: {
+                      ...g.invite,
+                      ...(next.prenom !== undefined ? { prenom: next.prenom } : {}),
+                      ...(next.email !== undefined ? { email: next.email } : {}),
+                      ...(next.avatar_url !== undefined ? { avatar_url: next.avatar_url } : {}),
+                    },
+                  }
+                : g,
+            )
+          }
         />
       </div>
 
