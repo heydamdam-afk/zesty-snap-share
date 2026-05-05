@@ -18,6 +18,7 @@ import {
   type GuestSession,
 } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
+import { ProfileDialog } from "@/components/zest/ProfileDialog";
 import { Footer } from "@/components/zest/Footer";
 import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
@@ -264,6 +265,7 @@ function Index() {
             setOnlyMine(true);
             setTab("gallery");
           }}
+          onEditProfile={() => setProfileOpen(true)}
           onLeave={() => {
             setGuest(null);
             setOnlyMine(false);
