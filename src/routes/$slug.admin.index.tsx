@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/$slug/admin")({
+export const Route = createFileRoute("/$slug/admin/")({
   head: () => ({
     meta: [
       { title: "Espace admin — Zest" },
