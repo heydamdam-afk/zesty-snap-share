@@ -80,3 +80,25 @@ export async function deleteR2Key(key: string): Promise<void> {
     throw new Error(`R2 delete failed: ${res.status} ${text}`);
   }
 }
+
+/**
+ * Upload a file body directly to R2 from the server (no presigned URL).
+ * Used by the /api/public/r2-upload proxy so the browser never talks to R2.
+ */
+export async function putR2Object(
+  key: string,
+  body: ArrayBuffer | Uint8Array,
+  contentType: string,
+): Promise<void> {
+  const client = getR2Client();
+  const url = `${getR2Endpoint()}/${key}`;
+  const res = await client.fetch(url, {
+    method: "PUT",
+    headers: { "content-type": contentType },
+    body,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`R2 put failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+}
