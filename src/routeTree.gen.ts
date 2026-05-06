@@ -14,6 +14,7 @@ import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
+import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -41,6 +42,11 @@ const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   path: '/$slug/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicExpireEventsRoute = ApiPublicExpireEventsRouteImport.update({
+  id: '/api/public/expire-events',
+  path: '/api/public/expire-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlugAdminDashboardRoute = SlugAdminDashboardRouteImport.update({
   id: '/$slug/admin/dashboard',
   path: '/$slug/admin/dashboard',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/$slug/admin/dashboard'
+    | '/api/public/expire-events'
     | '/$slug/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/$slug/admin/dashboard'
+    | '/api/public/expire-events'
     | '/$slug/admin'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/$slug/admin/dashboard'
+    | '/api/public/expire-events'
     | '/$slug/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   ClosedRoute: typeof ClosedRoute
   DashboardRoute: typeof DashboardRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
+  ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SlugAdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/expire-events': {
+      id: '/api/public/expire-events'
+      path: '/api/public/expire-events'
+      fullPath: '/api/public/expire-events'
+      preLoaderRoute: typeof ApiPublicExpireEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$slug/admin/dashboard': {
       id: '/$slug/admin/dashboard'
       path: '/$slug/admin/dashboard'
@@ -161,8 +181,18 @@ const rootRouteChildren: RootRouteChildren = {
   ClosedRoute: ClosedRoute,
   DashboardRoute: DashboardRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
+  ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
