@@ -20,6 +20,7 @@ import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
+import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
@@ -78,6 +79,11 @@ const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   path: '/$slug/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicR2UploadRoute = ApiPublicR2UploadRouteImport.update({
+  id: '/api/public/r2-upload',
+  path: '/api/public/r2-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicExpireEventsRoute = ApiPublicExpireEventsRouteImport.update({
   id: '/api/public/expire-events',
   path: '/api/public/expire-events',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/r2-upload'
     | '/$slug/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/r2-upload'
     | '/$slug/admin'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/r2-upload'
     | '/$slug/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   PlatformCouponsRoute: typeof PlatformCouponsRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
   ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
+  ApiPublicR2UploadRoute: typeof ApiPublicR2UploadRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
 }
 
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SlugAdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/r2-upload': {
+      id: '/api/public/r2-upload'
+      path: '/api/public/r2-upload'
+      fullPath: '/api/public/r2-upload'
+      preLoaderRoute: typeof ApiPublicR2UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/expire-events': {
       id: '/api/public/expire-events'
       path: '/api/public/expire-events'
@@ -318,8 +338,18 @@ const rootRouteChildren: RootRouteChildren = {
   PlatformCouponsRoute: PlatformCouponsRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
   ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
+  ApiPublicR2UploadRoute: ApiPublicR2UploadRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
