@@ -22,6 +22,8 @@ export function ProfileMenu({
 
   useEffect(() => {
     let cancelled = false;
+    const currentEventId = guest.event.id;
+    const currentSlug = guest.event.slug;
     const check = async () => {
       try {
         const { data: sess } = await supabase.auth.getSession();
@@ -32,9 +34,12 @@ export function ProfileMenu({
         }
         // Lier user_id si admin invité par email avant inscription
         await supabase.rpc("link_admin_user_id");
+        // On vérifie d'abord l'admin sur l'event courant : si l'utilisateur
+        // est admin de plusieurs events, on ne veut PAS rediriger vers un autre.
         const { data, error } = await supabase
           .from("event_admins")
-          .select("events!inner(slug)")
+          .select("id")
+          .eq("event_id", currentEventId)
           .ilike("email", session.user.email)
           .limit(1)
           .maybeSingle();
@@ -43,9 +48,7 @@ export function ProfileMenu({
           if (!cancelled) setAdminSlug(null);
           return;
         }
-        const slug =
-          (data as { events?: { slug?: string } | null } | null)?.events?.slug ?? null;
-        if (!cancelled) setAdminSlug(slug);
+        if (!cancelled) setAdminSlug(data ? currentSlug : null);
       } catch (e) {
         console.error("[ProfileMenu] admin check failed", e);
         if (!cancelled) setAdminSlug(null);
@@ -57,7 +60,7 @@ export function ProfileMenu({
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [guest.event.id, guest.event.slug]);
 
   return (
     <div className="absolute right-3 top-3 z-10">
