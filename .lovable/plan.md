@@ -1,84 +1,69 @@
+## Diagnostic vérifié
 
-## 1. Bouton "Voir le feed" sur le dashboard admin
+J'ai testé l'endpoint R2 du bucket `kapsul-photos` directement :
 
-Dans `src/components/zest/admin/AdminHeader.tsx`, à côté du bouton "Galerie" (qui pointe vers `/` = My Events), ajouter un second bouton **"Voir le feed"** qui ouvre directement l'événement courant.
-
-- Lien : `to="/e/$slug"` avec `params={{ slug: event.slug }}`
-- Icône : `Eye` (lucide-react)
-- Style : même look que le bouton existant (variante outline)
-- Visible aussi en mobile (le "Galerie" actuel est `hidden sm:inline-flex` — on rendra le nouveau visible partout, ou on les regroupe dans un petit menu si l'espace manque sur mobile)
-- Renommer "Galerie" en **"Mes events"** pour que la distinction soit claire (Galerie = liste de mes events ; Voir le feed = ce feed-ci)
-
-L'organisateur a déjà une session admin auto-créée par `e.$slug.tsx` (logique déjà en place), donc le clic l'amène directement sur le feed sans repasser par la mire invitée.
-
-## 2. Photo de couverture à la création d'event
-
-### 2.a — Texte d'aide sous le champ (`src/routes/create-event.tsx`)
-
-Ajouter sous l'input `cover` :
-
-> Format JPG, PNG ou WebP. Max **5 Mo**. Recommandé : **1600×900 px** minimum (ratio 16:9), 200 Ko – 2 Mo pour un bon rendu.
-
-Validation client immédiate au `onChange` :
-- type ∈ {jpeg, png, webp}
-- taille ≤ 5 Mo
-- dimensions min 800×450 (lecture via `Image()` + `naturalWidth/Height`)
-- En cas d'erreur : `toast.error(...)` + reset du champ ; on n'enregistre `coverFile` que si valide.
-
-### 2.b — Upload effectif de la photo
-
-Aujourd'hui, `coverFile` est uploadé via `uploadOnePhoto` mais **`events.cover_url` n'est jamais mis à jour** (pas de policy UPDATE sur `events` côté client) — la photo est perdue.
-
-Solution : nouvelle RPC `set_event_cover(_event_id uuid, _cover_url text)` (SECURITY DEFINER) qui vérifie que `auth.uid()` est admin de l'event, puis fait l'`UPDATE events SET cover_url = _cover_url WHERE id = _event_id`.
-
-Migration SQL :
-```sql
-create or replace function public.set_event_cover(_event_id uuid, _cover_url text)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.is_event_admin(_event_id, auth.uid()) then
-    raise exception 'not_admin';
-  end if;
-  if _cover_url is null or char_length(_cover_url) > 2048 then
-    raise exception 'invalid_cover_url';
-  end if;
-  update public.events set cover_url = _cover_url where id = _event_id;
-  return true;
-end;
-$$;
+```text
+OPTIONS https://bd310039246486aaa18fb9a940da23c9.r2.cloudflarestorage.com/kapsul-photos/test.txt
+→ 403 Forbidden
+   <Code>Unauthorized</Code>
+   <Message>CORS not configured for this bucket</Message>
 ```
 
-Côté client, dans `create-event.tsx` après `createEventWithCoupon`, si `coverFile` est présent :
-1. Upload vers Supabase Storage bucket `event-photos` au chemin `covers/{event_id}/{ts}.{ext}` (même pattern que `EventSettingsSection.handleCoverChange`) — pas via R2/`uploadOnePhoto` qui crée un post.
-2. `getPublicUrl` → `cover_url`
-3. `supabase.rpc("set_event_cover", { _event_id: result.event_id, _cover_url: publicUrl })`
-4. Si l'une des étapes échoue : `toast.warning("Event créé mais photo non enregistrée — réessayez via le dashboard")` et on continue la redirection.
+Conclusion : **la CORS policy n'est pas appliquée sur le bucket `kapsul-photos`**. Le serveur R2 lui-même répond qu'il n'y a pas de configuration CORS — donc le préflight échoue et le navigateur bloque le PUT (`status: 0`).
 
-Retirer la ligne actuelle :
-```ts
-toast.info("Photo de couverture : à ajouter ensuite via le tableau de bord admin");
+## Pourquoi ne pas signer contre `pub-...r2.dev`
+
+R2 impose ces règles :
+
+- `*.r2.dev` et les custom domains type `photos.kapsul.events` sont **lecture seule** (GET/HEAD uniquement).
+- Les opérations d'écriture (PUT/DELETE) DOIVENT passer par l'endpoint S3 `<accountId>.r2.cloudflarestorage.com`.
+- Les URLs présignées SigV4 incluent le `host` dans la signature : on ne peut pas signer pour un host puis appeler un autre.
+
+Donc remplacer le host d'upload par `pub-...r2.dev` produira un 403 systématique côté R2, indépendamment de la CORS. Ce n'est pas la bonne piste.
+
+## Vraie correction requise
+
+La CORS policy doit être posée sur le bucket `kapsul-photos` côté Cloudflare R2. À faire dans le dashboard Cloudflare → R2 → bucket `kapsul-photos` → Settings → CORS Policy :
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://4daa509d-17a4-4a16-b776-872270e66045.lovableproject.com",
+      "https://id-preview--4daa509d-17a4-4a16-b776-872270e66045.lovable.app",
+      "https://zesty-snap-share.lovable.app",
+      "https://kapsul.events",
+      "https://www.kapsul.events"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["content-type", "Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
 ```
 
-### 2.c — Cohérence côté dashboard (`EventSettingsSection.tsx`)
+Important : le bucket à configurer est `kapsul-photos`. Les éventuelles policies posées précédemment sur `kapsul` ou un autre bucket ne s'appliquent pas ici.
 
-Mettre à jour le texte d'aide existant pour qu'il matche les nouvelles règles :
-> JPG / PNG / WebP — max 5 Mo — recommandé 1600×900 px
+## Plan d'implémentation côté code
 
-Et appliquer la même validation dimensions (mêmes seuils) dans `handleCoverChange`.
+Une fois la CORS posée sur le bon bucket, le code actuel fonctionnera. Je propose deux ajustements quand même :
 
-## Fichiers touchés
+1. `src/server/r2.server.ts` — exporter le bucket et l'account ID via une petite fonction `getR2DiagInfo()` pour que `createR2UploadUrl` retourne dans sa réponse :
+   - `uploadHost` (host S3 utilisé pour le PUT)
+   - `bucket`
+   - sans secrets ni signature
+   afin de confirmer côté navigateur quel bucket est ciblé.
 
-- `src/components/zest/admin/AdminHeader.tsx` — ajout bouton "Voir le feed", renommage "Galerie" → "Mes events"
-- `src/routes/create-event.tsx` — validation + upload réel de la cover via storage + RPC
-- `src/components/zest/admin/EventSettingsSection.tsx` — texte d'aide + validation dimensions alignés
-- `supabase/migrations/<ts>_set_event_cover.sql` — nouvelle fonction `set_event_cover`
+2. `src/lib/zest-actions.ts` — quand `xhr.status === 0`, faire un second appel `OPTIONS` rapide vers le même `uploadUrl` (sans signature) pour lire le code et le body R2 ; si la réponse contient `CORS not configured for this bucket`, afficher un message explicite :
 
-## Détails techniques
+   > La CORS policy du bucket R2 `<bucket>` n'est pas configurée. Ajoute-la sur Cloudflare → R2 → `<bucket>` → Settings → CORS Policy.
 
-- La RPC est nécessaire car la table `events` n'a aucune policy UPDATE pour `authenticated`. Plutôt qu'ouvrir une policy générale, on cible précisément ce besoin.
-- L'upload depuis create-event utilise Supabase Storage (bucket public `event-photos`), pas R2 — c'est le pattern déjà utilisé par `EventSettingsSection` pour les covers.
-- Validation dimensions via `URL.createObjectURL` + `<img>` `onload` ; revoke après lecture.
+Je n'effectue **aucune modification d'endpoint d'upload** : on reste sur `r2.cloudflarestorage.com` qui est le seul host valide pour signer un PUT R2.
+
+## Étapes
+
+1. Mettre à jour `src/server/r2.server.ts` pour exposer `getR2DiagInfo()` + inclure le bucket dans la réponse signée.
+2. Mettre à jour `src/server/r2.functions.ts` pour renvoyer `uploadHost` et `bucket` au navigateur.
+3. Mettre à jour `src/lib/zest-actions.ts` `putToR2` pour pinger l'OPTIONS et différencier "CORS non configurée" vs "autre erreur réseau", avec un message d'erreur précis.
+4. Demander à l'utilisateur de poser la policy CORS ci-dessus sur le bucket `kapsul-photos`.

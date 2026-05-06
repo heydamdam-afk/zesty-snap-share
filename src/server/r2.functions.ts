@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   buildPhotoKey,
   deleteR2Key,
+  getR2DiagInfo,
   keyFromPublicUrl,
   publicUrlFor,
   signPutUrl,
@@ -45,12 +46,15 @@ export const createR2UploadUrl = createServerFn({ method: "POST" })
     const key = buildPhotoKey(data.eventId, data.ext);
     const uploadUrl = await signPutUrl(key, data.contentType);
     const fullUrl = publicUrlFor(key);
+    const diag = getR2DiagInfo();
     return {
       uploadUrl,
       key,
       urlFull: fullUrl,
       urlMedium: `${fullUrl}?width=800`,
       urlMini: `${fullUrl}?width=400`,
+      uploadHost: diag.uploadHost,
+      bucket: diag.bucket,
     };
   });
 
