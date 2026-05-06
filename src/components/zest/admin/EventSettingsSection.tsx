@@ -154,12 +154,13 @@ export function EventSettingsSection() {
       return;
     }
     const { data: pub } = supabase.storage.from("event-photos").getPublicUrl(path);
-    const { error: updErr } = await supabase
-      .from("events")
-      .update({ cover_url: pub.publicUrl })
-      .eq("id", event.id);
+    const { error: updErr } = await supabase.rpc("set_event_cover", {
+      _event_id: event.id,
+      _cover_url: pub.publicUrl,
+    });
     setUploadingCover(false);
     if (updErr) {
+      console.error("set_event_cover failed", updErr);
       toast.error("Photo uploadée mais maj échouée");
       return;
     }
