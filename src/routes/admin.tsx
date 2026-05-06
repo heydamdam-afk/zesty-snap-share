@@ -239,6 +239,86 @@ function AdminLogin() {
                     {error}
                   </div>
                 )}
+                {mode === "signup" && (
+                  <>
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label htmlFor="prenom" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Prénom
+                        </label>
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          Obligatoire
+                        </span>
+                      </div>
+                      <input
+                        id="prenom"
+                        type="text"
+                        autoComplete="given-name"
+                        required
+                        minLength={2}
+                        maxLength={40}
+                        value={prenom}
+                        onChange={(e) => setPrenom(e.target.value)}
+                        placeholder="Votre prénom"
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Photo de profil
+                        </span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Optionnelle
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 rounded-xl border border-border bg-background/60 p-3">
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-card"
+                          style={{ backgroundColor: avatarPreview ? "transparent" : pickAvatarColor(prenom || email || "?") }}
+                        >
+                          {avatarPreview ? (
+                            <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-white">
+                              {(prenom.trim()[0] ?? email.trim()[0] ?? "?").toUpperCase()}
+                            </span>
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1 text-sm">
+                          <p className="text-xs text-muted-foreground">JPG, PNG ou WebP · 5 Mo max</p>
+                          <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            className="mt-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            {avatarPreview ? "Changer" : "Choisir une photo"}
+                          </button>
+                          <input
+                            ref={fileRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              if (!f.type.startsWith("image/") || f.size > 5 * 1024 * 1024) {
+                                setError("Image invalide (5 Mo max).");
+                                return;
+                              }
+                              setAvatarFile(f);
+                              const reader = new FileReader();
+                              reader.onload = () => setAvatarPreview(reader.result as string);
+                              reader.readAsDataURL(f);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label htmlFor="email" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Email
