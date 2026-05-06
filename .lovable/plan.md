@@ -1,69 +1,44 @@
-# Sélecteur d'events après connexion organisateur
+# Fix création d'event : bug FK + reset coupon
 
-## Contexte actuel
+## Diagnostic
 
-Aujourd'hui, après login sur `/`, la fonction `routeAfterAuth()` :
-- récupère `my_admin_events()` (qui retourne déjà tous les events où l'user est admin avec `event_id`, `slug`, `titre`, `role`)
-- redirige automatiquement vers le **premier** event → `/$slug/admin/dashboard`
-- ou vers `/create-event` si zéro event
+L'erreur 409 vient d'un bug dans la définition de la table `event_admins` :
 
-Conséquence : impossible de choisir entre plusieurs events, et on atterrit sur le **dashboard de réglages** au lieu du **feed admin**.
+- La contrainte `event_admins_added_by_fkey` référence `event_admins(id)` au lieu de `auth.users(id)`.
+- La fonction `create_event_with_coupon` insère `added_by = _user_id` (un UUID `auth.users`), ce qui viole la FK → erreur Postgres 23503 → renvoyée en HTTP 409.
 
-## Objectif
+Conséquence : impossible de créer un event tant que la FK n'est pas corrigée.
 
-Ajouter une nouvelle page **« Mes events »** qui s'affiche après login lorsque l'organisateur a au moins 1 event, listant les events sous forme de cards avec :
-- une card par event (titre, lieu, date, cover si dispo, badge rôle)
-- un bouton **« Créer un autre event »** → `/create-event`
-- clic sur une card → redirige vers le **feed de l'event en mode admin** = `/e/$slug` (qui contient déjà le mode admin via `useAdmin` + `<AdminBookmark>`)
+Et bonus : le coupon `DBRETEAU-FREE` affiche `uses_count=4` alors qu'aucune redemption n'a été enregistrée — il faut le remettre à zéro pour que vous puissiez réessayer.
 
-Si zéro event → redirection directe vers `/create-event` (comportement actuel).
-Si user non loggé → reste sur `/`.
+## Ce que je vais faire
 
-## Routes & navigation
+1. **Migration SQL** :
+   - Drop la contrainte FK incorrecte `event_admins_added_by_fkey`.
+   - Recréer correctement : `added_by REFERENCES auth.users(id) ON DELETE SET NULL`.
+   - Reset du coupon `DBRETEAU-FREE` : `uses_count = 0`, `max_uses = 5` (pour vous laisser une marge si erreur).
 
-```text
-/  (Landing login)
-   │
-   ├─ login OK + 0 event   → /create-event
-   ├─ login OK + ≥1 event  → /my-events           (NOUVEAU)
-   │                            │
-   │                            ├─ clic card     → /e/$slug
-   │                            └─ "Créer event" → /create-event
-   └─ login KO              → reste sur /
+2. **Aucun changement frontend** nécessaire — la logique côté React est correcte.
+
+## Réponse à votre question
+
+> "je n'ai rien à publier avant de refaire un test ?"
+
+**Non, rien à publier.** Vous testez sur le **preview** (`id-preview--…lovable.app`), donc dès que la migration est appliquée vous pouvez retenter immédiatement la création d'event sans publier. La publication ne sert qu'à mettre à jour le site live `kapsul.events`.
+
+## Détails techniques
+
+```sql
+ALTER TABLE public.event_admins
+  DROP CONSTRAINT event_admins_added_by_fkey;
+
+ALTER TABLE public.event_admins
+  ADD CONSTRAINT event_admins_added_by_fkey
+  FOREIGN KEY (added_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+UPDATE public.event_coupons
+  SET uses_count = 0, max_uses = 5
+  WHERE code = 'DBRETEAU-FREE';
 ```
 
-## Changements de code
-
-### 1. Nouvelle route `src/routes/my-events.tsx`
-- `createFileRoute("/my-events")` avec `head()` (title + `noindex`)
-- `beforeLoad` : vérifie `supabase.auth.getUser()` → si pas loggé, `redirect({ to: "/" })`
-- Dans le composant :
-  - `useEffect` : appelle `supabase.rpc("link_admin_user_id")` puis `supabase.rpc("my_admin_events")`
-  - charge en parallèle les détails (cover_url, lieu, event_date) via `supabase.from("events").select("id, slug, titre, lieu, cover_url, event_date").in("id", [...])` pour enrichir les cards
-  - état loading → skeleton ; zéro event → redirige vers `/create-event` ; sinon affiche grille de cards
-- UI cohérente avec le style existant : fond `bg-[image:var(--gradient-warm)]`, header avec `<ZestLogo>` + bouton « Se déconnecter », titre h1 « Mes événements », grille responsive (1 col mobile / 2 cols desktop) de cards `bg-card` arrondies avec cover + titre + lieu + date + badge rôle (organisateur/secondaire), et un bouton CTA primary `+ Créer un autre événement` en haut à droite (et dupliqué en bas si la liste est longue)
-- Card = `<Link to="/e/$slug" params={{ slug }}>` (pas de `useNavigate` pour le clic)
-
-### 2. Modifier `src/routes/index.tsx`
-- Dans `routeAfterAuth()` : remplacer la redirection directe vers `/$slug/admin/dashboard` par une redirection vers `/my-events` quand `events.length > 0`. Garder `/create-event` quand `events.length === 0`.
-
-### 3. Pas de changement DB
-- `my_admin_events()` retourne déjà tout ce qu'il faut. On enrichit côté client avec un `select` sur `events` pour cover/lieu/date.
-
-### 4. Pas de changement sur `/e/$slug`
-- Le mode admin y est déjà géré via `useAdmin(eventId)` + `<AdminBookmark>` qui affiche le lien vers `/$slug/admin/dashboard` quand l'utilisateur est admin connecté. L'organisateur arrive donc sur le **feed** et peut accéder aux réglages depuis là.
-
-## Détails UX des cards
-
-Chaque card contient :
-- **Cover** : image `cover_url` en aspect 16/9 si dispo, sinon dégradé `bg-[image:var(--gradient-warm)]` avec initiale du titre
-- **Titre** event en `font-display`
-- **Lieu** + **date formatée** (fr-FR) en `text-muted-foreground`
-- **Badge rôle** : `Organisateur` (primary) ou `Admin secondaire` (muted) en haut à droite de la card
-- Hover : légère élévation (`hover:shadow-card transition`)
-
-## Edge cases
-- Loading initial : skeleton de 2 cards
-- Erreur RPC : toast `sonner` + bouton « Réessayer »
-- 0 event après chargement : `navigate({ to: "/create-event", replace: true })`
-- Déconnexion : bouton header → `supabase.auth.signOut()` puis retour `/`
+Après application : retournez sur `/create-event`, saisissez `DBRETEAU-FREE`, créez votre event — ça doit passer.
