@@ -22,6 +22,9 @@ const settingsSchema = z.object({
 });
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MIN_COVER_W = 800;
+const MIN_COVER_H = 450;
 
 export function EventSettingsSection() {
   const { event, reloadEvent } = useAdminContext();
@@ -110,14 +113,35 @@ export function EventSettingsSection() {
 
   const handleCoverChange = async (file: File | null) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Format image requis");
+    if (!ACCEPTED_COVER_TYPES.includes(file.type.toLowerCase())) {
+      toast.error("Format non supporté (JPG, PNG ou WebP uniquement)");
       return;
     }
     if (file.size > MAX_COVER_BYTES) {
       toast.error("Image trop lourde (max 5 Mo)");
       return;
     }
+    // Vérifier les dimensions
+    const url = URL.createObjectURL(file);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth < MIN_COVER_W || img.naturalHeight < MIN_COVER_H) {
+            reject(new Error(`Image trop petite (min ${MIN_COVER_W}×${MIN_COVER_H} px)`));
+          } else {
+            resolve();
+          }
+        };
+        img.onerror = () => reject(new Error("Image illisible"));
+        img.src = url;
+      });
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      toast.error(e instanceof Error ? e.message : "Image invalide");
+      return;
+    }
+    URL.revokeObjectURL(url);
     setUploadingCover(true);
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
     const path = `covers/${event.id}/${Date.now()}.${ext}`;
@@ -203,7 +227,7 @@ export function EventSettingsSection() {
                 )}
               </Button>
               <p className="mt-1 text-xs text-muted-foreground">
-                JPG / PNG, max 5 Mo
+                JPG / PNG / WebP — max 5 Mo — recommandé 1600×900 px (min 800×450 px)
               </p>
             </div>
           </div>
