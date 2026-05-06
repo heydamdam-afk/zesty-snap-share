@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
 import { AdminBookmark, ADMIN_ONBOARDED_KEY } from "@/components/zest/AdminBookmark";
+import { pickAvatarColor } from "@/lib/zest-session";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -18,12 +19,16 @@ function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [showBookmark, setShowBookmark] = useState(false);
   const [adminSlug, setAdminSlug] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchAdminSlug = async (email: string): Promise<string | null> => {
     try {
@@ -84,18 +89,60 @@ function AdminLogin() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (mode === "signup") {
+      const p = prenom.trim();
+      if (p.length < 2 || p.length > 40) {
+        setError("Prénom requis (2 à 40 caractères).");
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
+        const cleanPrenom = prenom.trim();
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/admin" },
+          options: {
+            emailRedirectTo: window.location.origin + "/admin",
+            data: { prenom: cleanPrenom },
+          },
         });
         if (error) throw error;
+
+        // Upload avatar si fourni (nécessite session active)
+        let avatarUrl: string | null = null;
+        const { data: postSignup } = await supabase.auth.getSession();
+        const userId = postSignup.session?.user.id ?? null;
+        if (userId && avatarFile) {
+          const ext = (avatarFile.name.split(".").pop() || "jpg").toLowerCase();
+          const path = `admin-avatars/${userId}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("event-photos")
+            .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+          if (!upErr) {
+            const { data: pub } = supabase.storage.from("event-photos").getPublicUrl(path);
+            avatarUrl = pub.publicUrl;
+          } else {
+            console.warn("[admin] avatar upload failed", upErr);
+          }
+        }
+
+        // Lier user_id et propager prenom/avatar dans event_admins (si invité par email)
+        try {
+          await supabase.rpc("link_admin_user_id");
+          const updates: { prenom?: string; avatar_url?: string } = { prenom: cleanPrenom };
+          if (avatarUrl) updates.avatar_url = avatarUrl;
+          await supabase
+            .from("event_admins")
+            .update(updates)
+            .ilike("email", email);
+        } catch (e) {
+          console.warn("[admin] propagate profile to event_admins failed", e);
+        }
       }
       const { data: sessionData } = await supabase.auth.getSession();
       const sessionEmailLocal = sessionData.session?.user.email ?? email;
