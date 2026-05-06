@@ -552,6 +552,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      find_or_adopt_invite_by_email: {
+        Args: { _device_id: string; _email: string; _event_id: string }
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          email: string | null
+          event_id: string
+          id: string
+          prenom: string
+          rgpd_consent: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_device_banned: {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
