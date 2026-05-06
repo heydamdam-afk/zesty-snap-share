@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Send, Trash2, Shield, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { Avatar } from "./Avatar";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
@@ -79,9 +80,10 @@ export function PostCard({
     try {
       await deletePost(post.id);
       await onChanged?.();
+      toast.success("Post supprimé");
     } catch (e) {
-      console.error(e);
-      window.alert("Suppression impossible");
+      console.error("[adminDeletePost]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
@@ -92,9 +94,10 @@ export function PostCard({
     try {
       await deletePost(post.id, guest.invite.device_id);
       await onChanged?.();
+      toast.success("Post supprimé");
     } catch (e) {
-      console.error(e);
-      window.alert("Suppression impossible");
+      console.error("[ownerDeletePost]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
@@ -103,8 +106,10 @@ export function PostCard({
     try {
       await deleteCommentAsAdmin(id);
       await onChanged?.();
+      toast.success("Commentaire supprimé");
     } catch (e) {
-      console.error(e);
+      console.error("[adminDeleteComment]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
