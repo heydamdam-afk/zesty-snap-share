@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CreateEventRouteImport } from './routes/create-event'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,6 +22,11 @@ import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.das
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateEventRoute = CreateEventRouteImport.update({
+  id: '/create-event',
+  path: '/create-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClosedRoute = ClosedRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRoute
   '/dashboard': typeof DashboardRoute
   '/e/$slug': typeof ESlugRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRoute
   '/dashboard': typeof DashboardRoute
   '/e/$slug': typeof ESlugRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRoute
   '/dashboard': typeof DashboardRoute
   '/e/$slug': typeof ESlugRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
     | '/e/$slug'
     | '/$slug/admin/dashboard'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
     | '/e/$slug'
     | '/$slug/admin/dashboard'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
     | '/e/$slug'
     | '/$slug/admin/dashboard'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
+  CreateEventRoute: typeof CreateEventRoute
   DashboardRoute: typeof DashboardRoute
   ESlugRoute: typeof ESlugRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-event': {
+      id: '/create-event'
+      path: '/create-event'
+      fullPath: '/create-event'
+      preLoaderRoute: typeof CreateEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/closed': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
+  CreateEventRoute: CreateEventRoute,
   DashboardRoute: DashboardRoute,
   ESlugRoute: ESlugRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
