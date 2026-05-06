@@ -1,44 +1,26 @@
-# Fix création d'event : bug FK + reset coupon
+## Problèmes identifiés
 
-## Diagnostic
+1. **Crash de la mire invitée** : quand vous cliquez « Rejoindre la galerie », `buildSession` plante avec `Cannot read properties of null (reading '0')`. L'invite renvoyée par la base contient un `prenom` à `null` (probablement créé lors d'une tentative précédente d'auto-session admin), et `invite.prenom[0]` casse.
 
-L'erreur 409 vient d'un bug dans la définition de la table `event_admins` :
+2. **Redirection « Mes événements » → mire** : actuellement, cliquer sur une carte d'événement vous emmène sur `/e/{slug}` (page invité). Pour un organisateur, il faut aller directement au tableau de bord admin `/{slug}/admin/dashboard`.
 
-- La contrainte `event_admins_added_by_fkey` référence `event_admins(id)` au lieu de `auth.users(id)`.
-- La fonction `create_event_with_coupon` insère `added_by = _user_id` (un UUID `auth.users`), ce qui viole la FK → erreur Postgres 23503 → renvoyée en HTTP 409.
+## Corrections
 
-Conséquence : impossible de créer un event tant que la FK n'est pas corrigée.
+### 1. `src/lib/zest-session.ts`
+Sécuriser `buildSession` contre un `prenom` vide ou null :
+- utiliser `invite.prenom ?? ""` avant d'accéder à `[0]`
+- même fallback pour `pickAvatarColor`
 
-Et bonus : le coupon `DBRETEAU-FREE` affiche `uses_count=4` alors qu'aucune redemption n'a été enregistrée — il faut le remettre à zéro pour que vous puissiez réessayer.
+### 2. `src/routes/my-events.tsx`
+Pour chaque carte :
+- si `role === "organisateur"` → `<Link to="/$slug/admin/dashboard">`
+- si `role === "secondaire"` → garder `<Link to="/e/$slug">` (feed)
 
-## Ce que je vais faire
+Le badge « Organisateur / Admin secondaire » reste affiché.
 
-1. **Migration SQL** :
-   - Drop la contrainte FK incorrecte `event_admins_added_by_fkey`.
-   - Recréer correctement : `added_by REFERENCES auth.users(id) ON DELETE SET NULL`.
-   - Reset du coupon `DBRETEAU-FREE` : `uses_count = 0`, `max_uses = 5` (pour vous laisser une marge si erreur).
+### 3. Données : nettoyer l'invite cassée
+Vérifier en base s'il existe un invite avec `prenom IS NULL` ou `prenom = ''` pour votre user sur cet événement, et le corriger (mettre votre prénom ou supprimer la ligne) pour que la session admin auto se reconstruise proprement la prochaine fois.
 
-2. **Aucun changement frontend** nécessaire — la logique côté React est correcte.
-
-## Réponse à votre question
-
-> "je n'ai rien à publier avant de refaire un test ?"
-
-**Non, rien à publier.** Vous testez sur le **preview** (`id-preview--…lovable.app`), donc dès que la migration est appliquée vous pouvez retenter immédiatement la création d'event sans publier. La publication ne sert qu'à mettre à jour le site live `kapsul.events`.
-
-## Détails techniques
-
-```sql
-ALTER TABLE public.event_admins
-  DROP CONSTRAINT event_admins_added_by_fkey;
-
-ALTER TABLE public.event_admins
-  ADD CONSTRAINT event_admins_added_by_fkey
-  FOREIGN KEY (added_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
-UPDATE public.event_coupons
-  SET uses_count = 0, max_uses = 5
-  WHERE code = 'DBRETEAU-FREE';
-```
-
-Après application : retournez sur `/create-event`, saisissez `DBRETEAU-FREE`, créez votre event — ça doit passer.
+## Résultat attendu
+- Depuis « Mes événements », clic sur la carte → arrivée directe sur le dashboard admin (organisateur) ou sur le feed (admin secondaire), sans passer par la mire.
+- La mire invitée ne plante plus si un invite mal formé existe.
