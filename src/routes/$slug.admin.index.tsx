@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/$slug/admin/")({
   head: () => ({
     meta: [
-      { title: "Espace admin — Zest" },
+      { title: "Espace admin — Kapsul" },
       { name: "robots", content: "noindex" },
     ],
   }),

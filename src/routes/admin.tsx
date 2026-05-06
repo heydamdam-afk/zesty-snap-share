@@ -7,7 +7,7 @@ import { AdminBookmark, ADMIN_ONBOARDED_KEY } from "@/components/zest/AdminBookm
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Espace admin — Zest" },
+      { title: "Espace admin — Kapsul" },
       { name: "robots", content: "noindex" },
     ],
   }),

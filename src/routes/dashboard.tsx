@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Redirection dashboard — Zest" },
+      { title: "Redirection dashboard — Kapsul" },
       { name: "robots", content: "noindex" },
     ],
   }),

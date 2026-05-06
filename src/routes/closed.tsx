@@ -5,10 +5,10 @@ import { Footer } from "@/components/zest/Footer";
 export const Route = createFileRoute("/closed")({
   head: () => ({
     meta: [
-      { title: "Galerie fermée — Zest" },
+      { title: "Galerie fermée — Kapsul" },
       {
         name: "description",
-        content: "Cette galerie Zest est maintenant fermée.",
+        content: "Cette galerie Kapsul est maintenant fermée.",
       },
     ],
   }),

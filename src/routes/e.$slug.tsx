@@ -41,11 +41,11 @@ const QUOTA_TOTAL = 500;
 export const Route = createFileRoute("/e/$slug")({
   head: () => ({
     meta: [
-      { title: "Zest — Galerie photo de votre événement" },
+      { title: "Kapsul — Galerie photo de votre événement" },
       {
         name: "description",
         content:
-          "Galerie photo éphémère partagée en temps réel — postez vos plus beaux moments avec Zest.",
+          "Galerie photo éphémère partagée en temps réel — postez vos plus beaux moments avec Kapsul.",
       },
     ],
   }),
