@@ -23,6 +23,19 @@ export function getR2Endpoint(): string {
   return `https://${accountId}.r2.cloudflarestorage.com/${bucket}`;
 }
 
+/**
+ * Diagnostic info safe to expose to the browser (no secrets / no signature).
+ * Lets the client log exactly which bucket / host the signed PUT is targeting.
+ */
+export function getR2DiagInfo(): { uploadHost: string; bucket: string } {
+  const accountId = env("R2_ACCOUNT_ID");
+  const bucket = env("R2_BUCKET_NAME");
+  return {
+    uploadHost: `${accountId}.r2.cloudflarestorage.com`,
+    bucket,
+  };
+}
+
 export function publicUrlFor(key: string): string {
   return `${PUBLIC_BASE}/${key}`;
 }
