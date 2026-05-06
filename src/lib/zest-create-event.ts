@@ -74,7 +74,7 @@ export async function createEventWithCoupon(args: {
     _code_acces: args.codeAcces,
     _event_date: args.eventDate,
     _lieu: args.lieu,
-    _cover_url: args.coverUrl,
+    _cover_url: args.coverUrl ?? "",
     _contact: args.contact,
     _coupon_code: args.couponCode,
   });
