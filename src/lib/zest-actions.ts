@@ -51,7 +51,8 @@ export async function findInvite(eventId: string, deviceId: string) {
     _device_id: deviceId,
   });
   if (error) throw error;
-  return (data as Tables<"invites"> | null) ?? null;
+  const invite = (data as Tables<"invites"> | null) ?? null;
+  return invite?.id ? invite : null;
 }
 
 export async function loginToEvent(args: {
@@ -469,6 +470,9 @@ export async function createPost(args: {
   files?: File[];
   onProgress?: (p: UploadProgress) => void;
 }) {
+  if (!args.eventId || !args.inviteId) {
+    throw new Error("Session invité invalide : reconnecte-toi à l’événement avant de publier.");
+  }
   const trimmed = args.contenuTexte?.trim() || null;
   const files = args.files ?? [];
   if (!trimmed && files.length === 0) {
