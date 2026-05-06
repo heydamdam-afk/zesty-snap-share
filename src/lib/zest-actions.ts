@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { createR2UploadUrl } from "@/server/r2.functions";
 
 export const MAX_PHOTO_BYTES = 50 * 1024 * 1024;
 export const ACCEPTED_PHOTO_TYPES = [
@@ -188,86 +187,56 @@ export async function checkPrenomAvailability(args: {
 }
 
 /**
- * Upload one file directly to Cloudflare R2 via a presigned PUT URL.
- * Reports progress via XHR.
+ * Upload one file via the backend proxy (`/api/public/r2-upload`).
+ * The browser never talks to R2 directly — the server holds the credentials
+ * and writes to R2 with the SDK. Progress is reported via XHR upload events.
  */
-function putToR2(
-  uploadUrl: string,
+function uploadViaProxy(
   file: File,
+  eventId: string,
+  inviteId: string,
   onProgress?: (percent: number) => void,
-  diag?: { uploadHost?: string; bucket?: string },
-): Promise<void> {
+): Promise<UploadedPhoto> {
   return new Promise((resolve, reject) => {
-    // Log a sanitized version of the URL (without the signature query) so we
-    // can diagnose CORS / endpoint issues without leaking credentials.
-    const safeUrl = uploadUrl.split("?")[0];
+    const fd = new FormData();
+    fd.append("eventId", eventId);
+    fd.append("inviteId", inviteId);
+    fd.append("file", file, file.name);
+
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadUrl);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.open("POST", "/api/public/r2-upload");
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable && onProgress) {
         onProgress(Math.round((ev.loaded / ev.total) * 100));
       }
     };
     xhr.onload = () => {
+      const body = xhr.responseText || "";
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-        return;
-      }
-      // Surface the response body on HTTP errors — R2/S3 returns XML with
-      // a useful <Code>/<Message> pair (e.g. SignatureDoesNotMatch).
-      const body = (xhr.responseText || "").slice(0, 300);
-      console.error("[R2] PUT failed", { status: xhr.status, url: safeUrl, body });
-      reject(new Error(`Upload R2 ${xhr.status}${body ? ` — ${body}` : ""}`));
-    };
-    xhr.onerror = async () => {
-      // status === 0 in onerror almost always means the browser blocked the
-      // request: CORS preflight failure, network down, DNS issue, or the
-      // request was cancelled. None of these reach the R2 server.
-      console.error("[R2] network error", {
-        status: xhr.status,
-        url: safeUrl,
-        readyState: xhr.readyState,
-        fileName: file.name,
-        fileSize: file.size,
-        contentType: file.type,
-        uploadHost: diag?.uploadHost,
-        bucket: diag?.bucket,
-      });
-      if (xhr.status !== 0) {
-        reject(new Error(`Erreur réseau (HTTP ${xhr.status})`));
-        return;
-      }
-      // Probe the same host with a no-cors GET to read the bucket's actual
-      // CORS state. R2 replies with `<Code>Unauthorized</Code><Message>CORS
-      // not configured for this bucket</Message>` when no policy is set.
-      let hint =
-        "Bucket R2 inaccessible (CORS, réseau ou requête bloquée). Vérifie la CORS policy du bucket sur Cloudflare.";
-      try {
-        const probeUrl = uploadUrl.split("?")[0];
-        const probe = await fetch(probeUrl, { method: "GET", mode: "cors" }).catch(
-          () => null,
-        );
-        if (probe) {
-          const text = await probe.text().catch(() => "");
-          console.error("[R2] CORS probe", { status: probe.status, body: text.slice(0, 300) });
-          if (/CORS not configured/i.test(text)) {
-            hint = `CORS policy manquante sur le bucket R2 \`${diag?.bucket ?? "?"}\`. Ajoute-la sur Cloudflare → R2 → \`${diag?.bucket ?? "<bucket>"}\` → Settings → CORS Policy (origine: ${typeof window !== "undefined" ? window.location.origin : "?"}, méthodes: PUT, GET, HEAD).`;
-          }
-        } else {
-          // Even the no-credentials GET was blocked by CORS → no policy at all.
-          hint = `CORS policy manquante sur le bucket R2 \`${diag?.bucket ?? "?"}\`. Ajoute-la sur Cloudflare → R2 → \`${diag?.bucket ?? "<bucket>"}\` → Settings → CORS Policy (origine: ${typeof window !== "undefined" ? window.location.origin : "?"}).`;
+        try {
+          const j = JSON.parse(body) as UploadedPhoto;
+          resolve({ urlFull: j.urlFull, urlMedium: j.urlMedium, urlMini: j.urlMini });
+        } catch {
+          reject(new Error("Réponse serveur invalide"));
         }
-      } catch (e) {
-        console.error("[R2] probe failed", e);
+        return;
       }
-      reject(new Error(hint));
+      let msg = `Upload ${xhr.status}`;
+      try {
+        const j = JSON.parse(body) as { error?: string };
+        if (j.error) msg = j.error;
+      } catch {
+        if (body) msg = `${msg} — ${body.slice(0, 200)}`;
+      }
+      console.error("[upload-proxy] failed", { status: xhr.status, body: body.slice(0, 300) });
+      reject(new Error(msg));
     };
-    xhr.ontimeout = () => {
-      console.error("[R2] timeout", { url: safeUrl, fileName: file.name });
-      reject(new Error("Upload R2 expiré (timeout)"));
+    xhr.onerror = () => {
+      console.error("[upload-proxy] network error", { fileName: file.name });
+      reject(new Error("Erreur réseau pendant l'upload"));
     };
-    xhr.send(file);
+    xhr.ontimeout = () => reject(new Error("Upload expiré (timeout)"));
+    xhr.send(fd);
   });
 }
 
@@ -280,6 +249,7 @@ export type UploadedPhoto = {
 export async function uploadOnePhoto(
   file: File,
   eventId: string,
+  inviteId: string,
   onProgress?: (percent: number) => void,
 ): Promise<UploadedPhoto> {
   if (file.size > MAX_PHOTO_BYTES) {
@@ -289,19 +259,7 @@ export async function uploadOnePhoto(
   if (!ACCEPTED_PHOTO_TYPES.includes(type)) {
     throw new Error(`Format non supporté — ${file.name}`);
   }
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const signed = await createR2UploadUrl({
-    data: { eventId, contentType: type, ext, size: file.size },
-  });
-  await putToR2(signed.uploadUrl, file, onProgress, {
-    uploadHost: (signed as { uploadHost?: string }).uploadHost,
-    bucket: (signed as { bucket?: string }).bucket,
-  });
-  return {
-    urlMini: signed.urlMini,
-    urlMedium: signed.urlMedium,
-    urlFull: signed.urlFull,
-  };
+  return uploadViaProxy(file, eventId, inviteId, onProgress);
 }
 
 /**
