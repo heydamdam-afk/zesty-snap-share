@@ -58,8 +58,7 @@ export async function loginToEvent(args: {
   slug: string;
   code: string;
   prenom: string;
-  email?: string;
-  rgpd: boolean;
+  email: string;
   deviceId: string;
   avatarUrl?: string;
 }) {
@@ -74,8 +73,31 @@ export async function loginToEvent(args: {
   });
   if (banned) return { ok: false as const, reason: "banned" };
 
+  // 1) Reconnexion par device_id (rapide, même appareil)
   const existing = await findInvite(event.id, args.deviceId);
   if (existing) return { ok: true as const, event, invite: existing };
+
+  // 2) Reconnexion par email (cross-device) — l'email est l'identifiant principal.
+  const emailClean = args.email.trim().toLowerCase();
+  if (emailClean) {
+    const { data: byEmail, error: emailErr } = await supabase.rpc(
+      "find_or_adopt_invite_by_email",
+      {
+        _event_id: event.id,
+        _email: emailClean,
+        _device_id: args.deviceId,
+      },
+    );
+    if (emailErr) {
+      const msg = emailErr.message ?? "";
+      if (msg.includes("device_banned")) {
+        return { ok: false as const, reason: "banned" };
+      }
+      console.error("[loginToEvent] email lookup failed", emailErr);
+    }
+    const found = (byEmail as Tables<"invites"> | null) ?? null;
+    if (found?.id) return { ok: true as const, event, invite: found };
+  }
 
   const prenomNorm = normalisePrenom(args.prenom);
 
@@ -93,10 +115,10 @@ export async function loginToEvent(args: {
     .insert({
       event_id: event.id,
       prenom: prenomNorm,
-      email: args.email?.trim().toLowerCase() || null,
+      email: emailClean,
       device_id: args.deviceId,
       avatar_url: args.avatarUrl ?? null,
-      rgpd_consent: args.rgpd,
+      rgpd_consent: true,
     })
     .select()
     .single();
