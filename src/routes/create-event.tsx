@@ -162,9 +162,10 @@ function CreateEventPage() {
         }
       }
 
+      toast.success("Événement créé !");
       navigate({
-        to: "/create-event/success",
-        search: { slug: result.slug, code: result.code_acces } as never,
+        to: "/$slug/admin/dashboard",
+        params: { slug: result.slug },
       });
     } catch (err) {
       console.error("create_event_with_coupon failed:", err);
