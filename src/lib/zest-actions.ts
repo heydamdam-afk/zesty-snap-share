@@ -289,7 +289,7 @@ export async function uploadPhotosBatch(args: {
     const f = files[i];
     args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
     try {
-      const u = await uploadOnePhoto(f, eventId, (pct) => {
+      const u = await uploadOnePhoto(f, eventId, inviteId, (pct) => {
         args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
       });
       uploaded[i] = u;
@@ -373,7 +373,7 @@ export async function uploadGalleryBatch(args: {
     const f = files[i];
     args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
     try {
-      const u = await uploadOnePhoto(f, eventId, (pct) => {
+      const u = await uploadOnePhoto(f, eventId, inviteId, (pct) => {
         args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
       });
       // Create a dedicated post for this photo.
