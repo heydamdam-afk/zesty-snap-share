@@ -82,6 +82,7 @@ function Index() {
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [uploading, setUploading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [adminCheckDone, setAdminCheckDone] = useState(false);
 
   useEffect(() => {
     setGuest(loadGuest());
@@ -103,9 +104,9 @@ function Index() {
         const session = sess.session;
         const user = session?.user;
         // Guard : pas de session, on stoppe (pas de requête DB inutile)
-        if (!user?.email) return;
+        if (!user?.email) { if (!cancel) setAdminCheckDone(true); return; }
         const event = await findEventBySlug(EVENT_SLUG);
-        if (!event) return;
+        if (!event) { if (!cancel) setAdminCheckDone(true); return; }
         // Lier user_id si admin invité par email avant inscription
         await supabase.rpc("link_admin_user_id");
         const { data: adminRow, error: adminErr } = await supabase
@@ -116,9 +117,10 @@ function Index() {
           .maybeSingle();
         if (adminErr) {
           console.error("[index] admin lookup error", adminErr);
+          if (!cancel) setAdminCheckDone(true);
           return;
         }
-        if (!adminRow) return;
+        if (!adminRow) { if (!cancel) setAdminCheckDone(true); return; }
         const deviceId = getOrCreateDeviceId();
         let invite = await findInvite(event.id, deviceId);
         if (!invite) {
@@ -140,6 +142,8 @@ function Index() {
         setGuest(buildSession(invite, event));
       } catch (e) {
         console.error("[index] auto admin session failed", e);
+      } finally {
+        if (!cancel) setAdminCheckDone(true);
       }
     })();
     return () => { cancel = true; };
@@ -241,6 +245,7 @@ function Index() {
   };
 
   if (!hydrated) return null;
+  if (!guest && !adminCheckDone) return null;
   if (!guest) return <AccessGate slug={EVENT_SLUG} onEnter={setGuest} />;
 
   const visiblePosts: FeedPost[] = onlyMine
