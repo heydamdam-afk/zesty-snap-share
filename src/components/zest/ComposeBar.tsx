@@ -77,7 +77,7 @@ export function ComposeBar({
         onClick={() => setOpen(true)}
         className="flex w-full items-center gap-3 rounded-full bg-card p-2 pl-2 pr-3 text-left shadow-card transition hover:bg-card/80"
       >
-        <Avatar initials={guest.initial} />
+        <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
         <span className="flex-1 text-sm text-muted-foreground">Écrire un message</span>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-coral text-primary-foreground shadow-soft">
           <Pencil className="h-4 w-4" />
@@ -96,7 +96,7 @@ export function ComposeBar({
           </DrawerHeader>
 
           <div className="flex items-start gap-3">
-            <Avatar initials={guest.initial} />
+            <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
             <Textarea
               autoFocus
               value={text}
