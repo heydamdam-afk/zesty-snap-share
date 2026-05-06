@@ -573,6 +573,10 @@ export type Database = {
           titre: string
         }[]
       }
+      set_event_cover: {
+        Args: { _cover_url: string; _event_id: string }
+        Returns: boolean
+      }
       transfer_organisateur: {
         Args: {
           p_current_org_id: string
