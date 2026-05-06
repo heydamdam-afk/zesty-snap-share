@@ -194,6 +194,7 @@ function putToR2(
   uploadUrl: string,
   file: File,
   onProgress?: (percent: number) => void,
+  diag?: { uploadHost?: string; bucket?: string },
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     // Log a sanitized version of the URL (without the signature query) so we
@@ -218,7 +219,7 @@ function putToR2(
       console.error("[R2] PUT failed", { status: xhr.status, url: safeUrl, body });
       reject(new Error(`Upload R2 ${xhr.status}${body ? ` — ${body}` : ""}`));
     };
-    xhr.onerror = () => {
+    xhr.onerror = async () => {
       // status === 0 in onerror almost always means the browser blocked the
       // request: CORS preflight failure, network down, DNS issue, or the
       // request was cancelled. None of these reach the R2 server.
@@ -229,11 +230,36 @@ function putToR2(
         fileName: file.name,
         fileSize: file.size,
         contentType: file.type,
+        uploadHost: diag?.uploadHost,
+        bucket: diag?.bucket,
       });
-      const hint =
-        xhr.status === 0
-          ? "Bucket R2 inaccessible (CORS, réseau ou requête bloquée). Vérifie la CORS policy du bucket sur Cloudflare."
-          : `Erreur réseau (HTTP ${xhr.status})`;
+      if (xhr.status !== 0) {
+        reject(new Error(`Erreur réseau (HTTP ${xhr.status})`));
+        return;
+      }
+      // Probe the same host with a no-cors GET to read the bucket's actual
+      // CORS state. R2 replies with `<Code>Unauthorized</Code><Message>CORS
+      // not configured for this bucket</Message>` when no policy is set.
+      let hint =
+        "Bucket R2 inaccessible (CORS, réseau ou requête bloquée). Vérifie la CORS policy du bucket sur Cloudflare.";
+      try {
+        const probeUrl = uploadUrl.split("?")[0];
+        const probe = await fetch(probeUrl, { method: "GET", mode: "cors" }).catch(
+          () => null,
+        );
+        if (probe) {
+          const text = await probe.text().catch(() => "");
+          console.error("[R2] CORS probe", { status: probe.status, body: text.slice(0, 300) });
+          if (/CORS not configured/i.test(text)) {
+            hint = `CORS policy manquante sur le bucket R2 \`${diag?.bucket ?? "?"}\`. Ajoute-la sur Cloudflare → R2 → \`${diag?.bucket ?? "<bucket>"}\` → Settings → CORS Policy (origine: ${typeof window !== "undefined" ? window.location.origin : "?"}, méthodes: PUT, GET, HEAD).`;
+          }
+        } else {
+          // Even the no-credentials GET was blocked by CORS → no policy at all.
+          hint = `CORS policy manquante sur le bucket R2 \`${diag?.bucket ?? "?"}\`. Ajoute-la sur Cloudflare → R2 → \`${diag?.bucket ?? "<bucket>"}\` → Settings → CORS Policy (origine: ${typeof window !== "undefined" ? window.location.origin : "?"}).`;
+        }
+      } catch (e) {
+        console.error("[R2] probe failed", e);
+      }
       reject(new Error(hint));
     };
     xhr.ontimeout = () => {
@@ -266,7 +292,10 @@ export async function uploadOnePhoto(
   const signed = await createR2UploadUrl({
     data: { eventId, contentType: type, ext, size: file.size },
   });
-  await putToR2(signed.uploadUrl, file, onProgress);
+  await putToR2(signed.uploadUrl, file, onProgress, {
+    uploadHost: (signed as { uploadHost?: string }).uploadHost,
+    bucket: (signed as { bucket?: string }).bucket,
+  });
   return {
     urlMini: signed.urlMini,
     urlMedium: signed.urlMedium,
