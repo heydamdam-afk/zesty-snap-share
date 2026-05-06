@@ -167,7 +167,23 @@ function CreateEventPage() {
         search: { slug: result.slug, code: result.code_acces } as never,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      console.error("create_event_with_coupon failed:", err);
+      const anyErr = err as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const raw =
+        anyErr?.message ||
+        anyErr?.details ||
+        anyErr?.hint ||
+        (err instanceof Error ? err.message : "") ||
+        "Erreur inconnue";
+      // Extract known error keys even if wrapped in a longer message
+      const knownKeys = [
+        "coupon_invalid","coupon_inactive","coupon_expired","coupon_exhausted",
+        "slug_taken","code_taken","invalid_titre","invalid_slug","invalid_code_acces",
+        "invalid_event_date","invalid_lieu","invalid_contact","invalid_cover_url",
+        "not_authenticated","no_email",
+      ];
+      const found = knownKeys.find((k) => raw.includes(k));
+      const msg = found ?? raw;
       const map: Record<string, string> = {
         coupon_invalid: "Coupon invalide",
         coupon_inactive: "Coupon désactivé",
@@ -176,11 +192,16 @@ function CreateEventPage() {
         slug_taken: "Ce nom est déjà pris, modifiez le titre",
         code_taken: "Conflit code d'accès, réessayez",
         invalid_titre: "Titre invalide",
+        invalid_slug: "Slug invalide",
+        invalid_code_acces: "Code d'accès invalide",
         invalid_event_date: "Date invalide",
         invalid_lieu: "Lieu invalide",
         invalid_contact: "Contact invalide",
+        invalid_cover_url: "URL de couverture invalide",
+        not_authenticated: "Vous devez être connecté",
+        no_email: "Compte sans email",
       };
-      setError(map[msg] ?? msg);
+      setError(map[msg] ?? `Erreur : ${msg}`);
     } finally {
       setSubmitting(false);
     }
