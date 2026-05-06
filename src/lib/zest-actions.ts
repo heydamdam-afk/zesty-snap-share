@@ -105,6 +105,12 @@ export async function loginToEvent(args: {
     if (error.code === "23505") {
       return { ok: false as const, reason: "prenom_taken" as const };
     }
+    console.error("[loginToEvent] insert invite failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return { ok: false as const, reason: "insert_failed", error };
   }
   return { ok: true as const, event, invite: data };
