@@ -388,6 +388,7 @@ function Index() {
               <QrPanel
                 title={guest.event.titre}
                 code={guest.event.code_acces}
+                slug={guest.event.slug}
                 dateIso={guest.event.event_date ?? guest.event.expire_at}
                 lieu={guest.event.lieu}
                 contact={guest.event.contact}
