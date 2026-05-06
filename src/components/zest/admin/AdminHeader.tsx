@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, Eye, LogOut } from "lucide-react";
 import { ZestLogo } from "@/components/zest/Logo";
 import { useAdminContext } from "./AdminContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,11 +38,19 @@ export function AdminHeader() {
           </span>
         </div>
         <Link
+          to="/e/$slug"
+          params={{ slug: event.slug }}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Voir le feed</span>
+        </Link>
+        <Link
           to="/"
           className="hidden items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary sm:inline-flex"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Galerie
+          Mes events
         </Link>
         <button
           type="button"
