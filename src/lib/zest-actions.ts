@@ -196,6 +196,9 @@ function putToR2(
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Log a sanitized version of the URL (without the signature query) so we
+    // can diagnose CORS / endpoint issues without leaking credentials.
+    const safeUrl = uploadUrl.split("?")[0];
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", uploadUrl);
     xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
@@ -205,10 +208,38 @@ function putToR2(
       }
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload R2 ${xhr.status}`));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      // Surface the response body on HTTP errors — R2/S3 returns XML with
+      // a useful <Code>/<Message> pair (e.g. SignatureDoesNotMatch).
+      const body = (xhr.responseText || "").slice(0, 300);
+      console.error("[R2] PUT failed", { status: xhr.status, url: safeUrl, body });
+      reject(new Error(`Upload R2 ${xhr.status}${body ? ` — ${body}` : ""}`));
     };
-    xhr.onerror = () => reject(new Error("Erreur réseau"));
+    xhr.onerror = () => {
+      // status === 0 in onerror almost always means the browser blocked the
+      // request: CORS preflight failure, network down, DNS issue, or the
+      // request was cancelled. None of these reach the R2 server.
+      console.error("[R2] network error", {
+        status: xhr.status,
+        url: safeUrl,
+        readyState: xhr.readyState,
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type,
+      });
+      const hint =
+        xhr.status === 0
+          ? "Bucket R2 inaccessible (CORS, réseau ou requête bloquée). Vérifie la CORS policy du bucket sur Cloudflare."
+          : `Erreur réseau (HTTP ${xhr.status})`;
+      reject(new Error(hint));
+    };
+    xhr.ontimeout = () => {
+      console.error("[R2] timeout", { url: safeUrl, fileName: file.name });
+      reject(new Error("Upload R2 expiré (timeout)"));
+    };
     xhr.send(file);
   });
 }

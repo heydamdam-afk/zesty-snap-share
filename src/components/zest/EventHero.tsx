@@ -1,4 +1,4 @@
-import cover from "@/assets/event-cover.jpg";
+import defaultCover from "@/assets/event-cover.jpg";
 
 function formatDate(iso?: string | null) {
   if (!iso) return "";
@@ -16,17 +16,25 @@ function formatDate(iso?: string | null) {
 export function EventHero({
   title,
   dateIso,
+  coverUrl,
 }: {
   title: string;
   dateIso?: string | null;
+  coverUrl?: string | null;
 }) {
   const date = formatDate(dateIso);
+  const src = coverUrl && coverUrl.trim().length > 0 ? coverUrl : defaultCover;
   return (
     <div className="relative h-[220px] w-full overflow-hidden">
       <img
-        src={cover}
+        src={src}
         alt={title}
         className="h-full w-full object-cover"
+        onError={(e) => {
+          // Fallback to default cover if the remote URL fails to load.
+          const img = e.currentTarget;
+          if (img.src !== defaultCover) img.src = defaultCover;
+        }}
       />
       {/* Gradient bas */}
       <div
