@@ -85,9 +85,16 @@ function Index() {
   const [adminCheckDone, setAdminCheckDone] = useState(false);
 
   useEffect(() => {
-    setGuest(loadGuest());
+    const stored = loadGuest();
+    // Si la session sauvée correspond à un autre event (navigation entre events),
+    // on l'ignore : sinon on chargerait le feed du mauvais event après refresh.
+    if (stored && stored.event?.slug && stored.event.slug !== EVENT_SLUG) {
+      setGuest(null);
+    } else {
+      setGuest(stored);
+    }
     setHydrated(true);
-  }, []);
+  }, [EVENT_SLUG]);
 
   useEffect(() => {
     saveGuest(guest);

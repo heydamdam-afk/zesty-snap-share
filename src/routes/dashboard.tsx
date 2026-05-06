@@ -30,23 +30,24 @@ function DashboardRedirect() {
 
       await supabase.rpc("link_admin_user_id");
 
-      const { data, error: adminError } = await supabase
-        .from("event_admins")
-        .select("events!inner(slug)")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
+      const { data, error: adminError } = await supabase.rpc("my_admin_events");
 
       if (cancelled) return;
 
-      const slug = (data as { events?: { slug?: string } | null } | null)?.events?.slug;
+      const events = (data ?? []) as Array<{ slug: string }>;
 
-      if (adminError || !slug) {
+      if (adminError || events.length === 0) {
         setError("Aucun accès admin trouvé pour ce compte.");
         return;
       }
 
-      navigate({ to: "/$slug/admin/dashboard", params: { slug } });
+      // Plusieurs events : on laisse l'utilisateur choisir.
+      if (events.length > 1) {
+        navigate({ to: "/my-events" });
+        return;
+      }
+
+      navigate({ to: "/$slug/admin/dashboard", params: { slug: events[0].slug } });
     };
 
     void redirectToAdminDashboard();

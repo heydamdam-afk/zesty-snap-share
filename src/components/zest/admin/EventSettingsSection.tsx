@@ -45,8 +45,8 @@ export function EventSettingsSection() {
 
   const galleryUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/${event.slug}`
-      : `/${event.slug}`;
+      ? `${window.location.origin}/e/${event.slug}`
+      : `/e/${event.slug}`;
 
   const handleDownloadQr = () => {
     const canvas = qrRef.current?.querySelector("canvas");
