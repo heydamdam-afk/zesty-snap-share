@@ -61,7 +61,7 @@ const LOCKOUT_MS = 5 * 60 * 1000;
 const schema = z.object({
   code: z.string().trim().min(1, "Code requis").max(64),
   prenom: z.string().trim().min(2, "Prénom trop court").max(40),
-  email: z.string().trim().email("Email invalide").max(255).optional().or(z.literal("")),
+  email: z.string().trim().email("Email invalide").max(255),
 });
 
 function readAttempts() {
@@ -110,7 +110,6 @@ export function AccessGate({
   const [code, setCode] = useState("");
   const [prenom, setPrenom] = useState("");
   const [email, setEmail] = useState("");
-  const [rgpd, setRgpd] = useState(false);
   const [avatar, setAvatar] = useState<string | undefined>();
   const [eventInfo, setEventInfo] = useState<Tables<"events"> | null>(null);
   const [errors, setErrors] = useState<{
@@ -225,8 +224,7 @@ export function AccessGate({
         slug,
         code: parsed.data.code,
         prenom: parsed.data.prenom,
-        email: parsed.data.email || undefined,
-        rgpd,
+        email: parsed.data.email,
         deviceId,
         avatarUrl: avatar,
       });
