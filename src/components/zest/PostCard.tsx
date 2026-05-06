@@ -127,7 +127,7 @@ export function PostCard({
       className="overflow-hidden rounded-3xl bg-card shadow-card"
     >
       <div className="flex items-center gap-3 p-4">
-        <Avatar initials={initialsOf(author)} />
+        <Avatar initials={initialsOf(author)} src={post.invites?.avatar_url ?? null} />
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">{author}</p>
           <p className="text-xs text-muted-foreground">{timeAgo(post.created_at)}</p>
@@ -249,7 +249,7 @@ export function PostCard({
                   const isMine = c.invite_id === guest.invite.id;
                   return (
                     <li key={c.id} className="flex gap-2">
-                      <Avatar initials={initialsOf(cName)} size="sm" />
+                      <Avatar initials={initialsOf(cName)} src={c.invites?.avatar_url ?? null} size="sm" />
                       <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-secondary px-3 py-2">
                         <p className="text-xs font-semibold text-foreground">{cName}</p>
                         <p className="text-sm text-foreground/90">{c.contenu}</p>
@@ -274,7 +274,7 @@ export function PostCard({
             )}
 
             <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-              <Avatar initials={guest.initial} size="sm" />
+              <Avatar initials={guest.initial} src={guest.invite.avatar_url} size="sm" />
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
