@@ -124,19 +124,34 @@ function Index() {
         const deviceId = getOrCreateDeviceId();
         let invite = await findInvite(event.id, deviceId);
         if (!invite) {
-          const prenom = (user.email.split("@")[0] ?? "Admin").slice(0, 40);
-          const { data: created } = await supabase
+          // Try to find an existing invite for this admin by email
+          // (admin may have logged in on a different device before).
+          const { data: existingByEmail } = await supabase
             .from("invites")
-            .insert({
-              event_id: event.id,
-              prenom,
-              email: user.email,
-              device_id: deviceId,
-              rgpd_consent: false,
-            })
-            .select()
-            .single();
-          invite = created ?? null;
+            .select("*")
+            .eq("event_id", event.id)
+            .ilike("email", user.email)
+            .maybeSingle();
+          if (existingByEmail) {
+            invite = existingByEmail;
+          } else {
+            const prenom = (user.email.split("@")[0] ?? "Admin").slice(0, 40);
+            const { data: created, error: createErr } = await supabase
+              .from("invites")
+              .insert({
+                event_id: event.id,
+                prenom,
+                email: user.email,
+                device_id: deviceId,
+                rgpd_consent: false,
+              })
+              .select()
+              .single();
+            if (createErr) {
+              console.error("[index] auto-create invite failed", createErr);
+            }
+            invite = created ?? null;
+          }
         }
         if (!invite || cancel) return;
         setGuest(buildSession(invite, event));
