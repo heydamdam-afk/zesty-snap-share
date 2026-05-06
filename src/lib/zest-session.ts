@@ -47,11 +47,12 @@ export function clearDevice() {
 }
 
 export function buildSession(invite: InviteRow, event: EventRow): GuestSession {
+  const prenom = invite?.prenom ?? "";
   return {
     invite,
     event,
-    initial: (invite.prenom[0] ?? "?").toUpperCase(),
-    avatarColor: pickAvatarColor(invite.prenom),
+    initial: (prenom[0] ?? "?").toUpperCase(),
+    avatarColor: pickAvatarColor(prenom || "?"),
   };
 }
 
