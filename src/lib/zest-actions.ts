@@ -44,14 +44,14 @@ export async function findEventByCode(code: string) {
 }
 
 export async function findInvite(eventId: string, deviceId: string) {
-  const { data, error } = await supabase
-    .from("invites")
-    .select("*")
-    .eq("event_id", eventId)
-    .eq("device_id", deviceId)
-    .maybeSingle();
+  // device_id is no longer publicly readable. Use the SECURITY DEFINER RPC
+  // which only returns the row when the caller proves their device_id.
+  const { data, error } = await supabase.rpc("find_my_invite", {
+    _event_id: eventId,
+    _device_id: deviceId,
+  });
   if (error) throw error;
-  return data;
+  return (data as Tables<"invites"> | null) ?? null;
 }
 
 export async function loginToEvent(args: {
@@ -68,13 +68,11 @@ export async function loginToEvent(args: {
   if (!event) return { ok: false as const, reason: "bad_code" };
 
   // Vérifie si ce device est banni de cet event
-  const { data: ban } = await supabase
-    .from("banned_invites")
-    .select("id")
-    .eq("event_id", event.id)
-    .eq("device_id", args.deviceId)
-    .maybeSingle();
-  if (ban) return { ok: false as const, reason: "banned" };
+  const { data: banned } = await supabase.rpc("is_device_banned", {
+    _event_id: event.id,
+    _device_id: args.deviceId,
+  });
+  if (banned) return { ok: false as const, reason: "banned" };
 
   const existing = await findInvite(event.id, args.deviceId);
   if (existing) return { ok: true as const, event, invite: existing };

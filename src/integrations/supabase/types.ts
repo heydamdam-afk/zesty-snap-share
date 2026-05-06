@@ -435,6 +435,29 @@ export type Database = {
         Args: { _device_id: string; _photo_id: string }
         Returns: boolean
       }
+      find_my_invite: {
+        Args: { _device_id: string; _event_id: string }
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          email: string | null
+          event_id: string
+          id: string
+          prenom: string
+          rgpd_consent: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      is_device_banned: {
+        Args: { _device_id: string; _event_id: string }
+        Returns: boolean
+      }
       is_event_admin: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
