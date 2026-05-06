@@ -30,6 +30,7 @@ function Landing() {
   const [showGuestEntry, setShowGuestEntry] = useState(false);
   const [guestCode, setGuestCode] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Rétro-compat : ancien QR `/?code=XXXX` → redirige vers /e/{slug}?code=XXXX
   useEffect(() => {
@@ -212,6 +213,36 @@ function Landing() {
                   ? "Se connecter"
                   : "Créer mon compte"}
             </button>
+            {mode === "signin" && (
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={async () => {
+                  setError(null);
+                  setInfo(null);
+                  const target = email.trim();
+                  if (!target) {
+                    setError("Saisissez votre email puis cliquez à nouveau sur « Mot de passe oublié ».");
+                    return;
+                  }
+                  setResetting(true);
+                  try {
+                    const { error: err } = await supabase.auth.resetPasswordForEmail(target, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (err) throw err;
+                    setInfo("Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé.");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+                  } finally {
+                    setResetting(false);
+                  }
+                }}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+              >
+                {resetting ? "Envoi…" : "Mot de passe oublié ?"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
