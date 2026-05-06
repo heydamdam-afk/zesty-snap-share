@@ -36,7 +36,6 @@ import { findEventBySlug, findInvite } from "@/lib/zest-actions";
 import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 import { toast } from "sonner";
 
-const EVENT_SLUG = "JULIE2026";
 const QUOTA_TOTAL = 500;
 
 export const Route = createFileRoute("/e/$slug")({
@@ -75,6 +74,7 @@ export const Route = createFileRoute("/e/$slug")({
 });
 
 function Index() {
+  const { slug: EVENT_SLUG } = Route.useParams();
   const [tab, setTab] = useState<TabId>("feed");
   const [guest, setGuest] = useState<GuestSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -104,9 +104,7 @@ function Index() {
         const user = session?.user;
         // Guard : pas de session, on stoppe (pas de requête DB inutile)
         if (!user?.email) return;
-        const event = await findEventBySlug(
-          EVENT_SLUG === "JULIE2026" ? "mariage-sabrina-thomas" : EVENT_SLUG,
-        );
+        const event = await findEventBySlug(EVENT_SLUG);
         if (!event) return;
         // Lier user_id si admin invité par email avant inscription
         await supabase.rpc("link_admin_user_id");
