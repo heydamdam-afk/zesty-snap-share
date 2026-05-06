@@ -39,7 +39,7 @@ import { toast } from "sonner";
 const EVENT_SLUG = "JULIE2026";
 const QUOTA_TOTAL = 500;
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/e/$slug")({
   head: () => ({
     meta: [
       { title: "Zest — Galerie photo de votre événement" },
