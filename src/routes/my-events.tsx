@@ -179,11 +179,13 @@ function MyEvents() {
             {events.map((ev) => {
               const initial = (ev.titre[0] ?? "?").toUpperCase();
               const date = formatDate(ev.event_date);
+              const linkProps = ev.role === "organisateur"
+                ? { to: "/$slug/admin/dashboard" as const, params: { slug: ev.slug } }
+                : { to: "/e/$slug" as const, params: { slug: ev.slug } };
               return (
                 <Link
                   key={ev.id}
-                  to="/e/$slug"
-                  params={{ slug: ev.slug }}
+                  {...linkProps}
                   className="group relative overflow-hidden rounded-2xl bg-card/95 shadow-card backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   <span
