@@ -1,0 +1,1 @@
+ALTER TABLE public.event_admins ADD COLUMN IF NOT EXISTS avatar_url text;

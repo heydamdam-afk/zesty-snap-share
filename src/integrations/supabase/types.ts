@@ -88,6 +88,7 @@ export type Database = {
       event_admins: {
         Row: {
           added_by: string | null
+          avatar_url: string | null
           created_at: string
           email: string
           event_id: string
@@ -98,6 +99,7 @@ export type Database = {
         }
         Insert: {
           added_by?: string | null
+          avatar_url?: string | null
           created_at?: string
           email: string
           event_id: string
@@ -108,6 +110,7 @@ export type Database = {
         }
         Update: {
           added_by?: string | null
+          avatar_url?: string | null
           created_at?: string
           email?: string
           event_id?: string

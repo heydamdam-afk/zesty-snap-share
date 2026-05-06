@@ -18,7 +18,7 @@ import { DangerZoneSection } from "@/components/zest/admin/DangerZoneSection";
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
     meta: [
-      { title: "Tableau de bord admin — Zest" },
+      { title: "Tableau de bord admin — Kapsul" },
       { name: "robots", content: "noindex" },
     ],
   }),

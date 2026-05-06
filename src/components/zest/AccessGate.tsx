@@ -513,7 +513,7 @@ export function AccessGate({
           </form>
         </motion.div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Propulsé par <span className="font-semibold">Zeste</span>
+          Propulsé par <span className="font-semibold">Kapsul</span>
         </p>
       </div>
     </div>
