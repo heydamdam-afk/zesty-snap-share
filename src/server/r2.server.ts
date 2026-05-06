@@ -87,7 +87,7 @@ export async function deleteR2Key(key: string): Promise<void> {
  */
 export async function putR2Object(
   key: string,
-  body: ArrayBuffer | Uint8Array,
+  body: ArrayBuffer,
   contentType: string,
 ): Promise<void> {
   const client = getR2Client();
