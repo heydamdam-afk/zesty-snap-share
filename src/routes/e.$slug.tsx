@@ -257,7 +257,7 @@ function Index() {
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
 
       <div className="relative">
-        <EventHero title={guest.event.titre} dateIso={guest.event.event_date ?? guest.event.expire_at} />
+        <EventHero title={guest.event.titre} dateIso={guest.event.event_date ?? guest.event.expire_at} coverUrl={guest.event.cover_url} />
         <ProfileMenu
           guest={guest}
           onAvatarChange={(url) =>
