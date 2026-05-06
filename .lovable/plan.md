@@ -1,55 +1,83 @@
-## Problème confirmé
+## Objectifs
 
-Le bucket `kapsul-photos` est dans la **juridiction EU** de R2 (Wrangler n'a accepté la commande qu'avec `--jurisdiction eu`).
+1. Sur l'écran `/admin` en mode "Créer un compte admin" : ajouter un champ **Prénom** (obligatoire) et un champ **Photo de profil** (optionnelle).
+2. Renommer toutes les occurrences visibles de **Zest / Zeste / zest.** en **Kapsul** dans l'UI.
 
-Ces buckets ne sont PAS accessibles via l'endpoint global `https://{accountId}.r2.cloudflarestorage.com`. Ils ne sont accessibles que via le sous-domaine régional :
+---
 
-```
-https://{accountId}.eu.r2.cloudflarestorage.com
-```
+## 1. Création de compte admin enrichie (`src/routes/admin.tsx`)
 
-Test direct effectué à l'instant sur l'endpoint global → R2 répond `403 CORS not configured`, indépendamment de la policy posée. Le navigateur tape donc un host qui ignore la config CORS du bucket EU.
+### Champs ajoutés (mode signup uniquement)
 
-C'est pour ça qu'on tournait en rond : la policy CORS est correctement posée, mais sur le bon bucket à la mauvaise adresse.
+- **Prénom** — obligatoire, 2–40 caractères, validé via Zod côté client.
+- **Photo de profil** — optionnelle, JPG/PNG/WebP, 5 Mo max, prévisualisation ronde avec initiale + couleur fallback (réutilise `pickAvatarColor` de `zest-session.ts` pour cohérence visuelle avec l'AccessGate invité).
 
-## Changement
+UI : même style que `AccessGate.tsx` (badges "Obligatoire" / "Optionnelle", input rond pour avatar avec initiale colorée, bouton "Choisir une photo").
 
-Un seul fichier touché : `src/server/r2.server.ts`.
+### Stockage
 
-Modifier `getR2Endpoint()` pour insérer `.eu.` dans le host :
+- **Prénom** → colonne `event_admins.prenom` (existe déjà, nullable, jamais peuplée jusqu'ici).
+- **Photo** → bucket Supabase Storage `event-photos` (existe déjà, public), sous-dossier `admin-avatars/{user_id}.{ext}`. URL publique stockée dans une nouvelle colonne `event_admins.avatar_url` (text, nullable).
 
-```ts
-export function getR2Endpoint(): string {
-  const accountId = env("R2_ACCOUNT_ID");
-  const bucket = env("R2_BUCKET_NAME");
-  return `https://${accountId}.eu.r2.cloudflarestorage.com/${bucket}`;
-}
-```
+### Migration DB
 
-Et mettre à jour `getR2DiagInfo()` en miroir pour que les logs côté client affichent le bon host :
-
-```ts
-export function getR2DiagInfo(): { uploadHost: string; bucket: string } {
-  const accountId = env("R2_ACCOUNT_ID");
-  const bucket = env("R2_BUCKET_NAME");
-  return {
-    uploadHost: `${accountId}.eu.r2.cloudflarestorage.com`,
-    bucket,
-  };
-}
+```sql
+ALTER TABLE public.event_admins
+  ADD COLUMN avatar_url text;
 ```
 
-Aucun autre fichier à toucher :
-- `signPutUrl`, `deleteR2Key` consomment `getR2Endpoint()` → propagé automatiquement.
-- `publicUrlFor` / `keyFromPublicUrl` utilisent `https://photos.kapsul.events` → indépendant.
-- Les variables d'env (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, clés) sont inchangées.
+(La colonne `prenom` existe déjà — rien à faire côté schéma pour ça.)
 
-## Vérification après build
+### Flux signup
 
-1. Re-tester un upload depuis `/e/evj-gregoire` → la requête PUT doit partir vers `…eu.r2.cloudflarestorage.com/...`.
-2. Si la signature reste valide (la région `auto` couvre EU) et la CORS policy déjà posée, l'upload doit passer en 200.
-3. Si on récupère `SignatureDoesNotMatch` au lieu de l'erreur CORS, on saura que le hop suivant est juste un ajustement région — mais aws4fetch avec `region: "auto"` gère normalement le cas.
+1. Validation Zod (email, password, prénom).
+2. `supabase.auth.signUp({ email, password, options: { data: { prenom, avatar_url } } })` — stocke en metadata pour fallback.
+3. Si fichier avatar fourni : upload dans `event-photos/admin-avatars/{user.id}.{ext}` après signup, récupération de la public URL.
+4. **Mise à jour des lignes `event_admins`** correspondant à cet email :
+   - Appel `supabase.rpc("link_admin_user_id")` (déjà fait, lie `user_id`).
+   - `UPDATE event_admins SET prenom = ?, avatar_url = ? WHERE lower(email) = lower(?) AND (prenom IS NULL OR avatar_url IS NULL)` — la policy RLS `admin_can_self_update` autorise déjà cet update (`lower(email) = current_admin_email()`).
+5. Suite du flux existant inchangée (bookmark / dashboard).
 
-## Risque
+### Flux signin
 
-Très faible. Si l'endpoint EU n'était pas le bon (peu probable vu que Wrangler exige `--jurisdiction eu`), on retombera sur une 4xx claire avec un message R2 explicite, et on ajustera. Aucune donnée existante n'est impactée — les anciennes URLs publiques `photos.kapsul.events/...` continuent de servir via le custom domain.
+Inchangé — pas de nouveaux champs affichés.
+
+---
+
+## 2. Renommage "Zest" → "Kapsul"
+
+Remplacer dans **tout le code source** (UI uniquement, pas les clés localStorage/identifiants techniques) :
+
+- `src/components/zest/Logo.tsx` : `zest` → `kapsul` (le `.` final reste, donc "kapsul.").
+- Titres de pages (route `head().meta.title`) :
+  - `src/routes/admin.tsx` → "Espace admin — Kapsul"
+  - `src/routes/$slug.admin.dashboard.tsx` → "Tableau de bord admin — Kapsul"
+  - `src/routes/$slug.admin.index.tsx` → "Espace admin — Kapsul"
+  - `src/routes/closed.tsx` → "Galerie fermée — Kapsul"
+  - `src/routes/dashboard.tsx` → "Redirection dashboard — Kapsul"
+  - `src/routes/e.$slug.tsx` → "Kapsul — Galerie photo de votre événement"
+  - `src/routes/__root.tsx` → meta description / og:title / twitter:description : "Kapsul Photo Hub..."
+- Texte visible "Propulsé par **Zeste**" dans `AccessGate.tsx` → "Propulsé par **Kapsul**".
+- Texte visible "Cette galerie Zest est maintenant fermée." dans `closed.tsx` → "Cette galerie Kapsul est maintenant fermée."
+
+**À NE PAS toucher** (clés techniques, casseraient les sessions existantes) :
+- `zeste_device_id`, `zeste_guest_session`, `zeste_login_attempts`, `zeste_login_lock_until`, `zeste_admin_onboarded` dans localStorage.
+- Chemins de dossiers `src/components/zest/`, `src/lib/zest-actions.ts`, etc. (refactor lourd sans valeur immédiate, et risque de casser des imports).
+- Le composant exporté `ZestLogo` (renommer le symbole impliquerait de mettre à jour ~10 imports — on garde le nom du composant mais on change ce qu'il affiche).
+
+---
+
+## Fichiers modifiés
+
+- **migration SQL** : ajout colonne `event_admins.avatar_url`
+- `src/routes/admin.tsx` (form signup enrichi + upload avatar + update event_admins)
+- `src/components/zest/Logo.tsx` (texte affiché)
+- `src/routes/__root.tsx`, `src/routes/admin.tsx`, `src/routes/$slug.admin.dashboard.tsx`, `src/routes/$slug.admin.index.tsx`, `src/routes/closed.tsx`, `src/routes/dashboard.tsx`, `src/routes/e.$slug.tsx` (titres et descriptions)
+- `src/components/zest/AccessGate.tsx` ("Propulsé par Zeste" → "Kapsul")
+
+---
+
+## Questions ouvertes
+
+- Le **prénom** doit-il aussi être affiché dans l'`AdminHeader` à la place / à côté de l'email une fois connecté ? (Pas inclus pour l'instant — peut être fait dans un second temps si tu veux.)
+- L'**avatar admin** doit-il apparaître quelque part dans l'UI admin (header, liste des admins de la section "Admins") ? Si oui je l'ajoute aussi — sinon la donnée est juste stockée pour usage futur.
