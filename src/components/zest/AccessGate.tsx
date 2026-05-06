@@ -258,7 +258,14 @@ export function AccessGate({
             });
           }
         } else {
-          setErrors({ global: "Connexion impossible, réessayez." });
+          const detail =
+            (result as { error?: { message?: string } }).error?.message;
+          console.error("[AccessGate] login failed", result);
+          setErrors({
+            global: detail
+              ? `Connexion impossible : ${detail}`
+              : "Connexion impossible, réessayez.",
+          });
         }
         return;
       }
