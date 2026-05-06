@@ -14,6 +14,7 @@ import { Route as CreateEventRouteImport } from './routes/create-event'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
@@ -43,6 +44,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformCouponsRoute = PlatformCouponsRouteImport.update({
+  id: '/platform/coupons',
+  path: '/platform/coupons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ESlugRoute = ESlugRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/create-event/success'
     | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin/'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/create-event/success'
     | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/create-event/success'
     | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin/'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   CreateEventRoute: typeof CreateEventRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ESlugRoute: typeof ESlugRoute
+  PlatformCouponsRoute: typeof PlatformCouponsRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
   ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform/coupons': {
+      id: '/platform/coupons'
+      path: '/platform/coupons'
+      fullPath: '/platform/coupons'
+      preLoaderRoute: typeof PlatformCouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/e/$slug': {
@@ -253,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateEventRoute: CreateEventRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ESlugRoute: ESlugRoute,
+  PlatformCouponsRoute: PlatformCouponsRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
   ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
