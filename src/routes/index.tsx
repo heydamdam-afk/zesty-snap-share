@@ -1,455 +1,282 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { PostCard } from "@/components/zest/PostCard";
-import { Gallery } from "@/components/zest/Gallery";
-import { EventHero } from "@/components/zest/EventHero";
-import { EventDetails } from "@/components/zest/EventDetails";
-import { EventStats } from "@/components/zest/EventStats";
-import { StickyTabs, type TabId } from "@/components/zest/StickyTabs";
-import { FloatingUploadButton } from "@/components/zest/FloatingUploadButton";
-import { GuestsList } from "@/components/zest/GuestsList";
-import { QrPanel } from "@/components/zest/QrPanel";
-import { ComposeBar } from "@/components/zest/ComposeBar";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  AccessGate,
-  loadGuest,
-  saveGuest,
-  type GuestSession,
-} from "@/components/zest/AccessGate";
-import { ProfileMenu } from "@/components/zest/ProfileMenu";
-import { ProfileDialog } from "@/components/zest/ProfileDialog";
-import { Footer } from "@/components/zest/Footer";
-import { QuotaBanner, QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
-import { useEventFeed, type FeedPost } from "@/hooks/useEventFeed";
-import {
-  uploadGalleryBatch,
-  ACCEPTED_PHOTO_TYPES,
-  MAX_PHOTO_BYTES,
-  type UploadProgress,
-} from "@/lib/zest-actions";
-import { useAdmin } from "@/hooks/useAdmin";
-import { Link } from "@tanstack/react-router";
-import { Shield } from "lucide-react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { findEventBySlug, findInvite } from "@/lib/zest-actions";
-import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
+import { ZestLogo } from "@/components/zest/Logo";
+import { findEventByCode } from "@/lib/zest-actions";
 import { toast } from "sonner";
-
-const EVENT_SLUG = "JULIE2026";
-const QUOTA_TOTAL = 500;
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Zest — Galerie photo de votre événement" },
+      { title: "Kapsul — Créez votre galerie photo d'événement" },
       {
         name: "description",
         content:
-          "Galerie photo éphémère partagée en temps réel — postez vos plus beaux moments avec Zest.",
+          "Kapsul.events — créez en 1 minute la galerie photo collaborative de votre mariage, anniversaire ou événement pro.",
       },
     ],
   }),
-  component: Index,
-  errorComponent: ({ error, reset }) => (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-      <h1 className="font-display text-2xl text-foreground">Une erreur est survenue</h1>
-      <p className="max-w-md text-sm text-muted-foreground">{error.message}</p>
-      <button
-        type="button"
-        onClick={() => {
-          try {
-            localStorage.removeItem("zeste_guest_session");
-            localStorage.removeItem("zeste_login_attempts");
-            localStorage.removeItem("zeste_login_lock_until");
-          } catch {/* noop */}
-          reset();
-          window.location.reload();
-        }}
-        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
-      >
-        Réinitialiser et recharger
-      </button>
-    </div>
-  ),
+  component: Landing,
 });
 
-function Index() {
-  const [tab, setTab] = useState<TabId>("feed");
-  const [guest, setGuest] = useState<GuestSession | null>(null);
+function Landing() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [showGuestEntry, setShowGuestEntry] = useState(false);
+  const [guestCode, setGuestCode] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [onlyMine, setOnlyMine] = useState(false);
-  const [uploads, setUploads] = useState<UploadProgress[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
 
+  // Rétro-compat : ancien QR `/?code=XXXX` → redirige vers /e/{slug}?code=XXXX
   useEffect(() => {
-    setGuest(loadGuest());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    saveGuest(guest);
-  }, [guest]);
-
-  // Auto-créer une session admin si l'utilisateur est connecté côté Supabase
-  // mais n'a pas (encore) de session guest locale.
-  useEffect(() => {
-    if (!hydrated || guest) return;
-    let cancel = false;
-    (async () => {
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        const session = sess.session;
-        const user = session?.user;
-        // Guard : pas de session, on stoppe (pas de requête DB inutile)
-        if (!user?.email) return;
-        const event = await findEventBySlug(
-          EVENT_SLUG === "JULIE2026" ? "mariage-sabrina-thomas" : EVENT_SLUG,
-        );
-        if (!event) return;
-        // Lier user_id si admin invité par email avant inscription
-        await supabase.rpc("link_admin_user_id");
-        const { data: adminRow, error: adminErr } = await supabase
-          .from("event_admins")
-          .select("id")
-          .eq("event_id", event.id)
-          .ilike("email", user.email)
-          .maybeSingle();
-        if (adminErr) {
-          console.error("[index] admin lookup error", adminErr);
-          return;
-        }
-        if (!adminRow) return;
-        const deviceId = getOrCreateDeviceId();
-        let invite = await findInvite(event.id, deviceId);
-        if (!invite) {
-          const prenom = (user.email.split("@")[0] ?? "Admin").slice(0, 40);
-          const { data: created } = await supabase
-            .from("invites")
-            .insert({
-              event_id: event.id,
-              prenom,
-              email: user.email,
-              device_id: deviceId,
-              rgpd_consent: false,
-            })
-            .select()
-            .single();
-          invite = created ?? null;
-        }
-        if (!invite || cancel) return;
-        setGuest(buildSession(invite, event));
-      } catch (e) {
-        console.error("[index] auto admin session failed", e);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [hydrated, guest]);
-
-  const { posts, reload } = useEventFeed(
-    guest?.event.id ?? null,
-    guest?.invite.id ?? null,
-  );
-
-  const { isAdmin } = useAdmin(guest?.event.id ?? null);
-
-  const stats = useMemo(() => {
-    const guests = new Set(posts.map((p) => p.invite_id)).size;
-    const photoCount = posts.reduce((sum, p) => {
-      const n = p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0;
-      return sum + n;
-    }, 0);
-    const likes = posts.reduce((s, p) => s + p.nb_likes, 0);
-    return { guests, photos: photoCount, likes };
-  }, [posts]);
-
-  const quotaUsed = stats.photos;
-  const quotaFull = quotaUsed >= QUOTA_TOTAL;
-
-  const handleUpload = async (files: FileList) => {
-    if (!guest) return;
-    if (quotaFull) {
-      toast.error(QUOTA_FULL_MESSAGE);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) {
+      setHydrated(true);
       return;
     }
-    const arr = Array.from(files);
-    // Client-side validation.
-    const tooBig = arr.filter((f) => f.size > MAX_PHOTO_BYTES);
-    const badType = arr.filter(
-      (f) => !ACCEPTED_PHOTO_TYPES.includes((f.type || "").toLowerCase()),
-    );
-    const invalid = new Set([...tooBig, ...badType].map((f) => f.name));
-    const valid = arr.filter((f) => !invalid.has(f.name));
+    (async () => {
+      try {
+        const event = await findEventByCode(code);
+        if (event) {
+          navigate({
+            to: "/e/$slug",
+            params: { slug: event.slug },
+            search: { code } as never,
+          });
+          return;
+        }
+      } catch {
+        /* noop */
+      }
+      setHydrated(true);
+    })();
+  }, [navigate]);
 
-    if (tooBig.length > 0) {
-      toast.error(`${tooBig.length} fichier(s) > 50 Mo ignoré(s)`, {
-        description: tooBig.map((f) => `• ${f.name}`).join("\n"),
-        duration: 8000,
-      });
-    }
-    if (badType.length > 0) {
-      toast.error(`${badType.length} format(s) non supporté(s) ignoré(s)`, {
-        description: badType.map((f) => `• ${f.name}`).join("\n"),
-        duration: 8000,
-      });
-    }
-    if (valid.length === 0) return;
-    setUploading(true);
-    setUploads(
-      valid.map((f, i) => ({
-        index: i,
-        total: valid.length,
-        fileName: f.name,
-        status: "pending" as const,
-        percent: 0,
-      })),
-    );
+  // Si user déjà loggé → on redirige vers son dashboard ou /create-event
+  useEffect(() => {
+    if (!hydrated) return;
+    let cancel = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancel || !data.session?.user) return;
+      await routeAfterAuth(navigate);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [hydrated, navigate]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    setLoading(true);
     try {
-      const res = await uploadGalleryBatch({
-        eventId: guest.event.id,
-        inviteId: guest.invite.id,
-        files: valid,
-        onProgress: (p) =>
-          setUploads((list) => list.map((it) => (it.index === p.index ? p : it))),
-      });
-      await reload();
-      if (res.errors.length > 0 && res.ok > 0) {
-        toast.warning(`${res.ok}/${valid.length} photo(s) envoyée(s)`, {
-          description:
-            `${res.errors.length} échec(s) :\n` +
-            res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
-          duration: 12000,
+      if (mode === "signin") {
+        const { error: err } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
         });
-      } else if (res.errors.length > 0) {
-        toast.error(`Aucune photo envoyée (${res.errors.length} échec(s))`, {
-          description: res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
-          duration: 12000,
-        });
+        if (err) throw err;
+        await routeAfterAuth(navigate);
       } else {
-        toast.success(
-          res.ok === 1 ? "Photo envoyée" : `${res.ok} photos envoyées`,
+        const { error: err } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/create-event`,
+          },
+        });
+        if (err) throw err;
+        setInfo(
+          "Vérifiez votre boîte mail pour confirmer votre compte. Une fois confirmé, vous pourrez créer votre premier événement.",
         );
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Upload impossible, réessayez.", {
-        description: e instanceof Error ? e.message : undefined,
-      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
     } finally {
-      setUploading(false);
-      setTimeout(() => setUploads([]), 1500);
+      setLoading(false);
+    }
+  };
+
+  const submitGuest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = guestCode.trim();
+    if (!code) return;
+    try {
+      const event = await findEventByCode(code);
+      if (!event) {
+        toast.error("Code d'accès invalide");
+        return;
+      }
+      navigate({
+        to: "/e/$slug",
+        params: { slug: event.slug },
+        search: { code } as never,
+      });
+    } catch {
+      toast.error("Erreur lors de la recherche");
     }
   };
 
   if (!hydrated) return null;
-  if (!guest) return <AccessGate slug={EVENT_SLUG} onEnter={setGuest} />;
-
-  const visiblePosts: FeedPost[] = onlyMine
-    ? posts.filter((p) => p.invite_id === guest.invite.id)
-    : posts;
 
   return (
-    <div className="relative min-h-screen bg-background pb-32">
-      <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
+    <div className="min-h-screen bg-[image:var(--gradient-warm)]">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10">
+        <div className="mb-6 flex items-center gap-2">
+          <ZestLogo />
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+            kapsul.events
+          </span>
+        </div>
 
-      <div className="relative">
-        <EventHero title={guest.event.titre} dateIso={guest.event.event_date ?? guest.event.expire_at} />
-        <ProfileMenu
-          guest={guest}
-          onAvatarChange={(url) =>
-            setGuest((g) =>
-              g ? { ...g, invite: { ...g.invite, avatar_url: url } } : g,
-            )
-          }
-          onShowMyPhotos={() => {
-            setOnlyMine(true);
-            setTab("gallery");
-          }}
-          onEditProfile={() => setProfileOpen(true)}
-          onLeave={() => {
-            setGuest(null);
-            setOnlyMine(false);
-          }}
-        />
-        <ProfileDialog
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-          guest={guest}
-          onUpdated={(next) =>
-            setGuest((g) =>
-              g
-                ? {
-                    ...g,
-                    invite: {
-                      ...g.invite,
-                      ...(next.prenom !== undefined ? { prenom: next.prenom } : {}),
-                      ...(next.email !== undefined ? { email: next.email } : {}),
-                      ...(next.avatar_url !== undefined ? { avatar_url: next.avatar_url } : {}),
-                    },
-                  }
-                : g,
-            )
-          }
-        />
-      </div>
+        <div className="w-full rounded-3xl bg-card/95 p-7 shadow-card backdrop-blur">
+          <h1 className="font-display text-2xl text-foreground">
+            {mode === "signin"
+              ? "Espace organisateur"
+              : "Créer un compte organisateur"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === "signin"
+              ? "Connectez-vous pour créer ou gérer vos événements."
+              : "Quelques secondes pour lancer votre galerie photo collaborative."}
+          </p>
 
-      <EventStats
-        guests={stats.guests}
-        photos={stats.photos}
-        likes={stats.likes}
-      />
-
-      <StickyTabs active={tab} onChange={setTab} />
-
-      <main className="px-3 pt-3">
-        <AnimatePresence mode="wait">
-          {tab === "feed" && (
-            <motion.div
-              key="feed"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-3"
-            >
-              <ComposeBar guest={guest} onPosted={reload} />
-              {visiblePosts.map((p) => (
-                <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} />
-              ))}
-              {visiblePosts.length === 0 && (
-                <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-                  Aucun post pour le moment.
-                </p>
-              )}
-            </motion.div>
-          )}
-          {tab === "gallery" && (
-            <motion.div
-              key="gallery"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="-mx-3"
-            >
-              {onlyMine && (
-                <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-xs">
-                  <span className="font-medium text-foreground">
-                    Mes photos ({visiblePosts.reduce((s, p) => s + (p.photos.length > 0 ? p.photos.length : p.url_medium ? 1 : 0), 0)})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setOnlyMine(false)}
-                    className="font-semibold text-primary"
-                  >
-                    Voir tout
-                  </button>
-                </div>
-              )}
-              <Gallery
-                posts={visiblePosts}
-                isAdmin={isAdmin}
-                currentDeviceId={guest.invite.device_id}
-                onChanged={reload}
+          <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+            {error && (
+              <div
+                className="rounded-xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
+            {info && (
+              <div
+                className="rounded-xl bg-primary/10 px-4 py-3 text-sm font-medium text-primary"
+                role="status"
+              >
+                {info}
+              </div>
+            )}
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-            </motion.div>
-          )}
-          {tab === "guests" && (
-            <motion.div
-              key="guests"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="-mx-3"
+            </div>
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Mot de passe
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-soft transition disabled:opacity-50"
             >
-              <EventDetails
-                dateIso={guest.event.event_date ?? guest.event.expire_at}
-                isAdmin={isAdmin}
-                onEdit={() => window.alert("Édition de l'événement à venir")}
-              />
-              <GuestsList
-                posts={posts}
-                eventId={guest.event.id}
-                isAdmin={isAdmin}
-                currentDeviceId={guest.invite.device_id}
-                onChanged={reload}
-              />
-            </motion.div>
-          )}
-          {tab === "qr" && (
-            <motion.div
-              key="qr"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="-mx-3"
+              {loading
+                ? "…"
+                : mode === "signin"
+                  ? "Se connecter"
+                  : "Créer mon compte"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setInfo(null);
+              }}
+              className="w-full text-center text-xs font-medium text-primary hover:underline"
             >
-              <QrPanel
-                title={guest.event.titre}
-                code={guest.event.code_acces}
-                dateIso={guest.event.event_date ?? guest.event.expire_at}
-                lieu={guest.event.lieu}
-                contact={guest.event.contact}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+              {mode === "signin"
+                ? "Pas encore de compte ? Créer un compte organisateur"
+                : "J'ai déjà un compte"}
+            </button>
+          </form>
 
-      {tab === "gallery" && (
-        <FloatingUploadButton onPick={handleUpload} disabled={quotaFull} />
-      )}
-
-      {uploads.length > 0 && (
-        <div className="fixed inset-x-0 bottom-24 z-50 mx-auto w-full max-w-[360px] space-y-1 px-4">
-          <div className="rounded-2xl bg-card p-3 shadow-card">
-            <p className="mb-2 text-xs font-semibold text-foreground">
-              {uploading ? "Envoi en cours…" : "Envoi terminé"}
-            </p>
-            <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-              {uploads.map((u) => (
-                <li key={u.index} className="text-[11px]">
-                  <div className="flex justify-between gap-2">
-                    <span className="truncate text-foreground/80">{u.fileName}</span>
-                    <span
-                      className={
-                        u.status === "error"
-                          ? "text-destructive"
-                          : u.status === "done"
-                            ? "text-primary"
-                            : "text-muted-foreground"
-                      }
-                    >
-                      {u.status === "error"
-                        ? "✗"
-                        : u.status === "done"
-                          ? "✓"
-                          : `${u.percent}%`}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className={`h-full transition-all ${u.status === "error" ? "bg-destructive" : "bg-primary"}`}
-                      style={{ width: `${u.status === "done" ? 100 : u.percent}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-6 border-t border-border pt-4 text-center">
+            {!showGuestEntry ? (
+              <button
+                type="button"
+                onClick={() => setShowGuestEntry(true)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                J'ai un code d'accès invité →
+              </button>
+            ) : (
+              <form onSubmit={submitGuest} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="CODE"
+                  value={guestCode}
+                  onChange={(e) => setGuestCode(e.target.value.toUpperCase())}
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-bold uppercase tracking-widest focus:border-primary focus:outline-none"
+                  maxLength={20}
+                />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-foreground"
+                >
+                  Entrer
+                </button>
+              </form>
+            )}
           </div>
         </div>
-      )}
 
-      <div className="mt-10 pb-20">
-        <Footer
-          eventId={guest?.event.id}
-          eventTitle={guest?.event.titre}
-          slug={guest?.event.slug}
-        />
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          <Link to="/admin" className="hover:text-foreground">
+            Admin d'un event existant ?
+          </Link>
+        </p>
       </div>
     </div>
   );
+}
+
+async function routeAfterAuth(
+  navigate: ReturnType<typeof useNavigate>,
+): Promise<void> {
+  // Lier les éventuels event_admins invités par email
+  await supabase.rpc("link_admin_user_id");
+  const { data } = await supabase.rpc("my_admin_events");
+  const events = (data as Array<{ slug: string }> | null) ?? [];
+  if (events.length > 0) {
+    navigate({ to: "/$slug/admin/dashboard", params: { slug: events[0].slug } });
+  } else {
+    navigate({ to: "/create-event" });
+  }
 }

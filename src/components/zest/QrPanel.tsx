@@ -18,12 +18,14 @@ function formatDate(iso?: string | null) {
 export function QrPanel({
   title,
   code,
+  slug,
   dateIso,
   lieu,
   contact,
 }: {
   title: string;
   code: string;
+  slug?: string;
   dateIso?: string | null;
   lieu?: string | null;
   contact?: string | null;
@@ -33,8 +35,12 @@ export function QrPanel({
 
   const url =
     typeof window !== "undefined"
-      ? `${window.location.origin}/?code=${code}`
-      : `https://zeste.app/?code=${code}`;
+      ? slug
+        ? `${window.location.origin}/e/${slug}`
+        : `${window.location.origin}/?code=${code}`
+      : slug
+        ? `https://kapsul.events/e/${slug}`
+        : `https://kapsul.events/?code=${code}`;
 
   useEffect(() => {
     if (!canvasRef.current) return;

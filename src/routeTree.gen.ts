@@ -10,9 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CreateEventRouteImport } from './routes/create-event'
 import { Route as ClosedRouteImport } from './routes/closed'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
+import { Route as ESlugRouteImport } from './routes/e.$slug'
+import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
@@ -20,6 +24,11 @@ import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.das
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateEventRoute = CreateEventRouteImport.update({
+  id: '/create-event',
+  path: '/create-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClosedRoute = ClosedRouteImport.update({
@@ -36,6 +45,21 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformCouponsRoute = PlatformCouponsRouteImport.update({
+  id: '/platform/coupons',
+  path: '/platform/coupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ESlugRoute = ESlugRouteImport.update({
+  id: '/e/$slug',
+  path: '/e/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateEventSuccessRoute = CreateEventSuccessRouteImport.update({
+  id: '/success',
+  path: '/success',
+  getParentRoute: () => CreateEventRoute,
 } as any)
 const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   id: '/$slug/admin/',
@@ -57,7 +81,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/create-event/success': typeof CreateEventSuccessRoute
+  '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
@@ -66,7 +94,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/create-event/success': typeof CreateEventSuccessRoute
+  '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
@@ -76,7 +108,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
+  '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/create-event/success': typeof CreateEventSuccessRoute
+  '/e/$slug': typeof ESlugRoute
+  '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
@@ -87,7 +123,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
+    | '/create-event/success'
+    | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin/'
@@ -96,7 +136,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
+    | '/create-event/success'
+    | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin'
@@ -105,7 +149,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/closed'
+    | '/create-event'
     | '/dashboard'
+    | '/create-event/success'
+    | '/e/$slug'
+    | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
     | '/$slug/admin/'
@@ -115,7 +163,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
+  CreateEventRoute: typeof CreateEventRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  ESlugRoute: typeof ESlugRoute
+  PlatformCouponsRoute: typeof PlatformCouponsRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
   ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
@@ -128,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-event': {
+      id: '/create-event'
+      path: '/create-event'
+      fullPath: '/create-event'
+      preLoaderRoute: typeof CreateEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/closed': {
@@ -150,6 +208,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/platform/coupons': {
+      id: '/platform/coupons'
+      path: '/platform/coupons'
+      fullPath: '/platform/coupons'
+      preLoaderRoute: typeof PlatformCouponsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/e/$slug': {
+      id: '/e/$slug'
+      path: '/e/$slug'
+      fullPath: '/e/$slug'
+      preLoaderRoute: typeof ESlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-event/success': {
+      id: '/create-event/success'
+      path: '/success'
+      fullPath: '/create-event/success'
+      preLoaderRoute: typeof CreateEventSuccessRouteImport
+      parentRoute: typeof CreateEventRoute
     }
     '/$slug/admin/': {
       id: '/$slug/admin/'
@@ -175,11 +254,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CreateEventRouteChildren {
+  CreateEventSuccessRoute: typeof CreateEventSuccessRoute
+}
+
+const CreateEventRouteChildren: CreateEventRouteChildren = {
+  CreateEventSuccessRoute: CreateEventSuccessRoute,
+}
+
+const CreateEventRouteWithChildren = CreateEventRoute._addFileChildren(
+  CreateEventRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
+  CreateEventRoute: CreateEventRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  ESlugRoute: ESlugRoute,
+  PlatformCouponsRoute: PlatformCouponsRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
   ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,

@@ -191,6 +191,77 @@ export type Database = {
           },
         ]
       }
+      event_coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          event_id: string
+          id: string
+          redeemed_at: string
+          redeemed_by: string
+        }
+        Insert: {
+          coupon_id: string
+          event_id: string
+          id?: string
+          redeemed_at?: string
+          redeemed_by: string
+        }
+        Update: {
+          coupon_id?: string
+          event_id?: string
+          id?: string
+          redeemed_at?: string
+          redeemed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "event_coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          note: string | null
+          type: string
+          uses_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          note?: string | null
+          type?: string
+          uses_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          note?: string | null
+          type?: string
+          uses_count?: number
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           code_acces: string
@@ -328,6 +399,24 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_photos: {
         Row: {
           created_at: string
@@ -426,6 +515,19 @@ export type Database = {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
       }
+      create_event_with_coupon: {
+        Args: {
+          _code_acces: string
+          _contact: string
+          _coupon_code: string
+          _cover_url: string
+          _event_date: string
+          _lieu: string
+          _slug: string
+          _titre: string
+        }
+        Returns: Json
+      }
       current_admin_email: { Args: never; Returns: string }
       delete_own_commentaire: {
         Args: { _commentaire_id: string; _device_id: string }
@@ -467,7 +569,17 @@ export type Database = {
         Args: { _event_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       link_admin_user_id: { Args: never; Returns: undefined }
+      my_admin_events: {
+        Args: never
+        Returns: {
+          event_id: string
+          role: Database["public"]["Enums"]["admin_role"]
+          slug: string
+          titre: string
+        }[]
+      }
       transfer_organisateur: {
         Args: {
           p_current_org_id: string
@@ -528,6 +640,7 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       admin_role: "organisateur" | "secondaire"
