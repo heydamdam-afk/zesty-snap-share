@@ -129,17 +129,12 @@ export function ProfileDialog({
 
         <div className="space-y-5">
           <div className="flex items-center gap-4">
-            <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <Avatar initials={initial} size="lg" className="!h-16 !w-16 !text-base" />
-              )}
-            </div>
+            <Avatar
+              initials={initial}
+              src={avatarUrl}
+              size="lg"
+              className="!h-16 !w-16 !text-base"
+            />
             <div>
               <input
                 ref={fileRef}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Send, Trash2, Shield, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { Avatar } from "./Avatar";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
@@ -79,9 +80,10 @@ export function PostCard({
     try {
       await deletePost(post.id);
       await onChanged?.();
+      toast.success("Post supprimé");
     } catch (e) {
-      console.error(e);
-      window.alert("Suppression impossible");
+      console.error("[adminDeletePost]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
@@ -92,9 +94,10 @@ export function PostCard({
     try {
       await deletePost(post.id, guest.invite.device_id);
       await onChanged?.();
+      toast.success("Post supprimé");
     } catch (e) {
-      console.error(e);
-      window.alert("Suppression impossible");
+      console.error("[ownerDeletePost]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
@@ -103,8 +106,10 @@ export function PostCard({
     try {
       await deleteCommentAsAdmin(id);
       await onChanged?.();
+      toast.success("Commentaire supprimé");
     } catch (e) {
-      console.error(e);
+      console.error("[adminDeleteComment]", e);
+      toast.error(`Suppression impossible : ${e instanceof Error ? e.message : "erreur inconnue"}`);
     }
   };
 
@@ -127,7 +132,7 @@ export function PostCard({
       className="overflow-hidden rounded-3xl bg-card shadow-card"
     >
       <div className="flex items-center gap-3 p-4">
-        <Avatar initials={initialsOf(author)} />
+        <Avatar initials={initialsOf(author)} src={post.invites?.avatar_url ?? null} />
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">{author}</p>
           <p className="text-xs text-muted-foreground">{timeAgo(post.created_at)}</p>
@@ -249,7 +254,7 @@ export function PostCard({
                   const isMine = c.invite_id === guest.invite.id;
                   return (
                     <li key={c.id} className="flex gap-2">
-                      <Avatar initials={initialsOf(cName)} size="sm" />
+                      <Avatar initials={initialsOf(cName)} src={c.invites?.avatar_url ?? null} size="sm" />
                       <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-secondary px-3 py-2">
                         <p className="text-xs font-semibold text-foreground">{cName}</p>
                         <p className="text-sm text-foreground/90">{c.contenu}</p>
@@ -274,7 +279,7 @@ export function PostCard({
             )}
 
             <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-              <Avatar initials={guest.initial} size="sm" />
+              <Avatar initials={guest.initial} src={guest.invite.avatar_url} size="sm" />
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}

@@ -66,7 +66,7 @@ export function ProfileMenu({
         className="rounded-full ring-2 ring-card"
         aria-label="Profil"
       >
-        <Avatar initials={guest.initial} />
+        <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-2xl bg-card shadow-card">
