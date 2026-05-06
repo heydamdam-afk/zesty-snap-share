@@ -418,7 +418,7 @@ export function AccessGate({
                 <label htmlFor="email" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Email
                 </label>
-                <Badge tone="recommended">Recommandé</Badge>
+                <Badge tone="required">Obligatoire</Badge>
               </div>
               <input
                 id="email"
@@ -433,36 +433,20 @@ export function AccessGate({
                 disabled={isLocked || loading}
                 className={inputClass(!!errors.email)}
               />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Pour recevoir vos photos après l'event.
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Votre email est utilisé uniquement pour retrouver vos photos.{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  Voir notre politique de confidentialité.
+                </a>
               </p>
               {errors.email && (
                 <p className="mt-1 text-xs font-medium text-destructive">{errors.email}</p>
               )}
-
-              <label
-                className={`mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-background/60 p-3 transition ${
-                  email ? "" : "opacity-60"
-                }`}
-              >
-                <span
-                  className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border-2 transition ${
-                    rgpd ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
-                  }`}
-                >
-                  {rgpd && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                </span>
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={rgpd}
-                  onChange={(e) => setRgpd(e.target.checked)}
-                  disabled={!email || isLocked || loading}
-                />
-                <span className="text-xs leading-relaxed text-foreground/85">
-                  J'accepte de recevoir mes photos par email
-                </span>
-              </label>
             </div>
 
             <div>
