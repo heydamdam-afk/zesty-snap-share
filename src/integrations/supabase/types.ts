@@ -118,13 +118,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "event_admins_added_by_fkey"
-            columns: ["added_by"]
-            isOneToOne: false
-            referencedRelation: "event_admins"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "event_admins_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
