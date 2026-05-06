@@ -18,9 +18,9 @@ export function getR2Client() {
 }
 
 export function getR2Endpoint(): string {
-  const accountId = env("R2_ACCOUNT_ID");
+  const endpoint = env("R2_ENDPOINT").trim().replace(/\/+$/, "");
   const bucket = env("R2_BUCKET_NAME");
-  return `https://${accountId}.eu.r2.cloudflarestorage.com/${bucket}`;
+  return `${endpoint}/${bucket}`;
 }
 
 /**
@@ -28,10 +28,10 @@ export function getR2Endpoint(): string {
  * Lets the client log exactly which bucket / host the signed PUT is targeting.
  */
 export function getR2DiagInfo(): { uploadHost: string; bucket: string } {
-  const accountId = env("R2_ACCOUNT_ID");
+  const endpoint = env("R2_ENDPOINT").trim().replace(/\/+$/, "");
   const bucket = env("R2_BUCKET_NAME");
   return {
-    uploadHost: `${accountId}.eu.r2.cloudflarestorage.com`,
+    uploadHost: new URL(endpoint).host,
     bucket,
   };
 }
