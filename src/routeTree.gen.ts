@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateEventRouteImport } from './routes/create-event'
 import { Route as ClosedRouteImport } from './routes/closed'
@@ -21,6 +22,11 @@ import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/reset-password'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/reset-password'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/reset-password'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   ClosedRoute: typeof ClosedRoute
   CreateEventRoute: typeof CreateEventRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ESlugRoute: typeof ESlugRoute
   PlatformCouponsRoute: typeof PlatformCouponsRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
@@ -174,6 +187,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -272,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClosedRoute: ClosedRoute,
   CreateEventRoute: CreateEventRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ESlugRoute: ESlugRoute,
   PlatformCouponsRoute: PlatformCouponsRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
