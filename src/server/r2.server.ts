@@ -20,7 +20,7 @@ export function getR2Client() {
 export function getR2Endpoint(): string {
   const accountId = env("R2_ACCOUNT_ID");
   const bucket = env("R2_BUCKET_NAME");
-  return `https://${accountId}.r2.cloudflarestorage.com/${bucket}`;
+  return `https://${accountId}.eu.r2.cloudflarestorage.com/${bucket}`;
 }
 
 /**
@@ -31,7 +31,7 @@ export function getR2DiagInfo(): { uploadHost: string; bucket: string } {
   const accountId = env("R2_ACCOUNT_ID");
   const bucket = env("R2_BUCKET_NAME");
   return {
-    uploadHost: `${accountId}.r2.cloudflarestorage.com`,
+    uploadHost: `${accountId}.eu.r2.cloudflarestorage.com`,
     bucket,
   };
 }
