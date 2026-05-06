@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
 import { findEventByCode } from "@/lib/zest-actions";
+import { pickAvatarColor } from "@/lib/zest-session";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -24,6 +25,9 @@ function Landing() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -31,6 +35,7 @@ function Landing() {
   const [guestCode, setGuestCode] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Rétro-compat : ancien QR `/?code=XXXX` → redirige vers /e/{slug}?code=XXXX
   useEffect(() => {
@@ -77,6 +82,13 @@ function Landing() {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    if (mode === "signup") {
+      const p = prenom.trim();
+      if (p.length < 2 || p.length > 40) {
+        setError("Prénom requis (2 à 40 caractères).");
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (mode === "signin") {
@@ -87,14 +99,52 @@ function Landing() {
         if (err) throw err;
         await routeAfterAuth(navigate);
       } else {
+        const cleanPrenom = prenom.trim();
         const { error: err } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/create-event`,
+            data: { prenom: cleanPrenom },
           },
         });
         if (err) throw err;
+
+        // Si la session existe déjà (auto-confirm), on peut uploader l'avatar
+        // et propager prenom + avatar_url dans event_admins. Sinon ce sera
+        // fait au prochain login (link_admin_user_id côté /admin ou my-events).
+        const { data: postSignup } = await supabase.auth.getSession();
+        const userId = postSignup.session?.user.id ?? null;
+        if (userId) {
+          let avatarUrl: string | null = null;
+          if (avatarFile) {
+            const ext = (avatarFile.name.split(".").pop() || "jpg").toLowerCase();
+            const path = `admin-avatars/${userId}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from("event-photos")
+              .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+            if (!upErr) {
+              const { data: pub } = supabase.storage
+                .from("event-photos")
+                .getPublicUrl(path);
+              avatarUrl = pub.publicUrl;
+            } else {
+              console.warn("[landing] avatar upload failed", upErr);
+            }
+          }
+          try {
+            await supabase.rpc("link_admin_user_id");
+            const updates: { prenom?: string; avatar_url?: string } = { prenom: cleanPrenom };
+            if (avatarUrl) updates.avatar_url = avatarUrl;
+            await supabase
+              .from("event_admins")
+              .update(updates)
+              .ilike("email", email.trim());
+          } catch (e) {
+            console.warn("[landing] propagate profile to event_admins failed", e);
+          }
+        }
+
         setInfo(
           "Vérifiez votre boîte mail pour confirmer votre compte. Une fois confirmé, vous pourrez créer votre premier événement.",
         );
@@ -166,6 +216,93 @@ function Landing() {
               >
                 {info}
               </div>
+            )}
+            {mode === "signup" && (
+              <>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label
+                      htmlFor="prenom"
+                      className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      Prénom
+                    </label>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                      Obligatoire
+                    </span>
+                  </div>
+                  <input
+                    id="prenom"
+                    type="text"
+                    autoComplete="given-name"
+                    required
+                    minLength={2}
+                    maxLength={40}
+                    value={prenom}
+                    onChange={(e) => setPrenom(e.target.value)}
+                    placeholder="Votre prénom"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Photo de profil
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Optionnelle
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 rounded-xl border border-border bg-background/60 p-3">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-card"
+                      style={{
+                        backgroundColor: avatarPreview
+                          ? "transparent"
+                          : pickAvatarColor(prenom || email || "?"),
+                      }}
+                    >
+                      {avatarPreview ? (
+                        <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-white">
+                          {(prenom.trim()[0] ?? email.trim()[0] ?? "?").toUpperCase()}
+                        </span>
+                      )}
+                    </button>
+                    <div className="min-w-0 flex-1 text-sm">
+                      <p className="text-xs text-muted-foreground">JPG, PNG ou WebP · 5 Mo max</p>
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        className="mt-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        {avatarPreview ? "Changer" : "Choisir une photo"}
+                      </button>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          if (!f.type.startsWith("image/") || f.size > 5 * 1024 * 1024) {
+                            setError("Image invalide (5 Mo max).");
+                            return;
+                          }
+                          setAvatarFile(f);
+                          const reader = new FileReader();
+                          reader.onload = () => setAvatarPreview(reader.result as string);
+                          reader.readAsDataURL(f);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <label
