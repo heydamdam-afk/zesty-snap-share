@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
-import { uploadOnePhoto } from "@/lib/zest-actions";
 import {
   slugify,
   ensureUniqueSlug,
@@ -52,6 +51,48 @@ function CreateEventPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ACCEPTED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  const MAX_COVER_BYTES = 5 * 1024 * 1024;
+  const MIN_COVER_W = 800;
+  const MIN_COVER_H = 450;
+
+  const handleCoverPick = async (file: File | null) => {
+    if (!file) {
+      setCoverFile(null);
+      return;
+    }
+    if (!ACCEPTED_COVER_TYPES.includes(file.type.toLowerCase())) {
+      toast.error("Format non supporté (JPG, PNG ou WebP uniquement)");
+      return;
+    }
+    if (file.size > MAX_COVER_BYTES) {
+      toast.error("Image trop lourde (max 5 Mo)");
+      return;
+    }
+    // Check dimensions
+    const url = URL.createObjectURL(file);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth < MIN_COVER_W || img.naturalHeight < MIN_COVER_H) {
+            reject(new Error(`Image trop petite (min ${MIN_COVER_W}×${MIN_COVER_H} px)`));
+          } else {
+            resolve();
+          }
+        };
+        img.onerror = () => reject(new Error("Image illisible"));
+        img.src = url;
+      });
+      setCoverFile(file);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Image invalide");
+      setCoverFile(null);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
 
   useEffect(() => {
     let cancel = false;
@@ -135,18 +176,13 @@ function CreateEventPage() {
       // l'event puis on update cover_url. Ici, on ne peut pas update events
       // (pas de policy). Compromis : on upload via un eventId temporaire = slug.
       // Mieux : créer l'event sans cover, puis cover via le dashboard admin.
-      let coverUrl: string | null = null;
-      if (coverFile) {
-        toast.info("Photo de couverture : à ajouter ensuite via le tableau de bord admin");
-      }
-
       const result = await createEventWithCoupon({
         titre: parsed.data.titre,
         slug,
         codeAcces,
         eventDate: eventDateIso,
         lieu: parsed.data.lieu,
-        coverUrl,
+        coverUrl: null,
         contact: parsed.data.contact,
         couponCode: parsed.data.couponCode,
       });
@@ -154,11 +190,25 @@ function CreateEventPage() {
       // Upload cover after event creation (eventId now exists)
       if (coverFile) {
         try {
-          const up = await uploadOnePhoto(coverFile, result.event_id);
-          // Update via RPC ? Pas implémenté — on garde le compromis ci-dessus.
-          void up;
+          const ext = coverFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+          const path = `covers/${result.event_id}/${Date.now()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("event-photos")
+            .upload(path, coverFile, { upsert: true, contentType: coverFile.type });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage
+            .from("event-photos")
+            .getPublicUrl(path);
+          const { error: rpcErr } = await supabase.rpc("set_event_cover", {
+            _event_id: result.event_id,
+            _cover_url: pub.publicUrl,
+          });
+          if (rpcErr) throw rpcErr;
         } catch (e) {
           console.warn("cover upload failed", e);
+          toast.warning(
+            "Événement créé, mais photo non enregistrée — réessayez via le dashboard.",
+          );
         }
       }
 
@@ -293,9 +343,17 @@ function CreateEventPage() {
                 id="cover"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => void handleCoverPick(e.target.files?.[0] ?? null)}
                 className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-foreground"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                JPG, PNG ou WebP — max 5 Mo — recommandé 1600×900 px (ratio 16:9), min 800×450 px.
+              </p>
+              {coverFile && (
+                <p className="mt-1 text-xs text-primary">
+                  ✓ {coverFile.name} ({(coverFile.size / 1024 / 1024).toFixed(2)} Mo)
+                </p>
+              )}
             </Field>
 
             <Field label="Code coupon" htmlFor="coupon">
