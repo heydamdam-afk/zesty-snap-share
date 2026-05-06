@@ -45,7 +45,7 @@ export function ProfileDialog({
   guest: GuestSession;
   onUpdated: (next: { prenom?: string; email?: string | null; avatar_url?: string | null }) => void;
 }) {
-  const [prenom, setPrenom] = useState(guest.invite.prenom);
+  const [prenom, setPrenom] = useState(guest.invite.prenom ?? "");
   const [email, setEmail] = useState(guest.invite.email ?? "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(guest.invite.avatar_url);
   const [saving, setSaving] = useState(false);
@@ -54,7 +54,7 @@ export function ProfileDialog({
 
   useEffect(() => {
     if (open) {
-      setPrenom(guest.invite.prenom);
+      setPrenom(guest.invite.prenom ?? "");
       setEmail(guest.invite.email ?? "");
       setAvatarUrl(guest.invite.avatar_url);
     }
