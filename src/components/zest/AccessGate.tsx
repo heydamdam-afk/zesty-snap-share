@@ -348,6 +348,11 @@ export function AccessGate({
                 maxLength={64}
                 disabled={isLocked || loading}
                 className={`${inputClass(!!errors.code)} font-mono uppercase tracking-wider`}
+                name="event-code"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="text"
               />
               {errors.code && (
                 <p className="mt-1.5 text-xs font-medium text-destructive">{errors.code}</p>
@@ -373,6 +378,11 @@ export function AccessGate({
                 maxLength={40}
                 disabled={isLocked || loading}
                 className={inputClass(!!errors.prenom || prenomAvailable === false)}
+                name="given-name"
+                autoComplete="given-name"
+                autoCorrect="off"
+                autoCapitalize="words"
+                spellCheck={false}
               />
               {prenomChecking && (
                 <p className="mt-1.5 text-xs text-muted-foreground">Vérification…</p>
@@ -432,6 +442,12 @@ export function AccessGate({
                 maxLength={255}
                 disabled={isLocked || loading}
                 className={inputClass(!!errors.email)}
+                name="email"
+                autoComplete="email"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                inputMode="email"
               />
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                 Votre email est utilisé uniquement pour retrouver vos photos.{" "}
