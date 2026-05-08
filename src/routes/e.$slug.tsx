@@ -266,8 +266,16 @@ function Index() {
     }
   };
 
-  if (!hydrated) return null;
-  if (!guest && !adminCheckDone) return null;
+  if (!hydrated || (!guest && !adminCheckDone)) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        </div>
+      </div>
+    );
+  }
   if (!guest) return <AccessGate slug={EVENT_SLUG} onEnter={setGuest} />;
 
   const visiblePosts: FeedPost[] = onlyMine
