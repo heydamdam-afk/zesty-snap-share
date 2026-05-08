@@ -49,10 +49,17 @@ export function ComposeBar({
           type === "image/heif" ||
           ext === "heic" ||
           ext === "heif";
+        // Tout format que le navigateur ne sait pas afficher en <img> (HEIC, AVIF
+        // selon Android, ou MIME vide retourné par certains pickers Android).
+        const isUnsupported =
+          isHeic ||
+          (!!type && !type.startsWith("image/")) ||
+          (!type && !["jpg", "jpeg", "png", "webp", "gif"].includes(ext));
         return {
           name: f.name,
-          url: isHeic ? null : URL.createObjectURL(f),
+          url: isUnsupported ? null : URL.createObjectURL(f),
           isHeic,
+          isUnsupported,
         };
       }),
     [files],
