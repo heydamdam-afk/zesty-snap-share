@@ -97,8 +97,9 @@ function Index() {
   }, [EVENT_SLUG]);
 
   useEffect(() => {
+    if (!hydrated) return;
     saveGuest(guest);
-  }, [guest]);
+  }, [guest, hydrated]);
 
   // Auto-créer une session admin si l'utilisateur est connecté côté Supabase
   // mais n'a pas (encore) de session guest locale.
