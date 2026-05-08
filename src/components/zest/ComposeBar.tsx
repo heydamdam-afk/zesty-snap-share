@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
-import { ImagePlus, X, Pencil, ImageIcon } from "lucide-react";
+import { ImagePlus, X, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
@@ -36,40 +36,17 @@ export function ComposeBar({
     };
   }, [open]);
 
-  // Generate object URLs once per file change, then revoke on cleanup to avoid leaks
-  // and avoid the white-preview bug from re-creating URLs on every render.
-  // HEIC/HEIF can't be decoded by browsers → we flag them and show a fallback tile.
-  const previews = useMemo(
-    () =>
-      files.map((f) => {
-        const type = (f.type || "").toLowerCase();
-        const ext = f.name.toLowerCase().split(".").pop() ?? "";
-        const isHeic =
-          type === "image/heic" ||
-          type === "image/heif" ||
-          ext === "heic" ||
-          ext === "heif";
-        // Tout format que le navigateur ne sait pas afficher en <img> (HEIC, AVIF
-        // selon Android, ou MIME vide retourné par certains pickers Android).
-        const isUnsupported =
-          isHeic ||
-          (!!type && !type.startsWith("image/")) ||
-          (!type && !["jpg", "jpeg", "png", "webp", "gif"].includes(ext));
-        return {
-          name: f.name,
-          url: isUnsupported ? null : URL.createObjectURL(f),
-          isHeic,
-          isUnsupported,
-        };
-      }),
-    [files],
-  );
-
+  // Previews : créées UNE SEULE FOIS par changement de `files`, révoquées au cleanup.
+  // Évite la fuite mémoire et le clignotement des miniatures sur mobile.
+  const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
   useEffect(() => {
-    return () => {
-      previews.forEach((p) => p.url && URL.revokeObjectURL(p.url));
-    };
-  }, [previews]);
+    const urls = files.map((f) => ({
+      name: f.name,
+      url: URL.createObjectURL(f),
+    }));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u.url));
+  }, [files]);
 
   const reset = () => {
     setText("");
@@ -77,6 +54,10 @@ export function ComposeBar({
   };
 
   const submit = async () => {
+    if (!guest?.invite?.id || !guest?.event?.id) {
+      toast.error("Session expirée — recharge la page");
+      return;
+    }
     if ((!text.trim() && files.length === 0) || busy) return;
     setBusy(true);
     try {
@@ -183,24 +164,15 @@ export function ComposeBar({
                 <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
                     <div key={`${p.name}-${i}`} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
-                      {p.url ? (
-                        <img
-                          src={p.url}
-                          alt={p.name}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            const el = e.currentTarget;
-                            void reportImageError(el.src, `preview ${p.name}`);
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center">
-                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                          <span className="text-[9px] font-medium leading-tight text-muted-foreground">
-                            {p.isHeic ? "HEIC" : "Image"}
-                          </span>
-                        </div>
-                      )}
+                      <img
+                        src={p.url}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          void reportImageError(el.src, `preview ${p.name}`);
+                        }}
+                      />
                       <button
                         type="button"
                         onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}

@@ -346,7 +346,9 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
-              <ComposeBar guest={guest} onPosted={reload} />
+              {guest?.invite?.id && guest?.event?.id && (
+                <ComposeBar guest={guest} onPosted={reload} />
+              )}
               {visiblePosts.map((p) => (
                 <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} />
               ))}
