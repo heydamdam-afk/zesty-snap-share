@@ -176,6 +176,11 @@ export function ProfileDialog({
               maxLength={80}
               onChange={(e) => setPrenom(e.target.value)}
               className="mt-1"
+              name="given-name"
+              autoComplete="given-name"
+              autoCorrect="off"
+              autoCapitalize="words"
+              spellCheck={false}
             />
           </div>
 
@@ -189,6 +194,12 @@ export function ProfileDialog({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
               className="mt-1"
+              name="email"
+              autoComplete="email"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              inputMode="email"
             />
           </div>
         </div>
