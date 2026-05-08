@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
-import { ImagePlus, Send, X, Pencil } from "lucide-react";
+import { ImagePlus, X, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
