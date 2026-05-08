@@ -101,6 +101,18 @@ function Index() {
     saveGuest(guest);
   }, [guest, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated || !guest) return;
+    const t = setTimeout(() => {
+      const stored = localStorage.getItem("zeste_guest_session");
+      if (!stored) {
+        console.error("[REGRESSION] zeste_guest_session effacée après hydration");
+        saveGuest(guest);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [guest, hydrated]);
+
   // Auto-créer une session admin si l'utilisateur est connecté côté Supabase
   // mais n'a pas (encore) de session guest locale.
   useEffect(() => {
