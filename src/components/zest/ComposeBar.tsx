@@ -150,7 +150,15 @@ export function ComposeBar({
                 <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
                     <div key={p.url} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
-                      <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                      <img
+                        src={p.url}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          void reportImageError(el.src, `preview ${p.name}`);
+                        }}
+                      />
                       <button
                         type="button"
                         onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
