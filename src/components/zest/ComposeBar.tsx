@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
-import { ImagePlus, Send, X, Pencil } from "lucide-react";
+import { ImagePlus, X, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
@@ -100,12 +100,15 @@ export function ComposeBar({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex flex-col bg-background"
+            className="fixed inset-0 z-50 flex flex-col bg-white"
             role="dialog"
             aria-modal="true"
           >
-            {/* Header sticky : fermer + titre + Publier */}
-            <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+            {/* Header fixe : ✕ + titre + Publier */}
+            <header
+              className="flex items-center justify-between gap-2 border-b border-border bg-white px-4 py-3"
+              style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+            >
               <button
                 onClick={() => setOpen(false)}
                 className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
@@ -113,45 +116,47 @@ export function ComposeBar({
               >
                 <X className="h-5 w-5" />
               </button>
-              <h2 className="text-base font-semibold">Nouveau message</h2>
+              <h2 className="text-base font-semibold">Nouvelle publication</h2>
               <button
                 onClick={submit}
                 disabled={busy || (!text.trim() && files.length === 0)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft disabled:opacity-40"
+                style={{ backgroundColor: "#FF4842" }}
               >
-                <Send className="h-4 w-4" />
                 {busy ? "…" : "Publier"}
               </button>
             </header>
 
-            {/* Zone scrollable : avatar + textarea + previews */}
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <div className="flex items-start gap-3">
-                <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
-                <Textarea
-                  autoFocus
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder={`Quoi de neuf, ${guest.invite.prenom} ?`}
-                  className="min-h-[160px] resize-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
-                  name="post-content"
-                  autoComplete="off"
-                  autoCorrect="on"
-                  autoCapitalize="sentences"
-                  spellCheck={true}
-                />
-              </div>
+            {/* Bloc identité */}
+            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+              <Avatar initials={guest.initial} src={guest.invite.avatar_url} size="lg" />
+              <span className="text-base font-semibold text-foreground">{guest.invite.prenom}</span>
+            </div>
+
+            {/* Bloc photos */}
+            <div className="border-b border-border px-4 py-3">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={files.length >= MAX_PHOTOS_PER_POST}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80 disabled:opacity-40"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Ajouter des photos ({files.length}/{MAX_PHOTOS_PER_POST})
+              </button>
 
               {previews.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
-                    <div key={p.url} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                    <div key={p.url} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
                       <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
                       <button
+                        type="button"
                         onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
-                        className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-background/90"
+                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white"
+                        aria-label="Supprimer la photo"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
@@ -162,37 +167,40 @@ export function ComposeBar({
             <input
               ref={inputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               multiple
               className="hidden"
               onChange={(e) => {
-                if (e.target.files) {
-                  setFiles((list) => {
-                    const next = [...list, ...Array.from(e.target.files!)];
+                const list = e.target.files;
+                if (list && list.length > 0) {
+                  setFiles((cur) => {
+                    const next = [...cur, ...Array.from(list)];
                     if (next.length > MAX_PHOTOS_PER_POST) {
                       toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
                       return next.slice(0, MAX_PHOTOS_PER_POST);
                     }
                     return next;
                   });
-                  e.target.value = "";
                 }
+                e.target.value = "";
               }}
             />
 
-            {/* Footer sticky : ajouter des photos */}
-            <footer
-              className="border-t border-border bg-background px-4 py-3"
-              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-            >
-              <button
-                onClick={() => inputRef.current?.click()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80"
-              >
-                <ImagePlus className="h-4 w-4" />
-                Ajouter des photos
-              </button>
-            </footer>
+            {/* Textarea : remplit l'espace restant */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              <Textarea
+                autoFocus
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Quoi de neuf ?"
+                className="h-full min-h-[200px] w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                name="post-content"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
+                spellCheck={false}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
