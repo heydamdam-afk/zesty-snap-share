@@ -85,7 +85,7 @@ export function ComposeBar({
       </button>
 
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent className="px-4 pb-6">
+        <DrawerContent className="max-h-[92vh] overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <DrawerHeader className="px-0 pt-2">
             <div className="flex items-center justify-between">
               <DrawerTitle>Nouveau message</DrawerTitle>
