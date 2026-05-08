@@ -134,6 +134,11 @@ export function ComposeBar({
                   onChange={(e) => setText(e.target.value)}
                   placeholder={`Quoi de neuf, ${guest.invite.prenom} ?`}
                   className="min-h-[160px] resize-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+                  name="post-content"
+                  autoComplete="off"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               </div>
 
