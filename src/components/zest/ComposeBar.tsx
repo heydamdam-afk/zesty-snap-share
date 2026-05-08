@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { ImagePlus, Send, X, Pencil } from "lucide-react";
 import {
@@ -25,6 +25,30 @@ export function ComposeBar({
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Bloque le scroll de la page derrière quand le drawer est ouvert (mobile).
+  useEffect(() => {
+    if (!open) return;
+    const { body } = document;
+    const scrollY = window.scrollY;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
 
   const previews = files.map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
 
@@ -85,7 +109,7 @@ export function ComposeBar({
       </button>
 
       <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground={false}>
-        <DrawerContent className="max-h-[92vh] overflow-y-auto rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <DrawerContent className="h-[75vh] max-h-[75vh] overflow-y-auto overscroll-contain rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <DrawerHeader className="px-0 pt-2">
             <div className="flex items-center justify-between">
               <DrawerTitle>Nouveau message</DrawerTitle>
