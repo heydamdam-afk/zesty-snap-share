@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Heart, Trash2 } from "lucide-react";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { deletePost } from "@/lib/zest-admin";
+import { reportImageError } from "@/lib/image-diagnostics";
 
 type FlatPhoto = {
   postId: string;
@@ -76,6 +77,10 @@ export function Gallery({
             alt=""
             loading="lazy"
             className="h-full w-full object-cover"
+            onError={(e) => {
+              const el = e.currentTarget;
+              void reportImageError(el.src, `galerie (post ${p.postId.slice(0, 8)})`);
+            }}
           />
           {/* Gradient bas pour lisibilité overlay */}
           <div

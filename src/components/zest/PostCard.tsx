@@ -7,6 +7,7 @@ import type { FeedPost } from "@/hooks/useEventFeed";
 import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
 import { deletePost, deleteCommentAsAdmin } from "@/lib/zest-admin";
 import type { GuestSession } from "@/lib/zest-session";
+import { reportImageError } from "@/lib/image-diagnostics";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -156,6 +157,10 @@ export function PostCard({
             alt={post.contenu_texte ?? ""}
             loading="lazy"
             className="w-full object-cover"
+            onError={(e) => {
+              const el = e.currentTarget;
+              void reportImageError(el.src, `feed photo (post ${post.id.slice(0, 8)})`);
+            }}
           />
           {photos.length > 1 && (
             <>
