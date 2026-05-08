@@ -1,83 +1,49 @@
-## Objectifs
+## Problème
 
-1. Sur l'écran `/admin` en mode "Créer un compte admin" : ajouter un champ **Prénom** (obligatoire) et un champ **Photo de profil** (optionnelle).
-2. Renommer toutes les occurrences visibles de **Zest / Zeste / zest.** en **Kapsul** dans l'UI.
+Le bottom sheet actuel (`Drawer` vaul) sur mobile :
+- Affiche une barre de scroll latérale visible
+- Crée un scroll infini parasite à l'intérieur
+- Bloque l'accès au bouton "Ajouter des photos" quand le clavier est ouvert (zone masquée)
+- Le verrouillage `body { position: fixed }` interagit mal avec vaul
 
----
+## Solution : modale plein écran
 
-## 1. Création de compte admin enrichie (`src/routes/admin.tsx`)
+Remplacer le `Drawer` (vaul) par une modale **fullscreen fixe** dans `src/components/zest/ComposeBar.tsx`. Plus de bottom sheet, plus de hauteur calculée, plus de conflit avec le clavier.
 
-### Champs ajoutés (mode signup uniquement)
+## Structure cible
 
-- **Prénom** — obligatoire, 2–40 caractères, validé via Zod côté client.
-- **Photo de profil** — optionnelle, JPG/PNG/WebP, 5 Mo max, prévisualisation ronde avec initiale + couleur fallback (réutilise `pickAvatarColor` de `zest-session.ts` pour cohérence visuelle avec l'AccessGate invité).
-
-UI : même style que `AccessGate.tsx` (badges "Obligatoire" / "Optionnelle", input rond pour avatar avec initiale colorée, bouton "Choisir une photo").
-
-### Stockage
-
-- **Prénom** → colonne `event_admins.prenom` (existe déjà, nullable, jamais peuplée jusqu'ici).
-- **Photo** → bucket Supabase Storage `event-photos` (existe déjà, public), sous-dossier `admin-avatars/{user_id}.{ext}`. URL publique stockée dans une nouvelle colonne `event_admins.avatar_url` (text, nullable).
-
-### Migration DB
-
-```sql
-ALTER TABLE public.event_admins
-  ADD COLUMN avatar_url text;
+```text
+[Header fixe]      ← X fermer / titre / bouton Publier
+─────────────────
+[Zone scrollable]  ← avatar + textarea + previews photos
+─────────────────
+[Footer fixe]      ← bouton "Ajouter des photos"
+                    (safe-area-inset-bottom)
 ```
 
-(La colonne `prenom` existe déjà — rien à faire côté schéma pour ça.)
+## Détails techniques
 
-### Flux signup
+- Supprimer `Drawer` / `DrawerContent` / vaul → utiliser un simple overlay :
+  ```tsx
+  <div className="fixed inset-0 z-50 flex flex-col bg-background">
+  ```
+- Header sticky en haut avec bouton **Publier** déplacé ici (toujours visible, jamais masqué par le clavier).
+- Zone centrale `flex-1 overflow-y-auto` pour le textarea + previews uniquement.
+- Footer sticky en bas avec le bouton **Ajouter des photos** + `pb-[env(safe-area-inset-bottom)]`.
+- Retirer tout le `useEffect` de body-lock (plus nécessaire, l'overlay couvre tout).
+- Retirer `overscroll-contain`, `h-[75vh]`, etc.
+- Gérer la fermeture via touche Échap + bouton X.
+- Animation d'entrée légère (fade + slide-up) avec framer-motion (déjà dans le projet).
 
-1. Validation Zod (email, password, prénom).
-2. `supabase.auth.signUp({ email, password, options: { data: { prenom, avatar_url } } })` — stocke en metadata pour fallback.
-3. Si fichier avatar fourni : upload dans `event-photos/admin-avatars/{user.id}.{ext}` après signup, récupération de la public URL.
-4. **Mise à jour des lignes `event_admins`** correspondant à cet email :
-   - Appel `supabase.rpc("link_admin_user_id")` (déjà fait, lie `user_id`).
-   - `UPDATE event_admins SET prenom = ?, avatar_url = ? WHERE lower(email) = lower(?) AND (prenom IS NULL OR avatar_url IS NULL)` — la policy RLS `admin_can_self_update` autorise déjà cet update (`lower(email) = current_admin_email()`).
-5. Suite du flux existant inchangée (bookmark / dashboard).
+## Comportement attendu
 
-### Flux signin
+- Ouverture → l'app entière disparaît derrière la modale plein écran (pas d'overlay translucide qui laisse voir la galerie)
+- Clavier qui s'ouvre → pousse uniquement le textarea, le bouton **Publier** reste visible en haut
+- Bouton **Ajouter des photos** toujours accessible en bas (au-dessus du clavier ou visible quand le clavier est fermé)
+- Aucune barre de scroll latérale, aucun scroll de la page derrière
 
-Inchangé — pas de nouveaux champs affichés.
+## Fichier modifié
 
----
+- `src/components/zest/ComposeBar.tsx` (réécriture du JSX du modal + suppression de l'effet body-lock)
 
-## 2. Renommage "Zest" → "Kapsul"
-
-Remplacer dans **tout le code source** (UI uniquement, pas les clés localStorage/identifiants techniques) :
-
-- `src/components/zest/Logo.tsx` : `zest` → `kapsul` (le `.` final reste, donc "kapsul.").
-- Titres de pages (route `head().meta.title`) :
-  - `src/routes/admin.tsx` → "Espace admin — Kapsul"
-  - `src/routes/$slug.admin.dashboard.tsx` → "Tableau de bord admin — Kapsul"
-  - `src/routes/$slug.admin.index.tsx` → "Espace admin — Kapsul"
-  - `src/routes/closed.tsx` → "Galerie fermée — Kapsul"
-  - `src/routes/dashboard.tsx` → "Redirection dashboard — Kapsul"
-  - `src/routes/e.$slug.tsx` → "Kapsul — Galerie photo de votre événement"
-  - `src/routes/__root.tsx` → meta description / og:title / twitter:description : "Kapsul Photo Hub..."
-- Texte visible "Propulsé par **Zeste**" dans `AccessGate.tsx` → "Propulsé par **Kapsul**".
-- Texte visible "Cette galerie Zest est maintenant fermée." dans `closed.tsx` → "Cette galerie Kapsul est maintenant fermée."
-
-**À NE PAS toucher** (clés techniques, casseraient les sessions existantes) :
-- `zeste_device_id`, `zeste_guest_session`, `zeste_login_attempts`, `zeste_login_lock_until`, `zeste_admin_onboarded` dans localStorage.
-- Chemins de dossiers `src/components/zest/`, `src/lib/zest-actions.ts`, etc. (refactor lourd sans valeur immédiate, et risque de casser des imports).
-- Le composant exporté `ZestLogo` (renommer le symbole impliquerait de mettre à jour ~10 imports — on garde le nom du composant mais on change ce qu'il affiche).
-
----
-
-## Fichiers modifiés
-
-- **migration SQL** : ajout colonne `event_admins.avatar_url`
-- `src/routes/admin.tsx` (form signup enrichi + upload avatar + update event_admins)
-- `src/components/zest/Logo.tsx` (texte affiché)
-- `src/routes/__root.tsx`, `src/routes/admin.tsx`, `src/routes/$slug.admin.dashboard.tsx`, `src/routes/$slug.admin.index.tsx`, `src/routes/closed.tsx`, `src/routes/dashboard.tsx`, `src/routes/e.$slug.tsx` (titres et descriptions)
-- `src/components/zest/AccessGate.tsx` ("Propulsé par Zeste" → "Kapsul")
-
----
-
-## Questions ouvertes
-
-- Le **prénom** doit-il aussi être affiché dans l'`AdminHeader` à la place / à côté de l'email une fois connecté ? (Pas inclus pour l'instant — peut être fait dans un second temps si tu veux.)
-- L'**avatar admin** doit-il apparaître quelque part dans l'UI admin (header, liste des admins de la section "Admins") ? Si oui je l'ajoute aussi — sinon la donnée est juste stockée pour usage futur.
+Aucune autre modification (logique `createPost`, hooks, etc. inchangée).
