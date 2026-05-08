@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
 import { toast } from "sonner";
+import { reportImageError } from "@/lib/image-diagnostics";
 
 export function ComposeBar({
   guest,
