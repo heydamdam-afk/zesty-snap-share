@@ -1,49 +1,70 @@
-## Problème
+## Diagnostic
 
-Le bottom sheet actuel (`Drawer` vaul) sur mobile :
-- Affiche une barre de scroll latérale visible
-- Crée un scroll infini parasite à l'intérieur
-- Bloque l'accès au bouton "Ajouter des photos" quand le clavier est ouvert (zone masquée)
-- Le verrouillage `body { position: fixed }` interagit mal avec vaul
+Ce que tu vois sur les captures, ce n'est **pas** un défaut de notre modale — c'est la **barre d'AutoFill iOS** (clé 🔑 / carte 💳 / localisation 📍 / ✓) que Safari/Chrome/Brave affichent **au-dessus du clavier** dès qu'un champ texte a le focus. Sur la 2e capture on voit même que le suggestion bar pousse la modale et masque le textarea — c'est le comportement natif iOS, pas un bug CSS.
 
-## Solution : modale plein écran
+## La solution de Claude est correcte mais incomplète
 
-Remplacer le `Drawer` (vaul) par une modale **fullscreen fixe** dans `src/components/zest/ComposeBar.tsx`. Plus de bottom sheet, plus de hauteur calculée, plus de conflit avec le clavier.
+`autocomplete="off"` seul **ne suffit pas sur iOS Safari** : iOS ignore souvent `off` pour des raisons d'accessibilité et continue d'afficher la barre AutoFill. Il faut combiner plusieurs attributs + utiliser des **valeurs `autocomplete` reconnues mais non sensibles** (le truc qui marche vraiment sur iOS).
 
-## Structure cible
+## Plan proposé
 
-```text
-[Header fixe]      ← X fermer / titre / bouton Publier
-─────────────────
-[Zone scrollable]  ← avatar + textarea + previews photos
-─────────────────
-[Footer fixe]      ← bouton "Ajouter des photos"
-                    (safe-area-inset-bottom)
+### 1. Champ commentaire / texte de post (`Textarea` dans `ComposeBar.tsx`)
+C'est le cas critique (capture 2). Ajouter :
+```
+autoComplete="off"
+autoCorrect="on"          // garder la correction utile pour un message
+autoCapitalize="sentences"
+spellCheck={true}         // utile pour un post
+name="post-content"       // nom non-sensible
+```
+→ La barre AutoFill (clé/carte) **disparaît** car iOS ne propose pas de remplissage pour un nom inconnu non-sensible.
+
+### 2. Champ prénom (`AccessGate` + `ProfileDialog`)
+```
+autoComplete="given-name"   // valeur standard, utile, pas de barre clé/carte
+autoCorrect="off"
+autoCapitalize="words"
+spellCheck={false}
 ```
 
-## Détails techniques
+### 3. Champ email (`AccessGate` + `ProfileDialog`)
+```
+type="email"
+inputMode="email"
+autoComplete="email"        // garder — utile et n'affiche pas la barre clé/carte
+autoCorrect="off"
+autoCapitalize="off"
+spellCheck={false}
+```
 
-- Supprimer `Drawer` / `DrawerContent` / vaul → utiliser un simple overlay :
-  ```tsx
-  <div className="fixed inset-0 z-50 flex flex-col bg-background">
-  ```
-- Header sticky en haut avec bouton **Publier** déplacé ici (toujours visible, jamais masqué par le clavier).
-- Zone centrale `flex-1 overflow-y-auto` pour le textarea + previews uniquement.
-- Footer sticky en bas avec le bouton **Ajouter des photos** + `pb-[env(safe-area-inset-bottom)]`.
-- Retirer tout le `useEffect` de body-lock (plus nécessaire, l'overlay couvre tout).
-- Retirer `overscroll-contain`, `h-[75vh]`, etc.
-- Gérer la fermeture via touche Échap + bouton X.
-- Animation d'entrée légère (fade + slide-up) avec framer-motion (déjà dans le projet).
+### 4. Code d'accès événement (`AccessGate`)
+```
+autoComplete="off"
+autoCorrect="off"
+autoCapitalize="characters" // si codes en majuscules
+spellCheck={false}
+inputMode="text"
+name="event-code"           // nom non-sensible → pas de proposition mot de passe
+```
+**Important** : NE PAS utiliser `type="password"` ni un `name` contenant "password"/"code"/"otp" — sinon iOS propose le trousseau.
 
-## Comportement attendu
+### 5. Recherche éventuelle / autres inputs
+Audit rapide des autres `Input`/`Textarea` du projet pour appliquer la même hygiène.
 
-- Ouverture → l'app entière disparaît derrière la modale plein écran (pas d'overlay translucide qui laisse voir la galerie)
-- Clavier qui s'ouvre → pousse uniquement le textarea, le bouton **Publier** reste visible en haut
-- Bouton **Ajouter des photos** toujours accessible en bas (au-dessus du clavier ou visible quand le clavier est fermé)
-- Aucune barre de scroll latérale, aucun scroll de la page derrière
+## Fichiers à modifier
 
-## Fichier modifié
+- `src/components/zest/ComposeBar.tsx` — textarea du post
+- `src/components/zest/AccessGate.tsx` — prénom, email, code d'accès
+- `src/components/zest/ProfileDialog.tsx` — prénom, email
+- (audit) autres formulaires : `create-event.tsx`, `OrganisateurLoginModal.tsx`, `reset-password.tsx`
 
-- `src/components/zest/ComposeBar.tsx` (réécriture du JSX du modal + suppression de l'effet body-lock)
+## Pourquoi pas seulement `autocomplete="off"`
+- iOS Safari ignore `off` sur les inputs texte génériques → la barre clé/carte reste.
+- La parade qui marche réellement : utiliser un `name` non-sensible + valeur `autocomplete` non-sensible (ex: `given-name`, `email`, ou un nom inventé comme `post-content`). iOS n'a alors **rien à proposer** et masque la barre.
+- `spellcheck` et `autocapitalize` n'enlèvent pas la barre AutoFill mais améliorent l'UX (notamment éviter la majuscule auto sur email).
 
-Aucune autre modification (logique `createPost`, hooks, etc. inchangée).
+## Hors scope (à confirmer)
+- Aucun changement de logique métier, juste des attributs HTML.
+- Aucun changement de design.
+
+Veux-tu que j'applique ce plan tel quel ?
