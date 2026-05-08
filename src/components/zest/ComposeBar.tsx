@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
-import { ImagePlus, X, Pencil } from "lucide-react";
+import { ImagePlus, X, Pencil, ImageIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
@@ -36,7 +36,33 @@ export function ComposeBar({
     };
   }, [open]);
 
-  const previews = files.map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
+  // Generate object URLs once per file change, then revoke on cleanup to avoid leaks
+  // and avoid the white-preview bug from re-creating URLs on every render.
+  // HEIC/HEIF can't be decoded by browsers → we flag them and show a fallback tile.
+  const previews = useMemo(
+    () =>
+      files.map((f) => {
+        const type = (f.type || "").toLowerCase();
+        const ext = f.name.toLowerCase().split(".").pop() ?? "";
+        const isHeic =
+          type === "image/heic" ||
+          type === "image/heif" ||
+          ext === "heic" ||
+          ext === "heif";
+        return {
+          name: f.name,
+          url: isHeic ? null : URL.createObjectURL(f),
+          isHeic,
+        };
+      }),
+    [files],
+  );
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((p) => p.url && URL.revokeObjectURL(p.url));
+    };
+  }, [previews]);
 
   const reset = () => {
     setText("");
@@ -149,16 +175,25 @@ export function ComposeBar({
               {previews.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
-                    <div key={p.url} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
-                      <img
-                        src={p.url}
-                        alt={p.name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          void reportImageError(el.src, `preview ${p.name}`);
-                        }}
-                      />
+                    <div key={`${p.name}-${i}`} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
+                      {p.url ? (
+                        <img
+                          src={p.url}
+                          alt={p.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            void reportImageError(el.src, `preview ${p.name}`);
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-[9px] font-medium leading-tight text-muted-foreground">
+                            {p.isHeic ? "HEIC" : "Image"}
+                          </span>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
