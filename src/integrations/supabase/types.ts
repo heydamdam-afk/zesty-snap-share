@@ -416,6 +416,7 @@ export type Database = {
       post_photos: {
         Row: {
           created_at: string
+          event_titre: string | null
           id: string
           position: number
           post_id: string
@@ -425,6 +426,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          event_titre?: string | null
           id?: string
           position?: number
           post_id: string
@@ -434,6 +436,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          event_titre?: string | null
           id?: string
           position?: number
           post_id?: string
