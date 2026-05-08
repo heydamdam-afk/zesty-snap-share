@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
 import { ImagePlus, Send, X, Pencil } from "lucide-react";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, MAX_PHOTOS_PER_POST } from "@/lib/zest-actions";
 import type { GuestSession } from "@/lib/zest-session";
@@ -26,27 +20,18 @@ export function ComposeBar({
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Bloque le scroll de la page derrière quand le drawer est ouvert (mobile).
+  // Bloque le scroll body derrière la modale plein écran + ferme avec Échap.
   useEffect(() => {
     if (!open) return;
-    const { body } = document;
-    const scrollY = window.scrollY;
-    const prev = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
     };
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
+    window.addEventListener("keydown", onKey);
     return () => {
-      body.style.overflow = prev.overflow;
-      body.style.position = prev.position;
-      body.style.top = prev.top;
-      body.style.width = prev.width;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
@@ -108,84 +93,104 @@ export function ComposeBar({
         </span>
       </button>
 
-      <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground={false}>
-        <DrawerContent className="h-[75vh] max-h-[75vh] overflow-y-auto overscroll-contain rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-          <DrawerHeader className="px-0 pt-2">
-            <div className="flex items-center justify-between">
-              <DrawerTitle>Nouveau message</DrawerTitle>
-              <DrawerClose className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
-                <X className="h-4 w-4" />
-              </DrawerClose>
-            </div>
-          </DrawerHeader>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex flex-col bg-background"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header sticky : fermer + titre + Publier */}
+            <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <button
+                onClick={() => setOpen(false)}
+                className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+                aria-label="Fermer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h2 className="text-base font-semibold">Nouveau message</h2>
+              <button
+                onClick={submit}
+                disabled={busy || (!text.trim() && files.length === 0)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-40"
+              >
+                <Send className="h-4 w-4" />
+                {busy ? "…" : "Publier"}
+              </button>
+            </header>
 
-          <div className="flex items-start gap-3">
-            <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
-            <Textarea
-              autoFocus
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={`Quoi de neuf, ${guest.invite.prenom} ?`}
-              className="min-h-[120px] resize-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
-            />
-          </div>
+            {/* Zone scrollable : avatar + textarea + previews */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="flex items-start gap-3">
+                <Avatar initials={guest.initial} src={guest.invite.avatar_url} />
+                <Textarea
+                  autoFocus
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={`Quoi de neuf, ${guest.invite.prenom} ?`}
+                  className="min-h-[160px] resize-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+                />
+              </div>
 
-          {previews.length > 0 && (
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {previews.map((p, i) => (
-                <div key={p.url} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-                  <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
-                  <button
-                    onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
-                    className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-background/90"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+              {previews.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {previews.map((p, i) => (
+                    <div key={p.url} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                      <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                      <button
+                        onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
+                        className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-background/90"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
 
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) {
-                setFiles((list) => {
-                  const next = [...list, ...Array.from(e.target.files!)];
-                  if (next.length > MAX_PHOTOS_PER_POST) {
-                    toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
-                    return next.slice(0, MAX_PHOTOS_PER_POST);
-                  }
-                  return next;
-                });
-                e.target.value = "";
-              }
-            }}
-          />
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) {
+                  setFiles((list) => {
+                    const next = [...list, ...Array.from(e.target.files!)];
+                    if (next.length > MAX_PHOTOS_PER_POST) {
+                      toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
+                      return next.slice(0, MAX_PHOTOS_PER_POST);
+                    }
+                    return next;
+                  });
+                  e.target.value = "";
+                }
+              }}
+            />
 
-          <div className="mt-4 flex items-center justify-between gap-2">
-            <button
-              onClick={() => inputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
+            {/* Footer sticky : ajouter des photos */}
+            <footer
+              className="border-t border-border bg-background px-4 py-3"
+              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
             >
-              <ImagePlus className="h-4 w-4" />
-              Ajouter des photos
-            </button>
-            <button
-              onClick={submit}
-              disabled={busy || (!text.trim() && files.length === 0)}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" />
-              {busy ? "Publication…" : "Publier"}
-            </button>
-          </div>
-        </DrawerContent>
-      </Drawer>
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Ajouter des photos
+              </button>
+            </footer>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
