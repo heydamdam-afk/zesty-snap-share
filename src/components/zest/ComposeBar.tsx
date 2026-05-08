@@ -175,16 +175,25 @@ export function ComposeBar({
               {previews.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
-                    <div key={p.url} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
-                      <img
-                        src={p.url}
-                        alt={p.name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          void reportImageError(el.src, `preview ${p.name}`);
-                        }}
-                      />
+                    <div key={`${p.name}-${i}`} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
+                      {p.url ? (
+                        <img
+                          src={p.url}
+                          alt={p.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            void reportImageError(el.src, `preview ${p.name}`);
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-[9px] font-medium leading-tight text-muted-foreground">
+                            {p.isHeic ? "HEIC" : "Image"}
+                          </span>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))}
