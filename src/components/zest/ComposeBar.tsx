@@ -101,8 +101,8 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
         toast.success("Post publié");
       }
       reset();
+      await onPosted?.();
       setOpen(false);
-      onPosted?.();
     } catch (e) {
       console.error("[compose] publish error", e);
       toast.error("Publication impossible, réessayez.", {
