@@ -48,22 +48,22 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
   };
 
   const onPickPhotos = (e: ChangeEvent<HTMLInputElement>) => {
-    console.log("[compose] files selected", e.target.files);
-    const list = e.target.files;
-    if (list) {
-      toast(`${list.length} photo(s) sélectionnée(s)`);
-    }
-    if (list && list.length > 0) {
-      setFiles((cur) => {
-        const next = [...cur, ...Array.from(list)];
-        if (next.length > MAX_PHOTOS_PER_POST) {
-          toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
-          return next.slice(0, MAX_PHOTOS_PER_POST);
-        }
-        return next;
-      });
-    }
-    e.target.value = "";
+    const picked = Array.from(e.currentTarget.files ?? []);
+    console.log(
+      "[compose] picked files",
+      picked.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+    );
+    if (picked.length === 0) return;
+    setFiles((cur) => {
+      const next = [...cur, ...picked];
+      if (next.length > MAX_PHOTOS_PER_POST) {
+        toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
+        return next.slice(0, MAX_PHOTOS_PER_POST);
+      }
+      return next;
+    });
+    toast.info(`${picked.length} photo(s) sélectionnée(s)`);
+    e.currentTarget.value = "";
   };
 
   const submit = async () => {
