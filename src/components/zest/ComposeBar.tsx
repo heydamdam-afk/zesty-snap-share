@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
 import { ImagePlus, X, Pencil } from "lucide-react";
@@ -8,17 +8,12 @@ import type { GuestSession } from "@/lib/zest-session";
 import { toast } from "sonner";
 import { reportImageError } from "@/lib/image-diagnostics";
 
-export function ComposeBar({
-  guest,
-  onPosted,
-}: {
-  guest: GuestSession;
-  onPosted?: () => void;
-}) {
+export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?: () => void }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const photoLimitReached = files.length >= MAX_PHOTOS_PER_POST;
 
   // Bloque le scroll body derrière la modale plein écran + ferme avec Échap.
   useEffect(() => {
@@ -52,6 +47,21 @@ export function ComposeBar({
     setFiles([]);
   };
 
+  const onPickPhotos = (e: ChangeEvent<HTMLInputElement>) => {
+    const list = e.currentTarget.files;
+    if (list && list.length > 0) {
+      setFiles((cur) => {
+        const next = [...cur, ...Array.from(list)];
+        if (next.length > MAX_PHOTOS_PER_POST) {
+          toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
+          return next.slice(0, MAX_PHOTOS_PER_POST);
+        }
+        return next;
+      });
+    }
+    e.currentTarget.value = "";
+  };
+
   const submit = async () => {
     if (!guest?.invite?.id || !guest?.event?.id) {
       toast.error("Session expirée — recharge la page");
@@ -71,8 +81,7 @@ export function ComposeBar({
         const r = res as { ok: number; errors: { file: string; error: string }[] };
         if (r.errors.length > 0 && r.ok > 0) {
           toast.warning(`Post publié — ${r.ok}/${files.length} photo(s) envoyée(s)`, {
-            description:
-              r.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
+            description: r.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),
             duration: 10000,
           });
         } else if (r.errors.length === 0) {
@@ -150,8 +159,11 @@ export function ComposeBar({
             {/* Bloc photos */}
             <div className="border-b border-border px-4 py-3">
               <label
-                className={`inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80 ${
-                  files.length >= MAX_PHOTOS_PER_POST ? "cursor-not-allowed opacity-40" : ""
+                aria-disabled={photoLimitReached}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground ${
+                  photoLimitReached
+                    ? "cursor-not-allowed opacity-40"
+                    : "cursor-pointer hover:bg-secondary/80"
                 }`}
               >
                 <ImagePlus className="h-4 w-4" />
@@ -161,28 +173,18 @@ export function ComposeBar({
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   multiple
                   className="hidden"
-                  disabled={files.length >= MAX_PHOTOS_PER_POST}
-                  onChange={(e) => {
-                    const list = e.target.files;
-                    if (list && list.length > 0) {
-                      setFiles((cur) => {
-                        const next = [...cur, ...Array.from(list)];
-                        if (next.length > MAX_PHOTOS_PER_POST) {
-                          toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
-                          return next.slice(0, MAX_PHOTOS_PER_POST);
-                        }
-                        return next;
-                      });
-                    }
-                    e.target.value = "";
-                  }}
+                  disabled={photoLimitReached}
+                  onChange={onPickPhotos}
                 />
               </label>
 
               {previews.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {previews.map((p, i) => (
-                    <div key={`${p.name}-${i}`} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
+                    <div
+                      key={`${p.name}-${i}`}
+                      className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted"
+                    >
                       <img
                         src={p.url}
                         alt={p.name}
