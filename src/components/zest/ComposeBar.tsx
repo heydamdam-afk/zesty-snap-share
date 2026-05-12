@@ -48,7 +48,11 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
   };
 
   const onPickPhotos = (e: ChangeEvent<HTMLInputElement>) => {
-    const list = e.currentTarget.files;
+    console.log("[compose] files selected", e.target.files);
+    const list = e.target.files;
+    if (list) {
+      toast(`${list.length} photo(s) sélectionnée(s)`);
+    }
     if (list && list.length > 0) {
       setFiles((cur) => {
         const next = [...cur, ...Array.from(list)];
@@ -59,7 +63,7 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
         return next;
       });
     }
-    e.currentTarget.value = "";
+    e.target.value = "";
   };
 
   const submit = async () => {
@@ -70,6 +74,12 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
     if ((!text.trim() && files.length === 0) || busy) return;
     setBusy(true);
     try {
+      console.log("[compose] publish", {
+        files,
+        text,
+        eventId: guest.event.id,
+        inviteId: guest.invite.id,
+      });
       const res = await createPost({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
@@ -94,7 +104,7 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
       setOpen(false);
       onPosted?.();
     } catch (e) {
-      console.error(e);
+      console.error("[compose] publish error", e);
       toast.error("Publication impossible, réessayez.", {
         description: e instanceof Error ? e.message : undefined,
       });
@@ -170,7 +180,7 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
                 Ajouter des photos ({files.length}/{MAX_PHOTOS_PER_POST})
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                   multiple
                   className="hidden"
                   disabled={photoLimitReached}
