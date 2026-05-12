@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "./Avatar";
 import { ImagePlus, X, Pencil } from "lucide-react";
@@ -19,7 +19,6 @@ export function ComposeBar({
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Bloque le scroll body derrière la modale plein écran + ferme avec Échap.
   useEffect(() => {
@@ -150,15 +149,35 @@ export function ComposeBar({
 
             {/* Bloc photos */}
             <div className="border-b border-border px-4 py-3">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                disabled={files.length >= MAX_PHOTOS_PER_POST}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80 disabled:opacity-40"
+              <label
+                className={`inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/80 ${
+                  files.length >= MAX_PHOTOS_PER_POST ? "cursor-not-allowed opacity-40" : ""
+                }`}
               >
                 <ImagePlus className="h-4 w-4" />
                 Ajouter des photos ({files.length}/{MAX_PHOTOS_PER_POST})
-              </button>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  multiple
+                  className="hidden"
+                  disabled={files.length >= MAX_PHOTOS_PER_POST}
+                  onChange={(e) => {
+                    const list = e.target.files;
+                    if (list && list.length > 0) {
+                      setFiles((cur) => {
+                        const next = [...cur, ...Array.from(list)];
+                        if (next.length > MAX_PHOTOS_PER_POST) {
+                          toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
+                          return next.slice(0, MAX_PHOTOS_PER_POST);
+                        }
+                        return next;
+                      });
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
 
               {previews.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -186,28 +205,6 @@ export function ComposeBar({
                 </div>
               )}
             </div>
-
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const list = e.target.files;
-                if (list && list.length > 0) {
-                  setFiles((cur) => {
-                    const next = [...cur, ...Array.from(list)];
-                    if (next.length > MAX_PHOTOS_PER_POST) {
-                      toast.warning(`Maximum ${MAX_PHOTOS_PER_POST} photos par publication`);
-                      return next.slice(0, MAX_PHOTOS_PER_POST);
-                    }
-                    return next;
-                  });
-                }
-                e.target.value = "";
-              }}
-            />
 
             {/* Textarea : remplit l'espace restant */}
             <div className="flex-1 overflow-y-auto px-4 py-3">
