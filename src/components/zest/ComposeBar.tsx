@@ -49,10 +49,6 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
 
   const onPickPhotos = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.currentTarget.files ?? []);
-    console.log(
-      "[compose] picked files",
-      picked.map((f) => ({ name: f.name, type: f.type, size: f.size })),
-    );
     if (picked.length === 0) return;
     setFiles((cur) => {
       const next = [...cur, ...picked];
@@ -62,7 +58,6 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
       }
       return next;
     });
-    toast.info(`${picked.length} photo(s) sélectionnée(s)`);
     e.currentTarget.value = "";
   };
 
@@ -74,19 +69,11 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
     if ((!text.trim() && files.length === 0) || busy) return;
     setBusy(true);
     try {
-      console.log("[compose] submit start", {
-        text,
-        fileCount: files.length,
-        files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
-        eventId: guest.event.id,
-        inviteId: guest.invite.id,
-      });
       const res = await createPost({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
         contenuTexte: text,
         files,
-        onProgress: (p) => console.log("[compose] upload progress", p),
       });
       // createPost returns either a post row (no files) or a batch result.
       if (res && typeof res === "object" && "errors" in res) {
