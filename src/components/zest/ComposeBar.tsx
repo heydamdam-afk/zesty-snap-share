@@ -74,9 +74,10 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
     if ((!text.trim() && files.length === 0) || busy) return;
     setBusy(true);
     try {
-      console.log("[compose] publish", {
-        files,
+      console.log("[compose] submit start", {
         text,
+        fileCount: files.length,
+        files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
         eventId: guest.event.id,
         inviteId: guest.invite.id,
       });
@@ -85,6 +86,7 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
         inviteId: guest.invite.id,
         contenuTexte: text,
         files,
+        onProgress: (p) => console.log("[compose] upload progress", p),
       });
       // createPost returns either a post row (no files) or a batch result.
       if (res && typeof res === "object" && "errors" in res) {
@@ -104,9 +106,9 @@ export function ComposeBar({ guest, onPosted }: { guest: GuestSession; onPosted?
       await onPosted?.();
       setOpen(false);
     } catch (e) {
-      console.error("[compose] publish error", e);
-      toast.error("Publication impossible, réessayez.", {
-        description: e instanceof Error ? e.message : undefined,
+      console.error("[compose] publish failed", e);
+      toast.error("Publication impossible", {
+        description: e instanceof Error ? e.message : JSON.stringify(e),
       });
     } finally {
       setBusy(false);

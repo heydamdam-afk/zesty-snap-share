@@ -316,13 +316,16 @@ export async function uploadPhotosBatch(args: {
   const runOne = async (i: number) => {
     const f = files[i];
     args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: 0 });
+    console.log("[uploadPhotosBatch] uploadOnePhoto start", { index: i, name: f.name, type: f.type, size: f.size });
     try {
       const u = await uploadOnePhoto(f, eventId, inviteId, (pct) => {
         args.onProgress?.({ index: i, total, fileName: f.name, status: "uploading", percent: pct });
       });
       uploaded[i] = u;
+      console.log("[uploadPhotosBatch] uploadOnePhoto done", { index: i, name: f.name, urls: u });
       args.onProgress?.({ index: i, total, fileName: f.name, status: "done", percent: 100 });
     } catch (e) {
+      console.error("[uploadPhotosBatch] uploadOnePhoto error", { index: i, name: f.name, error: e });
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       errors.push({ file: f.name, error: msg });
       args.onProgress?.({ index: i, total, fileName: f.name, status: "error", percent: 0, error: msg });
@@ -341,6 +344,7 @@ export async function uploadPhotosBatch(args: {
   await Promise.all(workers);
 
   const ok = uploaded.filter((u): u is UploadedPhoto => !!u);
+  console.log("[uploadPhotosBatch] uploads finished", { okCount: ok.length, errorCount: errors.length });
   if (ok.length === 0) {
     return { ok: 0, errors };
   }
@@ -361,8 +365,10 @@ export async function uploadPhotosBatch(args: {
     .select()
     .single();
   if (postErr || !post) {
+    console.error("[uploadPhotosBatch] posts insert failed", { postErr, post });
     return { ok: 0, errors: [...errors, { file: "post", error: postErr?.message ?? "Création du post impossible" }] };
   }
+  console.log("[uploadPhotosBatch] posts insert ok", { postId: post.id });
 
   // Insert one row per photo into post_photos (preserve order via position).
   const rows = uploaded
@@ -372,7 +378,10 @@ export async function uploadPhotosBatch(args: {
     .map((r, i) => ({ ...r, position: i }));
   const { error: photosErr } = await supabase.from("post_photos").insert(rows);
   if (photosErr) {
+    console.error("[uploadPhotosBatch] post_photos insert failed", { photosErr, rows });
     errors.push({ file: "post_photos", error: photosErr.message });
+  } else {
+    console.log("[uploadPhotosBatch] post_photos insert ok", { count: rows.length });
   }
 
   return { ok: ok.length, errors };
