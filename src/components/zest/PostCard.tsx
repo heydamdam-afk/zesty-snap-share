@@ -312,5 +312,13 @@ export function PostCard({
         )}
       </AnimatePresence>
     </motion.article>
+      <Lightbox
+        photos={photos.map((ph) => ({ url_full: ph.url_full ?? ph.url_medium ?? null }))}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onPrev={() => setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
+        onNext={() => setLightboxIndex((i) => (i !== null && i < photos.length - 1 ? i + 1 : i))}
+      />
+    </>
   );
 }
