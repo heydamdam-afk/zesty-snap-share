@@ -8,6 +8,7 @@ import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
 import { deletePost, deleteCommentAsAdmin } from "@/lib/zest-admin";
 import type { GuestSession } from "@/lib/zest-session";
 import { reportImageError } from "@/lib/image-diagnostics";
+import Lightbox from "./Lightbox";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -123,6 +124,7 @@ export function PostCard({
       : [];
   const isPhoto = photos.length > 0;
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const current = photos[Math.min(photoIdx, photos.length - 1)];
 
   return (
@@ -156,7 +158,8 @@ export function PostCard({
             src={current?.url_medium ?? current?.url_full ?? ""}
             alt={post.contenu_texte ?? ""}
             loading="lazy"
-            className="w-full object-cover"
+            onClick={() => setLightboxIndex(photoIdx)}
+            className="w-full cursor-pointer object-cover"
             onError={(e) => {
               const el = e.currentTarget;
               void reportImageError(el.src, `feed photo (post ${post.id.slice(0, 8)})`);
