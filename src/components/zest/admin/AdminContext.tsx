@@ -15,6 +15,8 @@ export type AdminEvent = {
   quota_mo: number;
   used_mo: number;
   status: string;
+  frozen_at: string | null;
+  zip_download_url: string | null;
 };
 
 export type AdminContextValue = {
