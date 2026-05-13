@@ -295,6 +295,8 @@ function Index() {
     ? posts.filter((p) => p.invite_id === guest.invite.id)
     : posts;
 
+  const frozen = !!(guest.event as { frozen_at?: string | null }).frozen_at;
+
   return (
     <div className="relative min-h-screen bg-background pb-32">
       <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
@@ -340,6 +342,15 @@ function Index() {
         />
       </div>
 
+      {frozen && (
+        <div
+          className="px-4 py-[10px] text-[13px]"
+          style={{ backgroundColor: "#F4F6F8", color: "#637381" }}
+        >
+          Cet événement est clôturé. La galerie est en lecture seule.
+        </div>
+      )}
+
       <EventStats
         guests={stats.guests}
         photos={stats.photos}
@@ -359,9 +370,9 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
-              {guest && <ComposeBar guest={guest} onPosted={reload} />}
+              {guest && !frozen && <ComposeBar guest={guest} onPosted={reload} />}
               {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).map((p) => (
-                <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} />
+                <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} frozen={frozen} />
               ))}
               {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).length === 0 && (
                 <p className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -446,7 +457,7 @@ function Index() {
         </AnimatePresence>
       </main>
 
-      {tab === "gallery" && (
+      {tab === "gallery" && !frozen && (
         <FloatingUploadButton onPick={handleUpload} disabled={quotaFull} />
       )}
 
