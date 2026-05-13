@@ -360,10 +360,10 @@ function Index() {
               className="space-y-3"
             >
               {guest && <ComposeBar guest={guest} onPosted={reload} />}
-              {visiblePosts.map((p) => (
+              {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).map((p) => (
                 <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} />
               ))}
-              {visiblePosts.length === 0 && (
+              {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).length === 0 && (
                 <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                   Aucun post pour le moment.
                 </p>
