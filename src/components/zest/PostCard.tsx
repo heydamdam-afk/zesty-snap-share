@@ -8,6 +8,7 @@ import { addComment, deleteOwnComment, toggleLike } from "@/lib/zest-actions";
 import { deletePost, deleteCommentAsAdmin } from "@/lib/zest-admin";
 import type { GuestSession } from "@/lib/zest-session";
 import { reportImageError } from "@/lib/image-diagnostics";
+import Lightbox from "./Lightbox";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -123,9 +124,11 @@ export function PostCard({
       : [];
   const isPhoto = photos.length > 0;
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const current = photos[Math.min(photoIdx, photos.length - 1)];
 
   return (
+    <>
     <motion.article
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -156,7 +159,8 @@ export function PostCard({
             src={current?.url_medium ?? current?.url_full ?? ""}
             alt={post.contenu_texte ?? ""}
             loading="lazy"
-            className="w-full object-cover"
+            onClick={() => setLightboxIndex(photoIdx)}
+            className="w-full cursor-pointer object-cover"
             onError={(e) => {
               const el = e.currentTarget;
               void reportImageError(el.src, `feed photo (post ${post.id.slice(0, 8)})`);
@@ -309,5 +313,13 @@ export function PostCard({
         )}
       </AnimatePresence>
     </motion.article>
+      <Lightbox
+        photos={photos.map((ph) => ({ url_full: ph.url_full ?? ph.url_medium ?? null }))}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onPrev={() => setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
+        onNext={() => setLightboxIndex((i) => (i !== null && i < photos.length - 1 ? i + 1 : i))}
+      />
+    </>
   );
 }
