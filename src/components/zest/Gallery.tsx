@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Trash2 } from "lucide-react";
 import type { FeedPost } from "@/hooks/useEventFeed";
 import { deletePost } from "@/lib/zest-admin";
 import { reportImageError } from "@/lib/image-diagnostics";
+import Lightbox from "./Lightbox";
 
 type FlatPhoto = {
   postId: string;
@@ -25,6 +27,7 @@ export function Gallery({
   currentDeviceId?: string;
   onChanged?: () => void | Promise<void>;
 }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const photos: FlatPhoto[] = posts.flatMap((p) => {
     const list = p.photos.length > 0
       ? p.photos.map((ph) => ({
@@ -63,6 +66,7 @@ export function Gallery({
     }
   };
   return (
+    <>
     <div className="grid grid-cols-2 gap-[2px]">
       {photos.map((p, i) => (
         <motion.button
@@ -70,6 +74,7 @@ export function Gallery({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: i * 0.02, duration: 0.25 }}
+          onClick={() => setLightboxIndex(i)}
           className="group relative block aspect-square w-full overflow-hidden bg-muted"
         >
           <img
@@ -123,5 +128,13 @@ export function Gallery({
         </motion.button>
       ))}
     </div>
+    <Lightbox
+      photos={photos.map((p) => ({ url_full: p.fullUrl ?? p.url }))}
+      index={lightboxIndex}
+      onClose={() => setLightboxIndex(null)}
+      onPrev={() => setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
+      onNext={() => setLightboxIndex((i) => (i !== null && i < photos.length - 1 ? i + 1 : i))}
+    />
+    </>
   );
 }
