@@ -29,11 +29,13 @@ export function PostCard({
   guest,
   isAdmin = false,
   onChanged,
+  frozen = false,
 }: {
   post: FeedPost;
   guest: GuestSession;
   isAdmin?: boolean;
   onChanged?: () => void | Promise<void>;
+  frozen?: boolean;
 }) {
   const [liked, setLiked] = useState(post.liked_by_me);
   const [count, setCount] = useState(post.nb_likes);
@@ -293,17 +295,18 @@ export function PostCard({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (!frozen && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     submit();
                   }
                 }}
-                placeholder="Écrire un commentaire…"
-                className="flex-1 rounded-full bg-secondary px-3 py-1.5 text-sm focus:outline-none"
+                placeholder={frozen ? "Commentaires fermés" : "Écrire un commentaire…"}
+                disabled={frozen}
+                className="flex-1 rounded-full bg-secondary px-3 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 onClick={submit}
-                disabled={!draft.trim() || busy}
+                disabled={frozen || !draft.trim() || busy}
                 className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
