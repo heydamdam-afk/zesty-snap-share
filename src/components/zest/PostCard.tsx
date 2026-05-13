@@ -128,6 +128,7 @@ export function PostCard({
   const current = photos[Math.min(photoIdx, photos.length - 1)];
 
   return (
+    <>
     <motion.article
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
