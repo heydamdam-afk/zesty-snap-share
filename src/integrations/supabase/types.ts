@@ -267,6 +267,7 @@ export type Database = {
           created_at: string
           event_date: string | null
           expire_at: string | null
+          frozen_at: string | null
           id: string
           lieu: string | null
           likes_actifs: boolean
@@ -277,6 +278,7 @@ export type Database = {
           titre: string
           uploads_actifs: boolean
           used_mo: number
+          zip_download_url: string | null
         }
         Insert: {
           code_acces: string
@@ -286,6 +288,7 @@ export type Database = {
           created_at?: string
           event_date?: string | null
           expire_at?: string | null
+          frozen_at?: string | null
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
@@ -296,6 +299,7 @@ export type Database = {
           titre: string
           uploads_actifs?: boolean
           used_mo?: number
+          zip_download_url?: string | null
         }
         Update: {
           code_acces?: string
@@ -305,6 +309,7 @@ export type Database = {
           created_at?: string
           event_date?: string | null
           expire_at?: string | null
+          frozen_at?: string | null
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
@@ -315,6 +320,7 @@ export type Database = {
           titre?: string
           uploads_actifs?: boolean
           used_mo?: number
+          zip_download_url?: string | null
         }
         Relationships: []
       }
@@ -666,7 +672,7 @@ export type Database = {
     }
     Enums: {
       admin_role: "organisateur" | "secondaire"
-      event_status: "active" | "expired" | "archived"
+      event_status: "active" | "expired" | "archived" | "frozen"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -795,7 +801,7 @@ export const Constants = {
   public: {
     Enums: {
       admin_role: ["organisateur", "secondaire"],
-      event_status: ["active", "expired", "archived"],
+      event_status: ["active", "expired", "archived", "frozen"],
     },
   },
 } as const

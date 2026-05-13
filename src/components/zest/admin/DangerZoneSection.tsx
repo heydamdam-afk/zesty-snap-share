@@ -16,17 +16,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Loader2, Lock, Trash2 } from "lucide-react";
 import { deleteEventCascade } from "@/server/event-admin.functions";
 
 export function DangerZoneSection() {
-  const { event } = useAdminContext();
+  const { event, reloadEvent } = useAdminContext();
   const isOrg = useIsOrganisateur();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [confirmTitre, setConfirmTitre] = useState("");
   const [pending, setPending] = useState(false);
+
+  const [freezeOpen, setFreezeOpen] = useState(false);
+  const [freezing, setFreezing] = useState(false);
 
   if (!isOrg) {
     return (
@@ -64,6 +67,54 @@ export function DangerZoneSection() {
 
   const titreMatches = confirmTitre.trim() === event.titre.trim();
 
+  const isFrozen = !!event.frozen_at;
+
+  const handleFreeze = async () => {
+    setFreezing(true);
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({
+          frozen_at: new Date().toISOString(),
+          status: "frozen",
+          uploads_actifs: false,
+          commentaires_actifs: false,
+          likes_actifs: false,
+        })
+        .eq("id", event.id);
+      if (error) throw error;
+
+      try {
+        await fetch("https://kapsul.app.n8n.cloud/webhook/freeze-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event_id: event.id }),
+        });
+      } catch (e) {
+        console.error("freeze webhook failed", e);
+      }
+
+      await reloadEvent();
+      setFreezeOpen(false);
+      toast.success(
+        "Événement clôturé. Vous recevrez le lien de téléchargement par email.",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Échec de la clôture";
+      toast.error(msg);
+    } finally {
+      setFreezing(false);
+    }
+  };
+
+  const formattedFrozen = event.frozen_at
+    ? new Date(event.frozen_at).toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "";
+
   return (
     <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 shadow-card">
       <header className="mb-4 flex items-start gap-3">
@@ -82,6 +133,35 @@ export function DangerZoneSection() {
         </div>
       </header>
 
+      {isFrozen ? (
+        <div className="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Événement clôturé le {formattedFrozen}</span>
+          </div>
+          {event.zip_download_url && (
+            <a
+              href={event.zip_download_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-white px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            >
+              <Download className="h-4 w-4" />
+              Télécharger toutes les photos
+            </a>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setFreezeOpen(true)}
+          className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#FF4842] bg-white px-3 py-3 text-sm font-medium text-[#FF4842] hover:bg-[#FF4842]/5"
+        >
+          <Lock className="h-4 w-4" />
+          Clôturer l'événement
+        </button>
+      )}
+
       <Button
         variant="destructive"
         onClick={() => {
@@ -92,6 +172,45 @@ export function DangerZoneSection() {
         <Trash2 className="mr-2 h-4 w-4" />
         Supprimer l'événement
       </Button>
+
+      <AlertDialog
+        open={freezeOpen}
+        onOpenChange={(o) => {
+          if (!freezing) setFreezeOpen(o);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clôturer l'événement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Les invités ne pourront plus ajouter de photos ni de commentaires.
+              La galerie reste consultable. Vous recevrez le lien de
+              téléchargement de toutes les photos par email dans quelques
+              minutes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={freezing}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleFreeze();
+              }}
+              disabled={freezing}
+              className="border border-[#FF4842] bg-white text-[#FF4842] hover:bg-[#FF4842]/5"
+            >
+              {freezing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Clôture en cours…
+                </>
+              ) : (
+                "Oui, clôturer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={open}
