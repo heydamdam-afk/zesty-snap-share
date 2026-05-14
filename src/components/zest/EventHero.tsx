@@ -1,4 +1,5 @@
 import defaultCover from "@/assets/event-cover.jpg";
+import { FrozenBadge } from "@/components/zest/FrozenBadge";
 
 function formatDate(iso?: string | null) {
   if (!iso) return "";
@@ -17,10 +18,12 @@ export function EventHero({
   title,
   dateIso,
   coverUrl,
+  frozenAt,
 }: {
   title: string;
   dateIso?: string | null;
   coverUrl?: string | null;
+  frozenAt?: string | null;
 }) {
   const date = formatDate(dateIso);
   const src = coverUrl && coverUrl.trim().length > 0 ? coverUrl : defaultCover;
@@ -48,6 +51,11 @@ export function EventHero({
       <div className="absolute inset-x-0 bottom-0 p-4">
         <h1 className="font-display text-[28px] font-bold leading-tight text-white">
           {title}
+          {frozenAt ? (
+            <span className="ml-2 align-middle">
+              <FrozenBadge frozenAt={frozenAt} />
+            </span>
+          ) : null}
         </h1>
         {date && <p className="mt-1 text-sm text-white/80">📅 {date}</p>}
       </div>

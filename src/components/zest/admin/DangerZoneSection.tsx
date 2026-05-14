@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminContext, useIsOrganisateur } from "./AdminContext";
@@ -30,6 +30,8 @@ export function DangerZoneSection() {
 
   const [freezeOpen, setFreezeOpen] = useState(false);
   const [freezing, setFreezing] = useState(false);
+  const [zipGaveUp, setZipGaveUp] = useState(false);
+  const pollStartedRef = useRef(false);
 
   if (!isOrg) {
     return (
@@ -68,6 +70,46 @@ export function DangerZoneSection() {
   const titreMatches = confirmTitre.trim() === event.titre.trim();
 
   const isFrozen = !!event.frozen_at;
+
+  useEffect(() => {
+    if (!isFrozen) {
+      pollStartedRef.current = false;
+      setZipGaveUp(false);
+      return;
+    }
+    if (event.zip_download_url) {
+      setZipGaveUp(false);
+      return;
+    }
+    if (pollStartedRef.current) return;
+    pollStartedRef.current = true;
+    setZipGaveUp(false);
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      const { data } = await supabase
+        .from("events")
+        .select("zip_download_url")
+        .eq("id", event.id)
+        .single();
+      if (cancelled) return;
+      if (data?.zip_download_url) {
+        await reloadEvent();
+        return;
+      }
+      if (attempts >= 10) {
+        setZipGaveUp(true);
+        return;
+      }
+      setTimeout(() => void tick(), 3000);
+    };
+    setTimeout(() => void tick(), 3000);
+    return () => {
+      cancelled = true;
+    };
+  }, [isFrozen, event.id, event.zip_download_url, reloadEvent]);
 
   const handleFreeze = async () => {
     setFreezing(true);
@@ -146,20 +188,37 @@ export function DangerZoneSection() {
 
       {isFrozen ? (
         <div className="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
-          <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>Événement clôturé le {formattedFrozen}</span>
-          </div>
-          {event.zip_download_url && (
-            <a
-              href={event.zip_download_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-white px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-            >
-              <Download className="h-4 w-4" />
-              Télécharger toutes les photos
-            </a>
+          {event.zip_download_url ? (
+            <>
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Événement clôturé le {formattedFrozen}</span>
+              </div>
+              <a
+                href={event.zip_download_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 text-sm font-medium text-white"
+                style={{
+                  backgroundColor: "#00AB55",
+                  borderRadius: 8,
+                  padding: 12,
+                }}
+              >
+                <Download className="h-4 w-4" />
+                Télécharger toutes les photos
+              </a>
+            </>
+          ) : zipGaveUp ? (
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Clôturé — aucune photo à télécharger.</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 font-medium">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Préparation de votre ZIP…</span>
+            </div>
           )}
         </div>
       ) : (
