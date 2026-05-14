@@ -117,20 +117,25 @@ export function DangerZoneSection() {
       const { error } = await supabase
         .from("events")
         .update({
-          frozen_at: new Date().toISOString(),
           status: "frozen",
+          frozen_at: new Date().toISOString(),
           uploads_actifs: false,
           commentaires_actifs: false,
           likes_actifs: false,
         })
         .eq("id", event.id);
-      if (error) throw error;
+      if (error) {
+        toast.error("Erreur lors de la clôture. Réessayez.");
+        return;
+      }
+
+      await reloadEvent();
 
       try {
         const { data: userData } = await supabase.auth.getUser();
         const currentUser = userData.user;
         const eventId = event.id;
-        await fetch('https://kapsul.app.n8n.cloud/webhook/freeze-event', {
+        void fetch('https://kapsul.app.n8n.cloud/webhook/freeze-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -142,19 +147,17 @@ export function DangerZoneSection() {
               currentUser?.user_metadata?.prenom ??
               '',
           }),
+        }).catch((e) => {
+          console.error("freeze webhook failed", e);
         });
       } catch (e) {
         console.error("freeze webhook failed", e);
       }
 
-      await reloadEvent();
       setFreezeOpen(false);
       toast.success(
         "Événement clôturé. Vous recevrez le lien de téléchargement par email.",
       );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Échec de la clôture";
-      toast.error(msg);
     } finally {
       setFreezing(false);
     }
