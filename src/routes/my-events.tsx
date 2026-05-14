@@ -29,6 +29,7 @@ type EventRow = {
   cover_url: string | null;
   event_date: string | null;
   role: "organisateur" | "secondaire";
+  frozen_at: string | null;
 };
 
 function formatDate(iso: string | null): string | null {
@@ -64,7 +65,7 @@ function MyEvents() {
       const ids = list.map((e) => e.event_id);
       const { data: detailsData, error: detErr } = await supabase
         .from("events")
-        .select("id, slug, titre, lieu, cover_url, event_date")
+        .select("id, slug, titre, lieu, cover_url, event_date, frozen_at")
         .in("id", ids);
       if (detErr) throw detErr;
       const byId = new Map((detailsData ?? []).map((d) => [d.id, d]));
@@ -78,6 +79,7 @@ function MyEvents() {
           cover_url: d?.cover_url ?? null,
           event_date: d?.event_date ?? null,
           role: e.role,
+          frozen_at: (d as { frozen_at?: string | null } | undefined)?.frozen_at ?? null,
         };
       });
       setEvents(merged);
@@ -214,7 +216,14 @@ function MyEvents() {
                   </div>
 
                   <div className="space-y-1.5 p-5">
-                    <h2 className="font-display text-xl text-foreground">{ev.titre}</h2>
+                    <h2 className="font-display text-xl text-foreground">
+                      {ev.titre}
+                      {ev.frozen_at ? (
+                        <span className="ml-2 align-middle">
+                          <FrozenBadge frozenAt={ev.frozen_at} />
+                        </span>
+                      ) : null}
+                    </h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                       {date && (
                         <span className="inline-flex items-center gap-1.5">
