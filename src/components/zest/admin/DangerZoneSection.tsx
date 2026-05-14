@@ -30,7 +30,6 @@ export function DangerZoneSection() {
 
   const [freezeOpen, setFreezeOpen] = useState(false);
   const [freezing, setFreezing] = useState(false);
-  const [zipPolling, setZipPolling] = useState(false);
   const [zipGaveUp, setZipGaveUp] = useState(false);
   const pollStartedRef = useRef(false);
 
@@ -75,18 +74,15 @@ export function DangerZoneSection() {
   useEffect(() => {
     if (!isFrozen) {
       pollStartedRef.current = false;
-      setZipPolling(false);
       setZipGaveUp(false);
       return;
     }
     if (event.zip_download_url) {
-      setZipPolling(false);
       setZipGaveUp(false);
       return;
     }
     if (pollStartedRef.current) return;
     pollStartedRef.current = true;
-    setZipPolling(true);
     setZipGaveUp(false);
     let cancelled = false;
     let attempts = 0;
@@ -100,12 +96,10 @@ export function DangerZoneSection() {
         .single();
       if (cancelled) return;
       if (data?.zip_download_url) {
-        setZipPolling(false);
         await reloadEvent();
         return;
       }
       if (attempts >= 10) {
-        setZipPolling(false);
         setZipGaveUp(true);
         return;
       }
