@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { LogOut, Plus, MapPin, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ZestLogo } from "@/components/zest/Logo";
+import { FrozenBadge } from "@/components/zest/FrozenBadge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-events")({
