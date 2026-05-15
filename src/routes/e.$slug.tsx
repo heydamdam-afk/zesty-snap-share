@@ -306,7 +306,7 @@ function Index() {
           title={guest.event.titre}
           dateIso={guest.event.event_date ?? guest.event.expire_at}
           coverUrl={guest.event.cover_url}
-          frozenAt={(guest.event as { frozen_at?: string | null }).frozen_at ?? null}
+          expireAt={(guest.event as { expire_at?: string | null }).expire_at ?? null}
         />
         <ProfileMenu
           guest={guest}

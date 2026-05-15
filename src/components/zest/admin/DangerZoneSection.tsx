@@ -171,6 +171,13 @@ export function DangerZoneSection() {
       })
     : "";
 
+  const downloadDaysLeft = event.expire_at
+    ? Math.floor(
+        (new Date(event.expire_at).getTime() + 7 * 86400000 - Date.now()) /
+          86400000,
+      )
+    : null;
+
   return (
     <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 shadow-card">
       <header className="mb-4 flex items-start gap-3">
@@ -211,11 +218,16 @@ export function DangerZoneSection() {
                 <Download className="h-4 w-4" />
                 Télécharger toutes les photos
               </a>
+              {downloadDaysLeft !== null && downloadDaysLeft > 0 && (
+                <p className="mt-2 text-xs text-emerald-800/80">
+                  Il reste encore {downloadDaysLeft} jours pour télécharger vos photos.
+                </p>
+              )}
             </>
           ) : zipGaveUp ? (
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="h-4 w-4" />
-              <span>Clôturé — aucune photo à télécharger.</span>
+              <span>✓ Événement clôturé — aucune photo à télécharger</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 font-medium">
