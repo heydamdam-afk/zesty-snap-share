@@ -31,6 +31,7 @@ type EventRow = {
   event_date: string | null;
   role: "organisateur" | "secondaire";
   frozen_at: string | null;
+  expire_at: string | null;
 };
 
 function formatDate(iso: string | null): string | null {
@@ -66,7 +67,7 @@ function MyEvents() {
       const ids = list.map((e) => e.event_id);
       const { data: detailsData, error: detErr } = await supabase
         .from("events")
-        .select("id, slug, titre, lieu, cover_url, event_date, frozen_at")
+        .select("id, slug, titre, lieu, cover_url, event_date, frozen_at, expire_at")
         .in("id", ids);
       if (detErr) throw detErr;
       const byId = new Map((detailsData ?? []).map((d) => [d.id, d]));
@@ -81,6 +82,7 @@ function MyEvents() {
           event_date: d?.event_date ?? null,
           role: e.role,
           frozen_at: (d as { frozen_at?: string | null } | undefined)?.frozen_at ?? null,
+          expire_at: (d as { expire_at?: string | null } | undefined)?.expire_at ?? null,
         };
       });
       setEvents(merged);
@@ -221,7 +223,7 @@ function MyEvents() {
                       {ev.titre}
                       {ev.frozen_at ? (
                         <span className="ml-2 align-middle">
-                          <FrozenBadge frozenAt={ev.frozen_at} />
+                          <FrozenBadge expireAt={ev.expire_at} />
                         </span>
                       ) : null}
                     </h2>

@@ -18,12 +18,12 @@ export function EventHero({
   title,
   dateIso,
   coverUrl,
-  frozenAt,
+  expireAt,
 }: {
   title: string;
   dateIso?: string | null;
   coverUrl?: string | null;
-  frozenAt?: string | null;
+  expireAt?: string | null;
 }) {
   const date = formatDate(dateIso);
   const src = coverUrl && coverUrl.trim().length > 0 ? coverUrl : defaultCover;
@@ -51,9 +51,9 @@ export function EventHero({
       <div className="absolute inset-x-0 bottom-0 p-4">
         <h1 className="font-display text-[28px] font-bold leading-tight text-white">
           {title}
-          {frozenAt ? (
+          {expireAt ? (
             <span className="ml-2 align-middle">
-              <FrozenBadge frozenAt={frozenAt} />
+              <FrozenBadge expireAt={expireAt} />
             </span>
           ) : null}
         </h1>

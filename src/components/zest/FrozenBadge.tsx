@@ -1,10 +1,8 @@
-export function FrozenBadge({ frozenAt }: { frozenAt: string | null | undefined }) {
-  if (!frozenAt) return null;
-  const daysSinceFrozen = Math.floor(
-    (Date.now() - new Date(frozenAt).getTime()) / 86400000,
+export function FrozenBadge({ expireAt }: { expireAt: string | null | undefined }) {
+  if (!expireAt) return null;
+  const daysLeft = Math.floor(
+    (new Date(expireAt).getTime() - Date.now()) / 86400000,
   );
-  const daysLeft = 37 - daysSinceFrozen;
-  if (daysLeft > 37) return null;
   const text =
     daysLeft <= 0
       ? "🔒 Clôturé — suppression imminente"

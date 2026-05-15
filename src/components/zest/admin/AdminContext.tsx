@@ -17,6 +17,7 @@ export type AdminEvent = {
   status: string;
   frozen_at: string | null;
   zip_download_url: string | null;
+  expire_at: string | null;
 };
 
 export type AdminContextValue = {

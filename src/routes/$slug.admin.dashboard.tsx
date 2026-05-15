@@ -26,7 +26,7 @@ export const Route = createFileRoute("/$slug/admin/dashboard")({
 });
 
 const EVENT_SELECT =
-  "id, titre, slug, code_acces, lieu, cover_url, commentaires_actifs, likes_actifs, uploads_actifs, quota_mo, used_mo, status, frozen_at, zip_download_url";
+  "id, titre, slug, code_acces, lieu, cover_url, commentaires_actifs, likes_actifs, uploads_actifs, quota_mo, used_mo, status, frozen_at, zip_download_url, expire_at";
 
 function AdminDashboard() {
   const { slug } = Route.useParams();
