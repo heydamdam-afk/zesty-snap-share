@@ -1,67 +1,40 @@
-## Bug
+## Diagnostic
 
-`ComposeBar` est monté avant que `guest.invite.id` soit disponible. Quand l'invité clique "Publier", `createPost` reçoit un `inviteId` invalide et lève l'erreur `"Session invité invalide"` — l'upload échoue silencieusement.
+Le backend est disponible, la colonne `frozen_at` existe, la valeur `frozen` est bien autorisée par la contrainte de statut, et aucun trigger ne bloque la table `events`.
 
-S'ajoute une fuite mémoire : `URL.createObjectURL` est appelé à chaque render sans cleanup → previews qui clignotent / disparaissent sur mobile.
+La cause probable est claire : la table `events` n’a actuellement qu’une règle de lecture publique. Il n’existe aucune règle autorisant un administrateur authentifié à modifier un événement. Donc l’appel frontend :
 
-## Fix en 3 parties
-
-### 1. `src/routes/e.$slug.tsx` — guard côté parent
-
-Ne plus rendre `ComposeBar` tant que la session invité n'est pas complète.
-
-```tsx
-// Avant
-<ComposeBar guest={guest} onPosted={reload} />
-
-// Après
-{guest?.invite?.id && guest?.event?.id && (
-  <ComposeBar guest={guest} onPosted={reload} />
-)}
+```ts
+supabase.from('events').update(...).eq('id', event.id)
 ```
 
-### 2. `src/components/zest/ComposeBar.tsx` — garde défensive dans `submit()`
+peut être bloqué par les règles d’accès de la base. Résultat : pas de passage à `status = 'frozen'`, pas de `frozen_at = now`, et le webhook n8n ne devrait pas être déclenché si l’erreur est correctement gérée.
 
-```tsx
-const submit = async () => {
-  if (!guest?.invite?.id || !guest?.event?.id) {
-    toast.error("Session expirée — recharge la page");
-    return;
-  }
-  if ((!text.trim() && files.length === 0) || busy) return;
-  // … reste inchangé
-};
-```
+## Plan de résolution recommandé
 
-### 3. `src/components/zest/ComposeBar.tsx` — fix fuite mémoire previews
+1. Ajouter une règle d’accès backend sur `events`
+   - Autoriser uniquement les administrateurs de l’événement à modifier la ligne correspondante.
+   - Utiliser la fonction existante `is_event_admin_email(id)` ou équivalent déjà en place.
+   - Ne pas ouvrir la modification aux invités ni au public.
 
-Remplacer le `useMemo` actuel (qui flag HEIC/`isUnsupported` et fait disparaître certaines previews) par un `useState` + `useEffect` qui crée les URLs **une seule fois** par changement de `files` et les révoque au cleanup.
+2. Limiter la règle au strict besoin
+   - La règle doit permettre à l’admin de mettre à jour l’événement dont il est admin.
+   - Elle servira à la clôture, mais aussi potentiellement aux réglages admin déjà existants si ceux-ci modifient `events` depuis le client.
 
-```tsx
-const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
+3. Tester le flux
+   - Cliquer sur `Clôturer l'événement`.
+   - Confirmer dans la popup.
+   - Vérifier que `events.status` devient `frozen`.
+   - Vérifier que `events.frozen_at` reçoit une date immédiate.
+   - Vérifier que `uploads_actifs`, `commentaires_actifs`, `likes_actifs` passent à `false`.
 
-useEffect(() => {
-  const urls = files.map((f) => ({
-    name: f.name,
-    url: URL.createObjectURL(f),
-  }));
-  setPreviews(urls);
-  return () => urls.forEach((u) => URL.revokeObjectURL(u.url));
-}, [files]);
-```
+## Alternative plus robuste
 
-Et simplifier le rendu des previews : un seul `<img src={p.url} />` (plus de branche fallback `isUnsupported`/HEIC qui masquait les previews JPEG normales).
+Au lieu de laisser le frontend modifier directement `events`, on peut déplacer la clôture dans une fonction serveur Lovable :
 
-Garder `onError` + `reportImageError` pour le diagnostic, mais sans le fallback "Image".
+- le bouton appelle une fonction serveur `freezeEvent` ;
+- la fonction vérifie côté serveur que l’utilisateur est bien admin de l’événement ;
+- elle met à jour `status`, `frozen_at` et les flags ;
+- puis le frontend déclenche le webhook n8n en arrière-plan, ou la fonction serveur le déclenche elle-même.
 
-## Effets
-
-- L'upload depuis la photothèque fonctionne dès que la session est prête.
-- Plus de previews blanches/clignotantes sur iOS et Android.
-- Plus de fuite mémoire sur les sélections multiples.
-- Si la session expire en cours d'usage, l'utilisateur voit un toast clair au lieu d'un échec silencieux.
-
-## Fichiers modifiés
-
-- `src/routes/e.$slug.tsx` — wrap `<ComposeBar>` dans la condition.
-- `src/components/zest/ComposeBar.tsx` — guard `submit`, remplacement `useMemo` par `useState`+`useEffect`, suppression du fallback HEIC/`isUnsupported` et de l'import `ImageIcon`.
+C’est plus robuste, mais c’est une modification un peu plus large. Pour corriger le bug actuel avec le minimum de changement, la règle d’accès `UPDATE` sur `events` est la solution la plus directe.
