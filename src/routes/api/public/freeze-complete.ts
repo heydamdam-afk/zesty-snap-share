@@ -59,13 +59,17 @@ export const Route = createFileRoute("/api/public/freeze-complete")({
 
         const { data: ev, error: readErr } = await supabaseAdmin
           .from("events")
-          .select("id")
+          .select("id, status")
           .eq("id", event_id)
           .maybeSingle();
         if (readErr) {
           return json(500, { error: "DB read failed", message: readErr.message });
         }
         if (!ev) return json(404, { error: "Event not found" });
+
+        if (ev.status === "frozen") {
+          return json(200, { success: true });
+        }
 
         const { error: updErr } = await supabaseAdmin
           .from("events")
