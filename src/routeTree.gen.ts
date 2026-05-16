@@ -21,6 +21,7 @@ import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
+import { Route as ApiPublicFreezeCompleteRouteImport } from './routes/api/public/freeze-complete'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 
@@ -84,6 +85,11 @@ const ApiPublicR2UploadRoute = ApiPublicR2UploadRouteImport.update({
   path: '/api/public/r2-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFreezeCompleteRoute = ApiPublicFreezeCompleteRouteImport.update({
+  id: '/api/public/freeze-complete',
+  path: '/api/public/freeze-complete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicExpireEventsRoute = ApiPublicExpireEventsRouteImport.update({
   id: '/api/public/expire-events',
   path: '/api/public/expire-events',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
+  '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/$slug/admin/dashboard'
     | '/api/public/expire-events'
+    | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
   fileRoutesById: FileRoutesById
@@ -207,6 +219,7 @@ export interface RootRouteChildren {
   PlatformCouponsRoute: typeof PlatformCouponsRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
   ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
+  ApiPublicFreezeCompleteRoute: typeof ApiPublicFreezeCompleteRoute
   ApiPublicR2UploadRoute: typeof ApiPublicR2UploadRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
 }
@@ -297,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicR2UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/freeze-complete': {
+      id: '/api/public/freeze-complete'
+      path: '/api/public/freeze-complete'
+      fullPath: '/api/public/freeze-complete'
+      preLoaderRoute: typeof ApiPublicFreezeCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/expire-events': {
       id: '/api/public/expire-events'
       path: '/api/public/expire-events'
@@ -338,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlatformCouponsRoute: PlatformCouponsRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
   ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
+  ApiPublicFreezeCompleteRoute: ApiPublicFreezeCompleteRoute,
   ApiPublicR2UploadRoute: ApiPublicR2UploadRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
 }
