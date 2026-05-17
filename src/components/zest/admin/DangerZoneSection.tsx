@@ -135,6 +135,13 @@ export function DangerZoneSection() {
         const { data: userData } = await supabase.auth.getUser();
         const currentUser = userData.user;
         const eventId = event.id;
+        const { data: adminsData } = await supabase
+          .from("event_admins")
+          .select("email")
+          .eq("event_id", eventId);
+        const adminsEmails = (adminsData ?? [])
+          .map((a) => a.email)
+          .filter((e): e is string => !!e);
         void fetch('https://kapsul.app.n8n.cloud/webhook/freeze-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -146,6 +153,7 @@ export function DangerZoneSection() {
               (currentUser as { prenom?: string } | null)?.prenom ??
               currentUser?.user_metadata?.prenom ??
               '',
+            admins_emails: adminsEmails,
           }),
         }).catch((e) => {
           console.error("freeze webhook failed", e);
