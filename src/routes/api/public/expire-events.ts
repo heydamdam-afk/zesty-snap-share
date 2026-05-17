@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/public/expire-events")({
         // Read current status to enforce the transition rules.
         const { data: ev, error: readErr } = await supabaseAdmin
           .from("events")
-          .select("id, status")
+          .select("id, titre, status")
           .eq("id", id)
           .maybeSingle();
         if (readErr) {
@@ -108,8 +108,24 @@ export const Route = createFileRoute("/api/public/expire-events")({
           );
         }
 
+        // Fetch all admins (organisateur + secondaires) for n8n email step.
+        const { data: adminsData } = await supabaseAdmin
+          .from("event_admins")
+          .select("email")
+          .eq("event_id", id);
+        const admins_emails = (adminsData ?? [])
+          .map((a) => a.email)
+          .filter((e): e is string => !!e);
+
         return new Response(
-          JSON.stringify({ ok: true, id, from: ev.status, to: nextStatus }),
+          JSON.stringify({
+            ok: true,
+            id,
+            titre: ev.titre,
+            from: ev.status,
+            to: nextStatus,
+            admins_emails,
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       },
