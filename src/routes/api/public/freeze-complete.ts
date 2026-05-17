@@ -59,7 +59,7 @@ export const Route = createFileRoute("/api/public/freeze-complete")({
 
         const { data: ev, error: readErr } = await supabaseAdmin
           .from("events")
-          .select("id, status, zip_download_url")
+          .select("id, titre, status, zip_download_url")
           .eq("id", event_id)
           .maybeSingle();
         if (readErr) {
@@ -67,11 +67,20 @@ export const Route = createFileRoute("/api/public/freeze-complete")({
         }
         if (!ev) return json(404, { error: "Event not found" });
 
+        // Fetch all admins (organisateur + secondaires) for n8n email step.
+        const { data: adminsData } = await supabaseAdmin
+          .from("event_admins")
+          .select("email")
+          .eq("event_id", event_id);
+        const admins_emails = (adminsData ?? [])
+          .map((a) => a.email)
+          .filter((e): e is string => !!e);
+
         // Idempotent: only short-circuit if the zip URL is already written.
         // The client flips status to 'frozen' before n8n calls back, so we
         // must still write zip_download_url even when status is already frozen.
         if (ev.status === "frozen" && ev.zip_download_url === zip_download_url) {
-          return json(200, { success: true });
+          return json(200, { success: true, event_id, titre: ev.titre, admins_emails });
         }
 
         const { error: updErr } = await supabaseAdmin
@@ -90,7 +99,7 @@ export const Route = createFileRoute("/api/public/freeze-complete")({
           return json(500, { error: "DB update failed", message: updErr.message });
         }
 
-        return json(200, { success: true });
+        return json(200, { success: true, event_id, titre: ev.titre, admins_emails });
       },
     },
   },
