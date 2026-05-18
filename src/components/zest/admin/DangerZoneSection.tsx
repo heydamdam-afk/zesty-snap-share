@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminContext, useIsOrganisateur } from "./AdminContext";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { AlertTriangle, CheckCircle2, Download, Loader2, Lock, Trash2 } from "lu
 export function DangerZoneSection() {
   const { event, reloadEvent } = useAdminContext();
   const isOrg = useIsOrganisateur();
-  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [confirmTitre, setConfirmTitre] = useState("");
