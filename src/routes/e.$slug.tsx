@@ -29,7 +29,7 @@ import {
   type UploadProgress,
 } from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { findEventBySlug, findInvite } from "@/lib/zest-actions";
@@ -75,6 +75,7 @@ export const Route = createFileRoute("/e/$slug")({
 
 function Index() {
   const { slug: EVENT_SLUG } = Route.useParams();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<TabId>("feed");
   const [guest, setGuest] = useState<GuestSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -190,6 +191,45 @@ function Index() {
   );
 
   const { isAdmin } = useAdmin(guest?.event.id ?? null);
+
+  // Realtime : si l'event est archivé/supprimé par n8n, rediriger vers /closed
+  useEffect(() => {
+    const eventId = guest?.event.id;
+    if (!eventId) return;
+    const channel = supabase
+      .channel(`event-status-${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "events",
+          filter: `id=eq.${eventId}`,
+        },
+        (payload) => {
+          const next = payload.new as { status?: string } | null;
+          if (next?.status === "archived") {
+            navigate({ to: "/closed" });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "events",
+          filter: `id=eq.${eventId}`,
+        },
+        () => {
+          navigate({ to: "/closed" });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [guest?.event.id, navigate]);
 
   const stats = useMemo(() => {
     const guests = new Set(posts.map((p) => p.invite_id)).size;
