@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, Loader2, Lock, Trash2 } from "lucide-react";
-import { deleteEventCascade } from "@/server/event-admin.functions";
 
 export function DangerZoneSection() {
   const { event, reloadEvent } = useAdminContext();
@@ -47,19 +46,17 @@ export function DangerZoneSection() {
   const handleDelete = async () => {
     setPending(true);
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Session expirée");
-      await deleteEventCascade({
-        data: {
-          eventId: event.id,
-          adminToken: token,
-          confirmTitre,
-        },
-      });
+      if (confirmTitre.trim() !== event.titre.trim()) {
+        throw new Error("Le titre de confirmation ne correspond pas.");
+      }
+      const { error } = await supabase
+        .from("events")
+        .update({ status: "archived" })
+        .eq("id", event.id);
+      if (error) throw error;
       toast.success("Événement supprimé.");
       await supabase.auth.signOut();
-      navigate({ to: "/" });
+      window.location.href = "https://kapsul.events";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Échec de la suppression";
       toast.error(msg);
