@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { z } from "zod";
 import { Check } from "lucide-react";
-import { ZestLogo } from "./Logo";
 import {
   buildSession,
   getOrCreateDeviceId,
@@ -284,57 +282,100 @@ export function AccessGate({
     }`;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[image:var(--gradient-warm)]">
-      {eventInfo?.cover_url ? (
-        <img
-          src={eventInfo.cover_url}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-15 blur-sm"
-        />
-      ) : null}
-      <div className="absolute inset-0 -z-10 bg-background/40" />
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10">
-        {eventInfo?.titre && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-6 text-center"
-          >
-            <div className="text-3xl">🎉</div>
-            <p className="mt-1 text-sm text-muted-foreground">Bienvenue à</p>
-            <h2 className="font-display text-[26px] font-bold leading-tight text-foreground">
-              {eventInfo.titre}
-            </h2>
-          </motion.div>
+    <div className="gi-shell">
+      {/* ── Brand panel ── */}
+      <aside className="gi-brand">
+        {eventInfo?.cover_url && (
+          <img
+            src={eventInfo.cover_url}
+            alt=""
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.12,
+              zIndex: 0,
+              pointerEvents: "none",
+            }}
+          />
         )}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full rounded-3xl bg-card/95 p-7 shadow-card backdrop-blur"
-        >
-          <p className="mt-1 text-sm text-muted-foreground">
-            Entrez le code de votre invitation pour rejoindre la galerie.
-          </p>
 
-          <div className="my-6 h-px bg-border" />
+        <div className="gi-brand-top">
+          <span className="gi-logo">
+            <span className="gi-logo-dot" />
+            Kapsul
+          </span>
+        </div>
+
+        <div className="gi-hero">
+          <span className="gi-eyebrow">
+            <span className="gi-eyebrow-dot" />
+            Galerie privée
+          </span>
+          <h1 className="gi-event-title">
+            {eventInfo?.titre ?? "Rejoignez la galerie"}
+          </h1>
+          {eventInfo?.event_date && (
+            <p className="gi-event-meta">
+              {new Date(eventInfo.event_date).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+              {eventInfo.lieu ? ` · ${eventInfo.lieu}` : ""}
+            </p>
+          )}
+          <p className="gi-event-meta" style={{ marginBottom: 0, fontSize: 15 }}>
+            Partagez vos plus beaux clichés, retrouvez ceux des autres invités, et récupérez l'album complet à la fin de l'événement.
+          </p>
+        </div>
+
+        <div className="gi-polaroid-stack" aria-hidden>
+          <div className="gi-polaroid gi-poly-1"><div className="gi-poly-img" /></div>
+          <div className="gi-polaroid gi-poly-2"><div className="gi-poly-img" /></div>
+          <div className="gi-polaroid gi-poly-3"><div className="gi-poly-img" /></div>
+        </div>
+
+        <div className="gi-brand-footer">
+          <span>Propulsé par <strong>Kapsul</strong></span>
+        </div>
+      </aside>
+
+      {/* ── Form panel ── */}
+      <main className="gi-form-panel">
+        <div className="gi-form-inner gi-screen">
+          <h2 className="gi-h1">Vous êtes invité !</h2>
+          <p className="gi-sub">Entrez vos informations pour rejoindre la galerie photo.</p>
 
           {errors.global && (
-            <div className="mb-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive" role="alert">
+            <div
+              role="alert"
+              style={{
+                marginBottom: 20,
+                padding: "12px 14px",
+                background: "#FFF5F4",
+                border: "1px solid #FFD9D6",
+                borderRadius: 12,
+                color: "#FF4842",
+                fontSize: 13.5,
+                fontWeight: 500,
+                fontFamily: '"Public Sans", sans-serif',
+              }}
+            >
               {errors.global}
               {isLocked && remainingMin > 0 && ` (${remainingMin} min)`}
             </div>
           )}
 
-          <form onSubmit={submit} className="space-y-4" noValidate>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="code" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Code d'accès
-                </label>
-                <Badge tone="required">Obligatoire</Badge>
+          <form onSubmit={submit} noValidate>
+            {/* Code d'accès */}
+            <div className="gi-field">
+              <div className="gi-label-row">
+                <span className="gi-label">Code d'accès</span>
+                <span className="gi-badge">Obligatoire</span>
               </div>
               <input
                 id="code"
@@ -343,11 +384,11 @@ export function AccessGate({
                   setCode(e.target.value);
                   if (errors.code) setErrors((x) => ({ ...x, code: undefined }));
                 }}
-                placeholder="JULIE2026"
+                placeholder="ex : JULIE2026"
                 autoCapitalize="characters"
                 maxLength={64}
                 disabled={isLocked || loading}
-                className={`${inputClass(!!errors.code)} font-mono uppercase tracking-wider`}
+                className={`gi-input uppercase${errors.code ? " is-error" : ""}`}
                 name="event-code"
                 autoComplete="off"
                 autoCorrect="off"
@@ -355,16 +396,15 @@ export function AccessGate({
                 inputMode="text"
               />
               {errors.code && (
-                <p className="mt-1.5 text-xs font-medium text-destructive">{errors.code}</p>
+                <div className="gi-help" style={{ color: "#FF4842" }}>{errors.code}</div>
               )}
             </div>
 
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="prenom" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Votre prénom
-                </label>
-                <Badge tone="required">Obligatoire</Badge>
+            {/* Prénom */}
+            <div className="gi-field">
+              <div className="gi-label-row">
+                <span className="gi-label">Votre prénom</span>
+                <span className="gi-badge">Obligatoire</span>
               </div>
               <input
                 id="prenom"
@@ -377,7 +417,7 @@ export function AccessGate({
                 placeholder="Votre prénom"
                 maxLength={40}
                 disabled={isLocked || loading}
-                className={inputClass(!!errors.prenom || prenomAvailable === false)}
+                className={`gi-input${errors.prenom || prenomAvailable === false ? " is-error" : ""}`}
                 name="given-name"
                 autoComplete="given-name"
                 autoCorrect="off"
@@ -385,25 +425,25 @@ export function AccessGate({
                 spellCheck={false}
               />
               {prenomChecking && (
-                <p className="mt-1.5 text-xs text-muted-foreground">Vérification…</p>
+                <div className="gi-help">Vérification…</div>
               )}
               {!prenomChecking && prenomAvailable === true && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-primary">
-                  <Check className="h-3 w-3" strokeWidth={3} /> Prénom disponible
-                </p>
+                <div className="gi-help" style={{ color: "#00AB55", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Check style={{ width: 12, height: 12 }} strokeWidth={3} /> Prénom disponible
+                </div>
               )}
               {!prenomChecking && prenomAvailable === false && (
-                <p className="mt-1.5 text-xs font-medium text-destructive">
+                <div className="gi-help" style={{ color: "#FF4842" }}>
                   « {normalisePrenom(prenom)} » est déjà pris dans cet événement.
-                </p>
+                </div>
               )}
               {errors.prenom && prenomAvailable !== false && (
-                <p className="mt-1.5 text-xs font-medium text-destructive">{errors.prenom}</p>
+                <div className="gi-help" style={{ color: "#FF4842" }}>{errors.prenom}</div>
               )}
               {prenomSuggestions.length > 0 && (
-                <div className="mt-2">
-                  <p className="mb-1.5 text-xs text-muted-foreground">Choisissez une variante :</p>
-                  <div className="flex flex-wrap gap-2">
+                <div style={{ marginTop: 10 }}>
+                  <p className="gi-help">Choisissez une variante :</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
                     {prenomSuggestions.map((s) => (
                       <button
                         key={s}
@@ -413,7 +453,17 @@ export function AccessGate({
                           setErrors((x) => ({ ...x, prenom: undefined }));
                           setPrenomSuggestions([]);
                         }}
-                        className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-[13px] font-medium text-foreground hover:bg-primary/10"
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 100,
+                          border: "1.5px solid rgba(255,72,66,0.3)",
+                          background: "rgba(255,72,66,0.05)",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: "#212B36",
+                          cursor: "pointer",
+                          fontFamily: '"Public Sans", sans-serif',
+                        }}
                       >
                         {s}
                       </button>
@@ -423,12 +473,11 @@ export function AccessGate({
               )}
             </div>
 
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="email" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Email
-                </label>
-                <Badge tone="required">Obligatoire</Badge>
+            {/* Email */}
+            <div className="gi-field">
+              <div className="gi-label-row">
+                <span className="gi-label">Votre email</span>
+                <span className="gi-badge">Obligatoire</span>
               </div>
               <input
                 id="email"
@@ -441,7 +490,7 @@ export function AccessGate({
                 placeholder="vous@email.com"
                 maxLength={255}
                 disabled={isLocked || loading}
-                className={inputClass(!!errors.email)}
+                className={`gi-input${errors.email ? " is-error" : ""}`}
                 name="email"
                 autoComplete="email"
                 autoCorrect="off"
@@ -449,51 +498,88 @@ export function AccessGate({
                 spellCheck={false}
                 inputMode="email"
               />
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                Votre email est utilisé uniquement pour retrouver vos photos.{" "}
-                <a
-                  href="/privacy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-foreground"
-                >
-                  Voir notre politique de confidentialité.
-                </a>
-              </p>
-              {errors.email && (
-                <p className="mt-1 text-xs font-medium text-destructive">{errors.email}</p>
+              {errors.email ? (
+                <div className="gi-help" style={{ color: "#FF4842" }}>{errors.email}</div>
+              ) : (
+                <div className="gi-help">
+                  Pour recevoir le ZIP des photos à la fin de l'événement.{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", color: "#637381" }}>
+                    Politique de confidentialité.
+                  </a>
+                </div>
               )}
             </div>
 
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Photo de profil
-                </span>
-                <Badge tone="optional">Optionnelle</Badge>
+            {/* Photo de profil */}
+            <div className="gi-field">
+              <div className="gi-label-row">
+                <span className="gi-label">Photo de profil</span>
+                <span style={{ fontSize: 11, color: "#919EAB", fontFamily: '"Public Sans", sans-serif', textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>Optionnelle</span>
               </div>
-              <div className="flex items-center gap-4 rounded-xl border border-border bg-background/60 p-3">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  padding: "12px 14px",
+                  border: "1.5px solid #E7E3DE",
+                  borderRadius: 12,
+                  background: "#fff",
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={isLocked || loading}
-                  className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-card"
-                  style={{ backgroundColor: avatar ? "transparent" : previewColor }}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    background: avatar ? "transparent" : previewColor,
+                    cursor: "pointer",
+                    border: "none",
+                    padding: 0,
+                  }}
                 >
                   {avatar ? (
-                    <img src={avatar} alt="" className="h-full w-full object-cover" />
+                    <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-white">
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        fontFamily: '"Josefin Sans", sans-serif',
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: "#fff",
+                      }}
+                    >
                       {previewInitial}
                     </span>
                   )}
                 </button>
-                <div className="min-w-0 flex-1 text-sm">
-                  <p className="text-xs text-muted-foreground">JPG ou PNG · 5 Mo max</p>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 12, color: "#919EAB", fontFamily: '"Public Sans", sans-serif', margin: 0 }}>
+                    JPG ou PNG · 5 Mo max
+                  </p>
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="mt-1 text-xs font-medium text-primary hover:underline"
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#FF4842",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      marginTop: 4,
+                      fontFamily: '"Public Sans", sans-serif',
+                    }}
                   >
                     {avatar ? "Changer" : "Choisir une photo"}
                   </button>
@@ -501,26 +587,26 @@ export function AccessGate({
                     ref={fileRef}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
+                    style={{ display: "none" }}
                     onChange={(e) => onPickAvatar(e.target.files?.[0])}
                   />
                 </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLocked || loading}
-              className="mt-2 w-full rounded-xl bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
-            >
-              {loading ? "Connexion…" : "Rejoindre la galerie"}
+            <button type="submit" disabled={isLocked || loading} className="gi-cta">
+              {loading ? "Connexion…" : "Rejoindre la galerie →"}
             </button>
+
+            <p className="gi-footnote">
+              En continuant, vous acceptez les{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">conditions</a>{" "}
+              et la{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>.
+            </p>
           </form>
-        </motion.div>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Propulsé par <span className="font-semibold">Kapsul</span>
-        </p>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

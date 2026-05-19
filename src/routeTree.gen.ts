@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MyEventsRouteImport } from './routes/my-events'
+import { Route as GrosEvenementRouteImport } from './routes/gros-evenement'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateEventRouteImport } from './routes/create-event'
 import { Route as ClosedRouteImport } from './routes/closed'
@@ -33,6 +34,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const MyEventsRoute = MyEventsRouteImport.update({
   id: '/my-events',
   path: '/my-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GrosEvenementRoute = GrosEvenementRouteImport.update({
+  id: '/gros-evenement',
+  path: '/gros-evenement',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/closed': typeof ClosedRoute
   '/create-event': typeof CreateEventRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/success': typeof CreateEventSuccessRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
     | '/create-event/success'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
     | '/create-event/success'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/create-event'
     | '/dashboard'
+    | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
     | '/create-event/success'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   ClosedRoute: typeof ClosedRoute
   CreateEventRoute: typeof CreateEventRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  GrosEvenementRoute: typeof GrosEvenementRoute
   MyEventsRoute: typeof MyEventsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ESlugRoute: typeof ESlugRoute
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/my-events'
       fullPath: '/my-events'
       preLoaderRoute: typeof MyEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gros-evenement': {
+      id: '/gros-evenement'
+      path: '/gros-evenement'
+      fullPath: '/gros-evenement'
+      preLoaderRoute: typeof GrosEvenementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -352,6 +372,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClosedRoute: ClosedRoute,
   CreateEventRoute: CreateEventRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  GrosEvenementRoute: GrosEvenementRoute,
   MyEventsRoute: MyEventsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ESlugRoute: ESlugRoute,
@@ -365,3 +386,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

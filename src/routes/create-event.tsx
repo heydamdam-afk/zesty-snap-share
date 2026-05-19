@@ -1,8 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { ZestLogo } from "@/components/zest/Logo";
 import {
   slugify,
   ensureUniqueSlug,
@@ -261,28 +260,83 @@ function CreateEventPage() {
   if (!authChecked) return null;
 
   return (
-    <div className="min-h-screen bg-[image:var(--gradient-warm)]">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10">
-        <div className="mb-6 flex items-center gap-2">
-          <ZestLogo />
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            Nouvel event
-          </span>
+    <div className="kw-split">
+      {/* ── Brand panel ── */}
+      <aside className="kw-brand">
+        <div className="kw-brand-bg" aria-hidden />
+        <Link to="/" className="kw-brand-logo">
+          <span className="kw-brand-dot" />
+          Kapsul
+        </Link>
+        <div className="kw-brand-hero">
+          <h1 className="kw-brand-title">Votre galerie en quelques minutes</h1>
+          <p className="kw-brand-sub">Partagez vos plus beaux moments avec tous vos invités.</p>
         </div>
+        <div className="kw-brand-spacer" />
+        <ul className="kw-brand-bullets">
+          <li><span className="kw-brand-bullet-icon">📸</span><span>Upload illimité depuis mobile</span></li>
+          <li><span className="kw-brand-bullet-icon">⚡</span><span>QR code prêt en 1 minute</span></li>
+          <li><span className="kw-brand-bullet-icon">🔒</span><span>Galerie privée et sécurisée</span></li>
+        </ul>
+      </aside>
 
-        <div className="w-full rounded-3xl bg-card/95 p-7 shadow-card backdrop-blur">
-          <h1 className="font-display text-2xl text-foreground">
+      {/* ── Form panel ── */}
+      <main className="kw-main">
+        <div className="kw-main-inner">
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+            <Link
+              to="/"
+              style={{
+                fontFamily: '"Public Sans", sans-serif',
+                fontSize: 13,
+                color: "#919EAB",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              ← Retour
+            </Link>
+          </div>
+
+          <h2
+            style={{
+              fontFamily: '"Josefin Sans", sans-serif',
+              fontWeight: 700,
+              fontSize: 28,
+              color: "#212B36",
+              margin: "0 0 8px",
+              letterSpacing: "-0.015em",
+            }}
+          >
             Créez votre événement
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          </h2>
+          <p
+            style={{
+              fontFamily: '"Public Sans", sans-serif',
+              fontSize: 14.5,
+              color: "#637381",
+              margin: "0 0 28px",
+              lineHeight: 1.5,
+            }}
+          >
             Quelques infos et vous obtenez un QR code à partager.
           </p>
 
-          <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={submit} noValidate>
             {error && (
               <div
-                className="rounded-xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
                 role="alert"
+                style={{
+                  marginBottom: 20,
+                  padding: "12px 14px",
+                  background: "#FFF5F4",
+                  border: "1px solid #FFD9D6",
+                  borderRadius: 12,
+                  color: "#FF4842",
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  fontFamily: '"Public Sans", sans-serif',
+                }}
               >
                 {error}
               </div>
@@ -400,17 +454,39 @@ function CreateEventPage() {
             <button
               type="submit"
               disabled={submitting || couponState !== "valid"}
-              className="w-full rounded-xl bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-soft transition disabled:opacity-50"
+              style={{
+                width: "100%",
+                height: 54,
+                background: submitting || couponState !== "valid" ? "#DFE3E8" : "#FF4842",
+                color: submitting || couponState !== "valid" ? "#919EAB" : "#fff",
+                border: "none",
+                borderRadius: 14,
+                fontFamily: '"Josefin Sans", sans-serif',
+                fontWeight: 700,
+                fontSize: 16,
+                cursor: submitting || couponState !== "valid" ? "not-allowed" : "pointer",
+                boxShadow: submitting || couponState !== "valid" ? "none" : "0 12px 28px rgba(255,72,66,0.28)",
+                transition: "all 200ms ease",
+                marginTop: 8,
+              }}
             >
-              {submitting ? "Création…" : "Créer mon événement"}
+              {submitting ? "Création…" : "Créer mon événement →"}
             </button>
 
-            <p className="text-center text-xs text-muted-foreground">
+            <p
+              style={{
+                textAlign: "center",
+                marginTop: 14,
+                fontFamily: '"Public Sans", sans-serif',
+                fontSize: 12.5,
+                color: "#919EAB",
+              }}
+            >
               🚧 Plan payant à venir — un coupon est requis pour le moment.
             </p>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

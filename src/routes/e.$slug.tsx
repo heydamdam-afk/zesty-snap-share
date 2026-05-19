@@ -361,8 +361,8 @@ function Index() {
           }}
           onEditProfile={() => setProfileOpen(true)}
           onLeave={() => {
-            setGuest(null);
-            setOnlyMine(false);
+            saveGuest(null);
+            window.location.href = `/e/${EVENT_SLUG}`;
           }}
         />
         <ProfileDialog

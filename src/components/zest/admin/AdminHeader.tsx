@@ -15,8 +15,7 @@ export function AdminHeader() {
     } catch (e) {
       console.error("[AdminHeader] signOut failed", e);
     }
-    // Hard reload to clear any cached state and force re-auth on the admin page.
-    window.location.href = `/${event.slug}/admin`;
+    navigate({ to: "/" });
   };
 
   return (
