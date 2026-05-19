@@ -1,40 +1,30 @@
-## Diagnostic
+## Contexte
 
-Le backend est disponible, la colonne `frozen_at` existe, la valeur `frozen` est bien autorisée par la contrainte de statut, et aucun trigger ne bloque la table `events`.
+Actuellement, le trigger `cascade_delete_archived_event` supprime aussi les lignes de `event_admins` quand un event passe en `archived`. Or les admins sont des utilisateurs inscrits sur l'app — leur compte (auth.users) reste, mais on ne veut pas non plus toucher à `event_admins` lors de la suppression d'un event.
 
-La cause probable est claire : la table `events` n’a actuellement qu’une règle de lecture publique. Il n’existe aucune règle autorisant un administrateur authentifié à modifier un événement. Donc l’appel frontend :
+Question : retirer `event_admins` de la cascade signifie que ces lignes vont rester orphelines (l'event sera supprimé mais pas le lien). Comme `event_admins.event_id` n'a pas de FK stricte, ça ne bloquera pas la suppression de l'event, mais il restera des lignes pointant vers un event inexistant.
 
-```ts
-supabase.from('events').update(...).eq('id', event.id)
-```
+## Plan
 
-peut être bloqué par les règles d’accès de la base. Résultat : pas de passage à `status = 'frozen'`, pas de `frozen_at = now`, et le webhook n8n ne devrait pas être déclenché si l’erreur est correctement gérée.
+Modifier la fonction `cascade_delete_archived_event` pour **retirer la ligne** `DELETE FROM public.event_admins WHERE event_id = NEW.id;`.
 
-## Plan de résolution recommandé
+Nouvel ordre de cascade :
+1. `likes` (via posts)
+2. `commentaires` (via posts)
+3. `post_photos` (via posts)
+4. `posts`
+5. `event_bans`
+6. `banned_invites`
+7. `invites`
+8. ~~`event_admins`~~ ← **supprimé de la cascade**
+9. `events`
 
-1. Ajouter une règle d’accès backend sur `events`
-   - Autoriser uniquement les administrateurs de l’événement à modifier la ligne correspondante.
-   - Utiliser la fonction existante `is_event_admin_email(id)` ou équivalent déjà en place.
-   - Ne pas ouvrir la modification aux invités ni au public.
+Les utilisateurs admin gardent leur compte (auth.users intact) et `my_admin_events()` ne retournera simplement plus cet event (puisque `events` est supprimé, le JOIN exclura la ligne orpheline de `event_admins`).
 
-2. Limiter la règle au strict besoin
-   - La règle doit permettre à l’admin de mettre à jour l’événement dont il est admin.
-   - Elle servira à la clôture, mais aussi potentiellement aux réglages admin déjà existants si ceux-ci modifient `events` depuis le client.
+## Question
 
-3. Tester le flux
-   - Cliquer sur `Clôturer l'événement`.
-   - Confirmer dans la popup.
-   - Vérifier que `events.status` devient `frozen`.
-   - Vérifier que `events.frozen_at` reçoit une date immédiate.
-   - Vérifier que `uploads_actifs`, `commentaires_actifs`, `likes_actifs` passent à `false`.
+Veux-tu aussi que je **nettoie les lignes orphelines** de `event_admins` (celles dont l'event n'existe plus) ? Deux options :
+- **A.** Laisser les lignes orphelines (simple, sans impact fonctionnel visible)
+- **B.** Garder le `DELETE event_admins` dans la cascade (supprime juste le lien à cet event, pas le compte utilisateur) — c'est en fait ce que fait déjà le trigger actuel : on ne supprime PAS les comptes admin, juste leur rattachement à cet event archivé
 
-## Alternative plus robuste
-
-Au lieu de laisser le frontend modifier directement `events`, on peut déplacer la clôture dans une fonction serveur Lovable :
-
-- le bouton appelle une fonction serveur `freezeEvent` ;
-- la fonction vérifie côté serveur que l’utilisateur est bien admin de l’événement ;
-- elle met à jour `status`, `frozen_at` et les flags ;
-- puis le frontend déclenche le webhook n8n en arrière-plan, ou la fonction serveur le déclenche elle-même.
-
-C’est plus robuste, mais c’est une modification un peu plus large. Pour corriger le bug actuel avec le minimum de changement, la règle d’accès `UPDATE` sur `events` est la solution la plus directe.
+Si ton intention était "ne pas supprimer les comptes utilisateurs des admins" : c'est **déjà le cas** — le trigger ne touche jamais à `auth.users`, il supprime juste la table de liaison `event_admins` pour cet event. Confirme-moi quelle interprétation est la bonne avant que j'applique la migration.
