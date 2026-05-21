@@ -751,6 +751,16 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      upsert_marketing_contact: {
+        Args: {
+          _email: string
+          _event_id: string
+          _prenom: string
+          _rgpd_consent: boolean
+          _role: string
+        }
+        Returns: undefined
+      }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
