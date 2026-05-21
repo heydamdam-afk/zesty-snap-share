@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
+import { Route as CreateEventCheckoutRouteImport } from './routes/create-event.checkout'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
 import { Route as ApiPublicFreezeCompleteRouteImport } from './routes/api/public/freeze-complete'
@@ -82,6 +83,11 @@ const CreateEventSuccessRoute = CreateEventSuccessRouteImport.update({
   path: '/success',
   getParentRoute: () => CreateEventRoute,
 } as any)
+const CreateEventCheckoutRoute = CreateEventCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => CreateEventRoute,
+} as any)
 const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   id: '/$slug/admin/',
   path: '/$slug/admin/',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -330,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateEventSuccessRouteImport
       parentRoute: typeof CreateEventRoute
     }
+    '/create-event/checkout': {
+      id: '/create-event/checkout'
+      path: '/checkout'
+      fullPath: '/create-event/checkout'
+      preLoaderRoute: typeof CreateEventCheckoutRouteImport
+      parentRoute: typeof CreateEventRoute
+    }
     '/$slug/admin/': {
       id: '/$slug/admin/'
       path: '/$slug/admin'
@@ -376,10 +395,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface CreateEventRouteChildren {
+  CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
   CreateEventSuccessRoute: typeof CreateEventSuccessRoute
 }
 
 const CreateEventRouteChildren: CreateEventRouteChildren = {
+  CreateEventCheckoutRoute: CreateEventCheckoutRoute,
   CreateEventSuccessRoute: CreateEventSuccessRoute,
 }
 
