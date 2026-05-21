@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { deletePostWithR2 } from "@/server/r2.functions";
+import { deletePostWithR2 } from "@/lib/r2.functions";
 
 export async function deletePost(postId: string, deviceId?: string) {
   // Forward the supabase access token so admin auth can be verified server-side.

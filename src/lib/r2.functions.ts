@@ -8,7 +8,7 @@ import {
   keyFromPublicUrl,
   publicUrlFor,
   signPutUrl,
-} from "./r2.server";
+} from "@/server/r2.server";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
