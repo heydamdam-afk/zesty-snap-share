@@ -1,30 +1,107 @@
-## Contexte
+# Refonte de la création d'événement Kapsul
 
-Actuellement, le trigger `cascade_delete_archived_event` supprime aussi les lignes de `event_admins` quand un event passe en `archived`. Or les admins sont des utilisateurs inscrits sur l'app — leur compte (auth.users) reste, mais on ne veut pas non plus toucher à `event_admins` lors de la suppression d'un event.
+## Vue d'ensemble
 
-Question : retirer `event_admins` de la cascade signifie que ces lignes vont rester orphelines (l'event sera supprimé mais pas le lien). Comme `event_admins.event_id` n'a pas de FK stricte, ça ne bloquera pas la suppression de l'event, mais il restera des lignes pointant vers un event inexistant.
+Remplacer la page actuelle `/create-event` par un flow en 2 étapes (sélection plan + form, puis paiement) avec création de l'event APRÈS paiement confirmé, suivi d'un magic link pour accéder au dashboard admin.
 
-## Plan
+## Étape 1 — Plans tarifaires
 
-Modifier la fonction `cascade_delete_archived_event` pour **retirer la ligne** `DELETE FROM public.event_admins WHERE event_id = NEW.id;`.
+5 plans (tous **1 mois**, sauf Découverte = **7 jours**) :
 
-Nouvel ordre de cascade :
-1. `likes` (via posts)
-2. `commentaires` (via posts)
-3. `post_photos` (via posts)
-4. `posts`
-5. `event_bans`
-6. `banned_invites`
-7. `invites`
-8. ~~`event_admins`~~ ← **supprimé de la cascade**
-9. `events`
+| Plan | Prix | Photos | Invités | Durée |
+|---|---|---|---|---|
+| Découverte | 0 € | 100 | 10 | 7 j |
+| Essentiel | 29 € | 500 | 20 | 1 mois |
+| Standard ⭐TOP | 79 € | 2 000 | 100 | 1 mois |
+| Premium | 149 € | 5 000 | 200 | 1 mois |
+| Illimitée | 199 € | ∞ | ∞ | 1 mois |
 
-Les utilisateurs admin gardent leur compte (auth.users intact) et `my_admin_events()` ne retournera simplement plus cet event (puisque `events` est supprimé, le JOIN exclura la ligne orpheline de `event_admins`).
+Les plans seront stockés en constante côté front + créés comme produits Stripe une fois Stripe activé.
 
-## Question
+## Étape 2 — Évolution du schéma DB
 
-Veux-tu aussi que je **nettoie les lignes orphelines** de `event_admins` (celles dont l'event n'existe plus) ? Deux options :
-- **A.** Laisser les lignes orphelines (simple, sans impact fonctionnel visible)
-- **B.** Garder le `DELETE event_admins` dans la cascade (supprime juste le lien à cet event, pas le compte utilisateur) — c'est en fait ce que fait déjà le trigger actuel : on ne supprime PAS les comptes admin, juste leur rattachement à cet event archivé
+**Table `event_plans`** (nouvelle, lecture publique) :
+- `code` (text PK), `nom`, `prix_cents`, `quota_mo`, `max_invites` (int null = ∞), `duree_jours`, `stripe_price_id`
 
-Si ton intention était "ne pas supprimer les comptes utilisateurs des admins" : c'est **déjà le cas** — le trigger ne touche jamais à `auth.users`, il supprime juste la table de liaison `event_admins` pour cet event. Confirme-moi quelle interprétation est la bonne avant que j'applique la migration.
+**Table `event_coupons`** (extension) :
+- ajouter `discount_percent` (int 0-100, nullable)
+- ajouter `discount_amount_cents` (int, nullable)
+- garder `type = 'free_event'` pour les coupons 100% gratuits
+- RPC `validate_coupon` étendu : retourne aussi `discount_percent` / `discount_amount_cents`
+
+**Table `events`** : ajouter `plan_code` (text), `paid_amount_cents`, `stripe_session_id` (pour idempotence)
+
+**Table `pending_events`** (nouvelle) : stocke le payload du form pendant le checkout Stripe, indexée par `stripe_session_id`. Consommée par le webhook.
+
+## Étape 3 — Page 1 `/create-event` (UI mockup #1)
+
+Sections empilées :
+1. **Sélecteur de plans** (5 cards horizontales, scroll mobile, badge TOP sur Standard)
+2. **Bandeau dynamique** : "💡 Idéal pour [usage suggéré du plan]"
+3. **Formulaire** :
+   - Nom de l'événement (verrou "Définitif après création")
+   - Date (input date, **min = aujourd'hui**)
+   - **Lieu** (gardé depuis l'existant)
+   - Code d'accès invités (auto-généré, modifiable)
+   - Photo de couverture (optionnel, comme aujourd'hui)
+   - Votre email (pré-rempli si user connecté)
+4. **CTA** : "Continuer vers le paiement →" — texte change en "Créer mon événement →" si plan gratuit
+
+## Étape 4 — Page 2 `/create-event/checkout` (UI mockup #2)
+
+Affichée **uniquement si plan payant**. Si plan = Découverte (0 €), on saute directement à la création + magic link.
+
+- Récap du plan (titre event, date, photos, durée)
+- **Input coupon** avec validation live → recalcule le total
+- Bouton "Payer XX € →" qui ouvre Stripe Checkout (redirect)
+- Mentions sécurité
+
+Si coupon = 100% gratuit → bouton devient "Créer mon événement →" (skip Stripe).
+
+## Étape 5 — Stripe Payments (Lovable-managed)
+
+1. Activation via `enable_stripe_payments`
+2. Création des 4 produits payants via `batch_create_product`
+3. Tax handling : à confirmer (recommandation : "no automation" pour démarrer simple, peut évoluer)
+4. Server route `/api/public/stripe-webhook` → sur `checkout.session.completed` :
+   - Lit `pending_events.payload` via `session.id`
+   - Appelle nouvelle RPC `create_event_from_pending(session_id, paid_amount)`
+   - Génère un **magic link** Supabase pour l'email du formulaire (signup OU signin selon que l'email existe)
+   - Stocke le magic link → redirige l'utilisateur (page success) qui clique pour s'authentifier
+
+## Étape 6 — Server functions
+
+- `createCheckoutSession(planCode, formData, couponCode?)` → crée `pending_events`, retourne URL Stripe (ou crée direct l'event si total = 0)
+- Webhook handler (server route)
+- `sendMagicLinkAfterPayment(email, eventSlug)` — utilise `supabaseAdmin.auth.admin.generateLink` puis envoie via le système email Lovable
+
+## Étape 7 — Flow post-paiement
+
+```
+Stripe success → /create-event/success?session_id=...
+  → poll côté front jusqu'à event créé (webhook async)
+  → "Compte créé ! Vérifiez votre email pour vous connecter"
+  → user clique magic link email
+  → arrive sur /{slug}/admin/dashboard
+```
+
+## Étape 8 — Nettoyage
+
+- Suppression de la validation coupon obligatoire actuelle (devient optionnelle)
+- `create_event_with_coupon` RPC remplacée par `create_event_from_pending`
+- Le coupon admin existant continue de fonctionner (100% gratuit)
+
+## Détails techniques
+
+- **Auth post-paiement** : Magic link via `supabase.auth.admin.generateLink({ type: 'magiclink' })`. Si email n'existe pas dans `auth.users`, Supabase le crée automatiquement.
+- **Idempotence webhook** : check `stripe_session_id` unique sur `events` avant insert.
+- **Skip plan gratuit** : si `prix_cents = 0` ET pas de paiement à faire → event créé immédiatement via RPC + magic link envoyé.
+- **Lieu** conservé sur l'event (table `events.lieu` existe déjà).
+
+## Questions ouvertes avant d'implémenter
+
+1. **Tax handling Stripe** — pour démarrer je propose "no automation" (option 3). OK ?
+2. **Page success** : on attend webhook côté client (polling 2s sur Supabase) ou redirect direct vers "vérifiez vos emails" ?
+3. **Email domain** pour magic link : as-tu déjà un domaine configuré dans Lovable Cloud → Emails ? Sinon le magic link partira de `noreply@mail.app.brevo.com` (par défaut Supabase) — pas idéal pour la délivrabilité.
+
+Confirme-moi ces 3 points et je lance l'implémentation.
