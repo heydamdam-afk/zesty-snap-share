@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X } from "lucide-react";
-import { syncMarketingContact } from "@/lib/zest-actions";
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
@@ -130,9 +129,6 @@ export function OrganisateurLoginModal({
         await supabase.auth.signOut();
         throw new Error("Vous n'êtes pas admin de cet événement.");
       }
-
-      // Sync marketing contact (role=admin) — fire-and-forget, ne bloque pas le login.
-      void syncMarketingContact(eventId, email, null, "admin", true);
 
       clearAttempts(slug, email);
       toast.success(`Bienvenue ! Rôle : ${adm.role}`);
