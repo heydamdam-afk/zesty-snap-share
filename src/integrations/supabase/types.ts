@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_screens: {
+        Row: {
+          created_at: string | null
+          id: string
+          nom_ecran: string
+          role_acces: string | null
+          slug: string
+          updated_at: string | null
+          url_complete: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nom_ecran: string
+          role_acces?: string | null
+          slug: string
+          updated_at?: string | null
+          url_complete: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nom_ecran?: string
+          role_acces?: string | null
+          slug?: string
+          updated_at?: string | null
+          url_complete?: string
+        }
+        Relationships: []
+      }
       banned_invites: {
         Row: {
           banned_by: string | null
