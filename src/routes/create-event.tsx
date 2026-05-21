@@ -1,516 +1,326 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  slugify,
-  ensureUniqueSlug,
-  ensureUniqueCode,
-  validateCoupon,
-  createEventWithCoupon,
-} from "@/lib/zest-create-event";
-import { toast } from "sonner";
-import { Loader2, Check, X } from "lucide-react";
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
+import { Loader2, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { PLANS, formatPrice, type PlanCode } from '@/lib/plans';
+import { slugify, generateAccessCode } from '@/lib/zest-create-event';
 
-export const Route = createFileRoute("/create-event")({
+export const Route = createFileRoute('/create-event')({
   head: () => ({
     meta: [
-      { title: "Créer un événement — Kapsul" },
-      { name: "robots", content: "noindex" },
+      { title: 'Créer un événement — Kapsul' },
+      { name: 'robots', content: 'noindex' },
     ],
   }),
   component: CreateEventPage,
 });
 
 const FormSchema = z.object({
-  titre: z.string().trim().min(3, "3 caractères minimum").max(120),
-  eventDate: z.string().min(1, "Date requise"),
-  lieu: z.string().trim().min(1, "Lieu requis").max(200),
-  contact: z.string().trim().min(1, "Contact requis").max(200),
-  couponCode: z
-    .string()
-    .trim()
-    .min(4, "Coupon requis")
-    .max(40)
-    .regex(/^[A-Z0-9_-]+$/i, "Format invalide"),
+  titre: z.string().trim().min(3, '3 caractères minimum').max(120),
+  eventDate: z.string().min(1, 'Date requise'),
+  lieu: z.string().trim().min(1, 'Lieu requis').max(200),
+  codeAcces: z.string().trim().min(4).max(20).regex(/^[A-Z0-9]+$/, 'Lettres majuscules / chiffres uniquement'),
+  email: z.string().email('Email invalide').max(255),
 });
+
+function todayIso(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  // local YYYY-MM-DD for date input min
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function CreateEventPage() {
   const navigate = useNavigate();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [titre, setTitre] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [lieu, setLieu] = useState("");
-  const [contact, setContact] = useState("");
-  const [couponCode, setCouponCode] = useState("");
-  const [couponState, setCouponState] = useState<
-    "idle" | "checking" | "valid" | "invalid"
-  >("idle");
-  const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanCode>('essentiel');
+  const [titre, setTitre] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [lieu, setLieu] = useState('');
+  const [codeAcces, setCodeAcces] = useState(() => generateAccessCode(6));
+  const [email, setEmail] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const ACCEPTED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"];
-  const MAX_COVER_BYTES = 5 * 1024 * 1024;
-  const MIN_COVER_W = 800;
-  const MIN_COVER_H = 450;
-
-  const handleCoverPick = async (file: File | null) => {
-    if (!file) {
-      setCoverFile(null);
-      return;
-    }
-    if (!ACCEPTED_COVER_TYPES.includes(file.type.toLowerCase())) {
-      toast.error("Format non supporté (JPG, PNG ou WebP uniquement)");
-      return;
-    }
-    if (file.size > MAX_COVER_BYTES) {
-      toast.error("Image trop lourde (max 5 Mo)");
-      return;
-    }
-    // Check dimensions
-    const url = URL.createObjectURL(file);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          if (img.naturalWidth < MIN_COVER_W || img.naturalHeight < MIN_COVER_H) {
-            reject(new Error(`Image trop petite (min ${MIN_COVER_W}×${MIN_COVER_H} px)`));
-          } else {
-            resolve();
-          }
-        };
-        img.onerror = () => reject(new Error("Image illisible"));
-        img.src = url;
-      });
-      setCoverFile(file);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Image invalide");
-      setCoverFile(null);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  };
+  const plan = useMemo(() => PLANS.find((p) => p.code === selectedPlan)!, [selectedPlan]);
+  const minDate = todayIso();
 
   useEffect(() => {
     let cancel = false;
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (cancel) return;
-      if (!data.session?.user) {
-        navigate({ to: "/" });
-        return;
-      }
-      setAuthChecked(true);
+      const userEmail = data.session?.user?.email;
+      if (userEmail && !email) setEmail(userEmail);
     })();
     return () => {
       cancel = true;
     };
-  }, [navigate]);
+  }, []);
 
-  // Validate coupon (debounced)
-  useEffect(() => {
-    const code = couponCode.trim();
-    if (!code) {
-      setCouponState("idle");
-      setCouponMsg(null);
+  const handleCoverPick = (file: File | null) => {
+    if (!file) return setCoverFile(null);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type.toLowerCase())) {
+      toast.error('JPG, PNG ou WebP uniquement');
       return;
     }
-    setCouponState("checking");
-    const t = setTimeout(async () => {
-      const res = await validateCoupon(code);
-      if (res.valid) {
-        setCouponState("valid");
-        setCouponMsg("✓ Coupon valide — création gratuite");
-      } else {
-        setCouponState("invalid");
-        const reasons: Record<string, string> = {
-          empty: "Code vide",
-          not_found: "Code introuvable",
-          inactive: "Coupon désactivé",
-          expired: "Coupon expiré",
-          exhausted: "Coupon épuisé",
-        };
-        setCouponMsg(reasons[res.reason] ?? "Coupon invalide");
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [couponCode]);
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop lourde (max 5 Mo)');
+      return;
+    }
+    setCoverFile(file);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    const parsed = FormSchema.safeParse({
-      titre,
-      eventDate,
-      lieu,
-      contact,
-      couponCode,
-    });
+    const parsed = FormSchema.safeParse({ titre, eventDate, lieu, codeAcces, email });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide");
+      setError(parsed.error.issues[0]?.message ?? 'Formulaire invalide');
       return;
     }
-    if (couponState !== "valid") {
-      setError("Veuillez saisir un coupon valide");
-      return;
-    }
-
-    const eventDateIso = new Date(parsed.data.eventDate).toISOString();
-    if (Number.isNaN(new Date(parsed.data.eventDate).getTime())) {
-      setError("Date invalide");
+    const dateValue = new Date(parsed.data.eventDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dateValue < today) {
+      setError('La date ne peut pas être dans le passé');
       return;
     }
 
     setSubmitting(true);
     try {
-      const baseSlug = slugify(parsed.data.titre);
-      const slug = await ensureUniqueSlug(baseSlug);
-      const codeAcces = await ensureUniqueCode();
-
-      // Upload cover si fourni — on a besoin d'un eventId pour R2,
-      // donc on upload après création. Pour simplifier, on crée d'abord
-      // l'event puis on update cover_url. Ici, on ne peut pas update events
-      // (pas de policy). Compromis : on upload via un eventId temporaire = slug.
-      // Mieux : créer l'event sans cover, puis cover via le dashboard admin.
-      const result = await createEventWithCoupon({
-        titre: parsed.data.titre,
-        slug,
-        codeAcces,
-        eventDate: eventDateIso,
-        lieu: parsed.data.lieu,
-        coverUrl: null,
-        contact: parsed.data.contact,
-        couponCode: parsed.data.couponCode,
-      });
-
-      // Upload cover after event creation (eventId now exists)
+      const slug = slugify(parsed.data.titre);
+      let coverUrl: string | null = null;
       if (coverFile) {
         try {
-          const ext = coverFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-          const path = `covers/${result.event_id}/${Date.now()}.${ext}`;
+          const ext = coverFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+          const path = `covers/pending/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
           const { error: upErr } = await supabase.storage
-            .from("event-photos")
-            .upload(path, coverFile, { upsert: true, contentType: coverFile.type });
+            .from('event-photos')
+            .upload(path, coverFile, { upsert: false, contentType: coverFile.type });
           if (upErr) throw upErr;
-          const { data: pub } = supabase.storage
-            .from("event-photos")
-            .getPublicUrl(path);
-          const { error: rpcErr } = await supabase.rpc("set_event_cover", {
-            _event_id: result.event_id,
-            _cover_url: pub.publicUrl,
-          });
-          if (rpcErr) throw rpcErr;
+          const { data: pub } = supabase.storage.from('event-photos').getPublicUrl(path);
+          coverUrl = pub.publicUrl;
         } catch (e) {
-          console.warn("cover upload failed", e);
-          toast.warning(
-            "Événement créé, mais photo non enregistrée — réessayez via le dashboard.",
-          );
+          console.warn('cover upload failed', e);
+          toast.warning('Photo non enregistrée, on continue sans');
         }
       }
 
-      toast.success("Événement créé !");
-      navigate({
-        to: "/$slug/admin/dashboard",
-        params: { slug: result.slug },
-      });
-    } catch (err) {
-      console.error("create_event_with_coupon failed:", err);
-      const anyErr = err as { message?: string; details?: string; hint?: string; code?: string } | null;
-      const raw =
-        anyErr?.message ||
-        anyErr?.details ||
-        anyErr?.hint ||
-        (err instanceof Error ? err.message : "") ||
-        "Erreur inconnue";
-      // Extract known error keys even if wrapped in a longer message
-      const knownKeys = [
-        "coupon_invalid","coupon_inactive","coupon_expired","coupon_exhausted",
-        "slug_taken","code_taken","invalid_titre","invalid_slug","invalid_code_acces",
-        "invalid_event_date","invalid_lieu","invalid_contact","invalid_cover_url",
-        "not_authenticated","no_email",
-      ];
-      const found = knownKeys.find((k) => raw.includes(k));
-      const msg = found ?? raw;
-      const map: Record<string, string> = {
-        coupon_invalid: "Coupon invalide",
-        coupon_inactive: "Coupon désactivé",
-        coupon_expired: "Coupon expiré",
-        coupon_exhausted: "Coupon épuisé",
-        slug_taken: "Ce nom est déjà pris, modifiez le titre",
-        code_taken: "Conflit code d'accès, réessayez",
-        invalid_titre: "Titre invalide",
-        invalid_slug: "Slug invalide",
-        invalid_code_acces: "Code d'accès invalide",
-        invalid_event_date: "Date invalide",
-        invalid_lieu: "Lieu invalide",
-        invalid_contact: "Contact invalide",
-        invalid_cover_url: "URL de couverture invalide",
-        not_authenticated: "Vous devez être connecté",
-        no_email: "Compte sans email",
+      const payload = {
+        planCode: selectedPlan,
+        email: parsed.data.email,
+        payload: {
+          titre: parsed.data.titre,
+          slug,
+          code_acces: parsed.data.codeAcces.toUpperCase(),
+          event_date: dateValue.toISOString(),
+          lieu: parsed.data.lieu,
+          cover_url: coverUrl,
+        },
       };
-      setError(map[msg] ?? `Erreur : ${msg}`);
+      sessionStorage.setItem('kapsul_pending_form', JSON.stringify(payload));
+      navigate({ to: '/create-event/checkout' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!authChecked) return null;
-
   return (
-    <div className="kw-split">
-      {/* ── Brand panel ── */}
-      <aside className="kw-brand">
-        <div className="kw-brand-bg" aria-hidden />
-        <Link to="/" className="kw-brand-logo">
-          <span className="kw-brand-dot" />
-          Kapsul
-        </Link>
-        <div className="kw-brand-hero">
-          <h1 className="kw-brand-title">Votre galerie en quelques minutes</h1>
-          <p className="kw-brand-sub">Partagez vos plus beaux moments avec tous vos invités.</p>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-2xl px-5 pt-6 pb-16">
+        <div className="mb-6 flex justify-between">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Retour</Link>
         </div>
-        <div className="kw-brand-spacer" />
-        <ul className="kw-brand-bullets">
-          <li><span className="kw-brand-bullet-icon">📸</span><span>Upload illimité depuis mobile</span></li>
-          <li><span className="kw-brand-bullet-icon">⚡</span><span>QR code prêt en 1 minute</span></li>
-          <li><span className="kw-brand-bullet-icon">🔒</span><span>Galerie privée et sécurisée</span></li>
-        </ul>
-      </aside>
 
-      {/* ── Form panel ── */}
-      <main className="kw-main">
-        <div className="kw-main-inner">
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-            <Link
-              to="/"
-              style={{
-                fontFamily: '"Public Sans", sans-serif',
-                fontSize: 13,
-                color: "#919EAB",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              ← Retour
-            </Link>
-          </div>
-
-          <h2
-            style={{
-              fontFamily: '"Josefin Sans", sans-serif',
-              fontWeight: 700,
-              fontSize: 28,
-              color: "#212B36",
-              margin: "0 0 8px",
-              letterSpacing: "-0.015em",
-            }}
-          >
-            Créez votre événement
-          </h2>
-          <p
-            style={{
-              fontFamily: '"Public Sans", sans-serif',
-              fontSize: 14.5,
-              color: "#637381",
-              margin: "0 0 28px",
-              lineHeight: 1.5,
-            }}
-          >
-            Quelques infos et vous obtenez un QR code à partager.
-          </p>
-
-          <form onSubmit={submit} noValidate>
-            {error && (
-              <div
-                role="alert"
-                style={{
-                  marginBottom: 20,
-                  padding: "12px 14px",
-                  background: "#FFF5F4",
-                  border: "1px solid #FFD9D6",
-                  borderRadius: 12,
-                  color: "#FF4842",
-                  fontSize: 13.5,
-                  fontWeight: 500,
-                  fontFamily: '"Public Sans", sans-serif',
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            <Field label="Titre de l'événement" htmlFor="titre">
-              <input
-                id="titre"
-                type="text"
-                required
-                maxLength={120}
-                value={titre}
-                onChange={(e) => setTitre(e.target.value)}
-                placeholder="Mariage Sabrina & Thomas"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Date" htmlFor="eventDate">
-              <input
-                id="eventDate"
-                type="datetime-local"
-                required
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Lieu" htmlFor="lieu">
-              <input
-                id="lieu"
-                type="text"
-                required
-                maxLength={200}
-                value={lieu}
-                onChange={(e) => setLieu(e.target.value)}
-                placeholder="Château de Versailles"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Contact (email ou téléphone)" htmlFor="contact">
-              <input
-                id="contact"
-                type="text"
-                required
-                maxLength={200}
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="contact@event.fr"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Photo de couverture (optionnel)" htmlFor="cover">
-              <input
-                id="cover"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => void handleCoverPick(e.target.files?.[0] ?? null)}
-                className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-foreground"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                JPG, PNG ou WebP — max 5 Mo — recommandé 1600×900 px (ratio 16:9), min 800×450 px.
-              </p>
-              {coverFile && (
-                <p className="mt-1 text-xs text-primary">
-                  ✓ {coverFile.name} ({(coverFile.size / 1024 / 1024).toFixed(2)} Mo)
-                </p>
-              )}
-            </Field>
-
-            <Field label="Code coupon" htmlFor="coupon">
-              <div className="relative">
-                <input
-                  id="coupon"
-                  type="text"
-                  required
-                  maxLength={40}
-                  value={couponCode}
-                  onChange={(e) =>
-                    setCouponCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))
-                  }
-                  placeholder="VOTRE-COUPON"
-                  className={`${inputCls} pr-10 font-mono uppercase tracking-wider`}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {couponState === "checking" && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  {couponState === "valid" && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
-                  {couponState === "invalid" && (
-                    <X className="h-4 w-4 text-destructive" />
-                  )}
-                </span>
-              </div>
-              {couponMsg && (
-                <p
-                  className={`mt-1 text-xs ${
-                    couponState === "valid"
-                      ? "text-primary"
-                      : couponState === "invalid"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
+        {/* Plan selector */}
+        <div className="-mx-5 mb-7 overflow-x-auto px-5">
+          <div className="flex gap-3">
+            {PLANS.map((p) => {
+              const isSelected = p.code === selectedPlan;
+              return (
+                <button
+                  key={p.code}
+                  type="button"
+                  onClick={() => setSelectedPlan(p.code)}
+                  className={`relative min-w-[112px] shrink-0 rounded-2xl border-2 px-3 py-3 text-left transition-all ${
+                    isSelected
+                      ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_hsl(var(--primary)/0.10)]'
+                      : 'border-border bg-card hover:border-muted-foreground/30'
                   }`}
                 >
-                  {couponMsg}
-                </p>
-              )}
-            </Field>
-
-            <button
-              type="submit"
-              disabled={submitting || couponState !== "valid"}
-              style={{
-                width: "100%",
-                height: 54,
-                background: submitting || couponState !== "valid" ? "#DFE3E8" : "#FF4842",
-                color: submitting || couponState !== "valid" ? "#919EAB" : "#fff",
-                border: "none",
-                borderRadius: 14,
-                fontFamily: '"Josefin Sans", sans-serif',
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: submitting || couponState !== "valid" ? "not-allowed" : "pointer",
-                boxShadow: submitting || couponState !== "valid" ? "none" : "0 12px 28px rgba(255,72,66,0.28)",
-                transition: "all 200ms ease",
-                marginTop: 8,
-              }}
-            >
-              {submitting ? "Création…" : "Créer mon événement →"}
-            </button>
-
-            <p
-              style={{
-                textAlign: "center",
-                marginTop: 14,
-                fontFamily: '"Public Sans", sans-serif',
-                fontSize: 12.5,
-                color: "#919EAB",
-              }}
-            >
-              🚧 Plan payant à venir — un coupon est requis pour le moment.
-            </p>
-          </form>
+                  {p.is_top && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+                      TOP
+                    </span>
+                  )}
+                  <div className={`text-xs font-bold uppercase tracking-wide ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {p.nom}
+                  </div>
+                  <div className="mt-1 font-display text-xl font-bold text-foreground">{formatPrice(p.prix_cents)}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{p.description_courte}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {p.max_invites ? `≈ ${p.max_invites} invités` : 'Invités illimités'}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </main>
+
+        <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">Créez votre événement</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Quelques infos sur votre événement et c'est parti.</p>
+
+        <div className="my-5 rounded-xl border-l-4 border-primary bg-primary/5 px-4 py-3 text-sm text-foreground">
+          💡 {plan.description_usage}
+        </div>
+
+        <form onSubmit={submit} noValidate className="space-y-5">
+          {error && (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
+
+          <Field
+            label="Nom de l'événement"
+            htmlFor="titre"
+            hint={
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" /> Définitif après création
+              </span>
+            }
+          >
+            <input
+              id="titre"
+              type="text"
+              required
+              maxLength={120}
+              value={titre}
+              onChange={(e) => setTitre(e.target.value)}
+              placeholder="Mariage de Julie & Thomas"
+              className={inputCls}
+            />
+          </Field>
+
+          <Field label="Date de l'événement" htmlFor="eventDate">
+            <input
+              id="eventDate"
+              type="date"
+              required
+              min={minDate}
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+
+          <Field label="Lieu" htmlFor="lieu">
+            <input
+              id="lieu"
+              type="text"
+              required
+              maxLength={200}
+              value={lieu}
+              onChange={(e) => setLieu(e.target.value)}
+              placeholder="Château de Versailles"
+              className={inputCls}
+            />
+          </Field>
+
+          <Field
+            label="Code d'accès invités"
+            htmlFor="codeAcces"
+            hint={<span className="text-xs text-muted-foreground">Ce que vos invités saisiront pour rejoindre la galerie</span>}
+          >
+            <input
+              id="codeAcces"
+              type="text"
+              required
+              maxLength={20}
+              value={codeAcces}
+              onChange={(e) => setCodeAcces(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              placeholder="MARIAGE2026"
+              className={`${inputCls} font-mono uppercase tracking-wider`}
+            />
+          </Field>
+
+          <Field label="Photo de couverture (optionnel)" htmlFor="cover">
+            <input
+              id="cover"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => handleCoverPick(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-foreground"
+            />
+            {coverFile && (
+              <p className="mt-1 text-xs text-primary">
+                ✓ {coverFile.name} ({(coverFile.size / 1024 / 1024).toFixed(2)} Mo)
+              </p>
+            )}
+          </Field>
+
+          <Field label="Votre email" htmlFor="email">
+            <input
+              id="email"
+              type="email"
+              required
+              maxLength={255}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="vous@exemple.com"
+              className={inputCls}
+            />
+          </Field>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-2 inline-flex h-14 w-full items-center justify-center rounded-2xl bg-primary px-5 text-base font-bold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.28)] transition-all disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+          >
+            {submitting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : plan.prix_cents === 0 ? (
+              'Créer mon événement →'
+            ) : (
+              'Continuer vers le paiement →'
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
 
 const inputCls =
-  "w-full rounded-xl border border-border bg-background px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  'w-full rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 function Field({
   label,
   htmlFor,
+  hint,
   children,
 }: {
   label: string;
   htmlFor: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-      >
-        {label}
-      </label>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <label htmlFor={htmlFor} className="text-sm font-semibold text-foreground">
+          {label}
+        </label>
+        {hint}
+      </div>
       {children}
     </div>
   );
