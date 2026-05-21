@@ -142,6 +142,100 @@ export async function loginToEvent(args: {
   return { ok: true as const, event, invite: data };
 }
 
+/**
+ * Étape 1 du nouveau flow invité : on a uniquement code + email + deviceId.
+ * Si l'invité est déjà connu (device_id ou email pour cet event) → on le
+ * reconnecte immédiatement. Sinon on renvoie l'event pour passer à l'étape 2.
+ */
+export async function tryReconnectToEvent(args: {
+  code: string;
+  email: string;
+  deviceId: string;
+}) {
+  const event = await findEventByCode(args.code);
+  if (!event) return { ok: false as const, reason: "bad_code" as const };
+
+  const { data: banned } = await supabase.rpc("is_device_banned", {
+    _event_id: event.id,
+    _device_id: args.deviceId,
+  });
+  if (banned) return { ok: false as const, reason: "banned" as const };
+
+  // 1) Même appareil
+  const byDevice = await findInvite(event.id, args.deviceId);
+  if (byDevice) {
+    return { ok: true as const, event, invite: byDevice, isNew: false as const };
+  }
+
+  // 2) Même email sur un autre appareil
+  const emailClean = args.email.trim().toLowerCase();
+  if (emailClean) {
+    const { data: byEmail, error: emailErr } = await supabase.rpc(
+      "find_or_adopt_invite_by_email",
+      {
+        _event_id: event.id,
+        _email: emailClean,
+        _device_id: args.deviceId,
+      },
+    );
+    if (emailErr) {
+      if ((emailErr.message ?? "").includes("device_banned")) {
+        return { ok: false as const, reason: "banned" as const };
+      }
+      console.error("[tryReconnectToEvent] email lookup failed", emailErr);
+    }
+    const found = (byEmail as Tables<"invites"> | null) ?? null;
+    if (found?.id) {
+      return { ok: true as const, event, invite: found, isNew: false as const };
+    }
+  }
+
+  return { ok: false as const, reason: "new_user" as const, event };
+}
+
+/**
+ * Étape 2 : création de l'invité (première connexion uniquement).
+ */
+export async function registerInvite(args: {
+  eventId: string;
+  prenom: string;
+  email: string;
+  deviceId: string;
+  avatarUrl?: string | null;
+}) {
+  const prenomNorm = normalisePrenom(args.prenom);
+  const emailClean = args.email.trim().toLowerCase();
+
+  const { data: clash } = await supabase
+    .from("invites")
+    .select("id")
+    .eq("event_id", args.eventId)
+    .ilike("prenom", prenomNorm)
+    .maybeSingle();
+  if (clash) return { ok: false as const, reason: "prenom_taken" as const };
+
+  const { data, error } = await supabase
+    .from("invites")
+    .insert({
+      event_id: args.eventId,
+      prenom: prenomNorm,
+      email: emailClean,
+      device_id: args.deviceId,
+      avatar_url: args.avatarUrl ?? null,
+      rgpd_consent: true,
+    })
+    .select()
+    .single();
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false as const, reason: "prenom_taken" as const };
+    }
+    console.error("[registerInvite] insert failed", error);
+    return { ok: false as const, reason: "insert_failed" as const, error };
+  }
+  return { ok: true as const, invite: data };
+}
+
 export function normalisePrenom(raw: string): string {
   const t = raw.trim();
   if (!t) return t;

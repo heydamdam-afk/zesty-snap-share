@@ -512,3 +512,22 @@
   .gi-event-title { font-size:26px; }
   .gi-h1 { font-size:26px; }
 }
+
+/* ===== Invite (2-step) additions ===== */
+.gi-step { display:flex; align-items:center; gap:8px; font-size:13px; color:#637381; margin-bottom:18px; font-weight:500; font-family:'Public Sans',sans-serif; }
+.gi-dots { display:inline-flex; gap:6px; margin-right:4px; }
+.gi-dot { width:22px; height:4px; border-radius:2px; background:#E7E3DE; transition:background 200ms ease; }
+.gi-dot.is-active { background:#FF4842; }
+.gi-dot.is-done { background:#FF4842; opacity:0.4; }
+.gi-error { font-size:13px; color:#FF4842; margin-top:8px; display:flex; align-items:center; gap:6px; font-weight:500; font-family:'Public Sans',sans-serif; }
+.gi-error-dot { width:16px; height:16px; border-radius:50%; background:#FF4842; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+.gi-cta-row { display:flex; gap:12px; align-items:center; }
+.gi-cta-back { height:54px; width:54px; flex-shrink:0; border-radius:14px; background:#fff; color:#212B36; border:1.5px solid #E7E3DE; font-size:20px; cursor:pointer; transition:all 200ms ease; }
+.gi-cta-back:hover { border-color:#919EAB; }
+.gi-avatar-wrap { display:flex; flex-direction:column; align-items:center; margin-bottom:28px; }
+.gi-avatar-btn { width:128px; height:128px; border-radius:50%; background:#FFD9D6; color:#FF4842; border:3px dashed #FF4842; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:44px; padding:0; transition:all 200ms ease; position:relative; background-size:cover; background-position:center; }
+.gi-avatar-btn.has-img { border:3px solid #fff; box-shadow:0 14px 30px rgba(255,72,66,0.25); color:transparent; }
+.gi-avatar-edit { position:absolute; bottom:2px; right:2px; width:36px; height:36px; border-radius:50%; background:#FF4842; color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; border:3px solid #fff; box-shadow:0 4px 10px rgba(255,72,66,0.4); }
+.gi-avatar-action { background:none; border:none; color:#FF4842; font-weight:600; font-size:14px; cursor:pointer; margin-top:14px; font-family:'Public Sans',sans-serif; }
+.gi-avatar-hint { font-size:12px; color:#919EAB; margin-top:4px; font-family:'Public Sans',sans-serif; }
+.gi-poly-caption { font-family:'Josefin Sans',cursive; font-size:18px; color:#212B36; text-align:center; margin-top:10px; line-height:1; }
