@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/create-event/success")({
 function SuccessPage() {
   const search = Route.useSearch();
   const lookup = useServerFn(lookupEventBySessionId);
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [resolved, setResolved] = useState<{ slug: string; code?: string } | null>(
@@ -44,6 +45,9 @@ function SuccessPage() {
         const res = await lookup({ data: { sessionId: search.session_id! } });
         if (cancel) return;
         if (res.ready) {
+          // Redirect directly to the event admin dashboard.
+          // Auth guard will prompt magic link login if needed.
+          navigate({ to: "/$slug/admin/dashboard", params: { slug: res.slug }, replace: true });
           setResolved({ slug: res.slug });
           return;
         }
