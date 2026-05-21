@@ -75,7 +75,10 @@ export async function loginToEvent(args: {
 
   // 1) Reconnexion par device_id (rapide, même appareil)
   const existing = await findInvite(event.id, args.deviceId);
-  if (existing) return { ok: true as const, event, invite: existing };
+  if (existing) {
+    await syncMarketingContact(event.id, existing.email, existing.prenom, "invite", existing.rgpd_consent);
+    return { ok: true as const, event, invite: existing };
+  }
 
   // 2) Reconnexion par email (cross-device) — l'email est l'identifiant principal.
   const emailClean = args.email.trim().toLowerCase();
@@ -96,7 +99,10 @@ export async function loginToEvent(args: {
       console.error("[loginToEvent] email lookup failed", emailErr);
     }
     const found = (byEmail as Tables<"invites"> | null) ?? null;
-    if (found?.id) return { ok: true as const, event, invite: found };
+    if (found?.id) {
+      await syncMarketingContact(event.id, found.email, found.prenom, "invite", found.rgpd_consent);
+      return { ok: true as const, event, invite: found };
+    }
   }
 
   const prenomNorm = normalisePrenom(args.prenom);
@@ -135,7 +141,39 @@ export async function loginToEvent(args: {
     });
     return { ok: false as const, reason: "insert_failed", error };
   }
+  await syncMarketingContact(event.id, data.email, data.prenom, "invite", data.rgpd_consent);
   return { ok: true as const, event, invite: data };
+}
+
+/**
+ * Upsert a marketing contact (invité or admin) for the given event.
+ * Server-side RPC enforces RGPD consent + no-op rules.
+ */
+export async function syncMarketingContact(
+  eventId: string,
+  email: string | null | undefined,
+  prenom: string | null | undefined,
+  role: "invite" | "admin",
+  rgpdConsent: boolean | null | undefined,
+) {
+  if (!email || !email.trim()) return;
+  try {
+    // RPC isn't in the generated types — cast through unknown.
+    const rpc = supabase.rpc as unknown as (
+      name: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: unknown }>;
+    const { error } = await rpc("upsert_marketing_contact", {
+      _event_id: eventId,
+      _email: email,
+      _prenom: prenom ?? "",
+      _role: role,
+      _rgpd_consent: rgpdConsent ?? (role === "admin"),
+    });
+    if (error) console.error("[syncMarketingContact] rpc error", error);
+  } catch (e) {
+    console.error("[syncMarketingContact] failed", e);
+  }
 }
 
 export function normalisePrenom(raw: string): string {
