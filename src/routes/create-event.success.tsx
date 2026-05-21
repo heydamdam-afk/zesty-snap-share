@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { ZestLogo } from "@/components/zest/Logo";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Mail } from "lucide-react";
+import { lookupEventBySessionId } from "@/lib/create-event.functions";
 
-type Search = { slug?: string; code?: string };
+type Search = { slug?: string; code?: string; session_id?: string };
 
 export const Route = createFileRoute("/create-event/success")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     slug: typeof s.slug === "string" ? s.slug : undefined,
     code: typeof s.code === "string" ? s.code : undefined,
+    session_id: typeof s.session_id === "string" ? s.session_id : undefined,
   }),
   head: () => ({
     meta: [
@@ -21,14 +24,47 @@ export const Route = createFileRoute("/create-event/success")({
 });
 
 function SuccessPage() {
-  const { slug, code } = Route.useSearch();
+  const search = Route.useSearch();
+  const lookup = useServerFn(lookupEventBySessionId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
+  const [resolved, setResolved] = useState<{ slug: string; code?: string } | null>(
+    search.slug ? { slug: search.slug, code: search.code } : null,
+  );
+  const [pollError, setPollError] = useState<string | null>(null);
 
-  const url =
-    slug && typeof window !== "undefined"
-      ? `${window.location.origin}/e/${slug}`
-      : "";
+  // Poll if we only have session_id (paid flow)
+  useEffect(() => {
+    if (resolved || !search.session_id) return;
+    let cancel = false;
+    let tries = 0;
+    const tick = async () => {
+      tries += 1;
+      try {
+        const res = await lookup({ data: { sessionId: search.session_id! } });
+        if (cancel) return;
+        if (res.ready) {
+          setResolved({ slug: res.slug });
+          return;
+        }
+      } catch {
+        /* keep polling */
+      }
+      if (tries > 30) {
+        setPollError("Le paiement est en cours de validation. Vérifiez vos emails dans quelques instants.");
+        return;
+      }
+      setTimeout(tick, 2000);
+    };
+    tick();
+    return () => {
+      cancel = true;
+    };
+  }, [resolved, search.session_id, lookup]);
+
+  const slug = resolved?.slug;
+  const code = resolved?.code;
+  const url = slug && typeof window !== "undefined" ? `${window.location.origin}/e/${slug}` : "";
 
   useEffect(() => {
     if (!canvasRef.current || !url) return;
@@ -49,7 +85,7 @@ function SuccessPage() {
     }
   };
 
-  if (!slug || !code) {
+  if (!slug && !search.session_id) {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6">
         <div className="text-center">
@@ -57,6 +93,26 @@ function SuccessPage() {
           <Link to="/" className="mt-4 inline-block text-sm text-primary">
             ← Retour
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Polling state
+  if (!slug) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6">
+        <div className="max-w-md text-center">
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+          <h1 className="font-display text-2xl font-bold text-foreground">Paiement reçu !</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pollError ?? "Création de votre événement en cours…"}
+          </p>
+          {pollError && (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm text-primary">
+              <Mail className="h-4 w-4" /> Un email vous a été envoyé
+            </div>
+          )}
         </div>
       </div>
     );

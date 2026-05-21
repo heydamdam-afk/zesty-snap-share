@@ -20,11 +20,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
+import { Route as CreateEventCheckoutRouteImport } from './routes/create-event.checkout'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
 import { Route as ApiPublicFreezeCompleteRouteImport } from './routes/api/public/freeze-complete'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -81,6 +83,11 @@ const CreateEventSuccessRoute = CreateEventSuccessRouteImport.update({
   path: '/success',
   getParentRoute: () => CreateEventRoute,
 } as any)
+const CreateEventCheckoutRoute = CreateEventCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => CreateEventRoute,
+} as any)
 const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   id: '/$slug/admin/',
   path: '/$slug/admin/',
@@ -106,6 +113,12 @@ const SlugAdminDashboardRoute = SlugAdminDashboardRouteImport.update({
   path: '/$slug/admin/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -124,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +149,7 @@ export interface FileRoutesByTo {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -142,6 +158,7 @@ export interface FileRoutesByTo {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -153,6 +170,7 @@ export interface FileRoutesById {
   '/gros-evenement': typeof GrosEvenementRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
   '/platform/coupons': typeof PlatformCouponsRoute
@@ -161,6 +179,7 @@ export interface FileRoutesById {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -173,6 +192,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -181,6 +201,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -191,6 +212,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -199,6 +221,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/'
@@ -209,6 +232,7 @@ export interface FileRouteTypes {
     | '/gros-evenement'
     | '/my-events'
     | '/reset-password'
+    | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
     | '/platform/coupons'
@@ -217,6 +241,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -235,6 +260,7 @@ export interface RootRouteChildren {
   ApiPublicFreezeCompleteRoute: typeof ApiPublicFreezeCompleteRoute
   ApiPublicR2UploadRoute: typeof ApiPublicR2UploadRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -316,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateEventSuccessRouteImport
       parentRoute: typeof CreateEventRoute
     }
+    '/create-event/checkout': {
+      id: '/create-event/checkout'
+      path: '/checkout'
+      fullPath: '/create-event/checkout'
+      preLoaderRoute: typeof CreateEventCheckoutRouteImport
+      parentRoute: typeof CreateEventRoute
+    }
     '/$slug/admin/': {
       id: '/$slug/admin/'
       path: '/$slug/admin'
@@ -351,14 +384,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SlugAdminDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface CreateEventRouteChildren {
+  CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
   CreateEventSuccessRoute: typeof CreateEventSuccessRoute
 }
 
 const CreateEventRouteChildren: CreateEventRouteChildren = {
+  CreateEventCheckoutRoute: CreateEventCheckoutRoute,
   CreateEventSuccessRoute: CreateEventSuccessRoute,
 }
 
@@ -382,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFreezeCompleteRoute: ApiPublicFreezeCompleteRoute,
   ApiPublicR2UploadRoute: ApiPublicR2UploadRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

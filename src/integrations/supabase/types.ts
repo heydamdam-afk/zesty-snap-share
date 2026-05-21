@@ -255,6 +255,8 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          discount_amount_cents: number | null
+          discount_percent: number | null
           expires_at: string | null
           id: string
           max_uses: number | null
@@ -267,6 +269,8 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          discount_amount_cents?: number | null
+          discount_percent?: number | null
           expires_at?: string | null
           id?: string
           max_uses?: number | null
@@ -279,12 +283,65 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          discount_amount_cents?: number | null
+          discount_percent?: number | null
           expires_at?: string | null
           id?: string
           max_uses?: number | null
           note?: string | null
           type?: string
           uses_count?: number
+        }
+        Relationships: []
+      }
+      event_plans: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          description_courte: string | null
+          description_usage: string | null
+          duree_jours: number
+          is_top: boolean
+          max_invites: number | null
+          max_photos: number
+          nom: string
+          prix_cents: number
+          quota_mo: number
+          sort_order: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          description_courte?: string | null
+          description_usage?: string | null
+          duree_jours: number
+          is_top?: boolean
+          max_invites?: number | null
+          max_photos: number
+          nom: string
+          prix_cents?: number
+          quota_mo: number
+          sort_order?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          description_courte?: string | null
+          description_usage?: string | null
+          duree_jours?: number
+          is_top?: boolean
+          max_invites?: number | null
+          max_photos?: number
+          nom?: string
+          prix_cents?: number
+          quota_mo?: number
+          sort_order?: number
+          stripe_price_id?: string | null
         }
         Relationships: []
       }
@@ -301,9 +358,12 @@ export type Database = {
           id: string
           lieu: string | null
           likes_actifs: boolean
+          paid_amount_cents: number | null
+          plan_code: string | null
           quota_mo: number
           slug: string
           status: Database["public"]["Enums"]["event_status"]
+          stripe_session_id: string | null
           telechargement_actif: boolean
           titre: string
           uploads_actifs: boolean
@@ -322,9 +382,12 @@ export type Database = {
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
+          paid_amount_cents?: number | null
+          plan_code?: string | null
           quota_mo?: number
           slug: string
           status?: Database["public"]["Enums"]["event_status"]
+          stripe_session_id?: string | null
           telechargement_actif?: boolean
           titre: string
           uploads_actifs?: boolean
@@ -343,16 +406,27 @@ export type Database = {
           id?: string
           lieu?: string | null
           likes_actifs?: boolean
+          paid_amount_cents?: number | null
+          plan_code?: string | null
           quota_mo?: number
           slug?: string
           status?: Database["public"]["Enums"]["event_status"]
+          stripe_session_id?: string | null
           telechargement_actif?: boolean
           titre?: string
           uploads_actifs?: boolean
           used_mo?: number
           zip_download_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "event_plans"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       invites: {
         Row: {
@@ -484,6 +558,53 @@ export type Database = {
           },
         ]
       }
+      pending_events: {
+        Row: {
+          consumed: boolean
+          coupon_code: string | null
+          created_at: string
+          created_event_id: string | null
+          email: string
+          id: string
+          paid_amount_cents: number
+          payload: Json
+          plan_code: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          consumed?: boolean
+          coupon_code?: string | null
+          created_at?: string
+          created_event_id?: string | null
+          email: string
+          id?: string
+          paid_amount_cents?: number
+          payload: Json
+          plan_code: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          consumed?: boolean
+          coupon_code?: string | null
+          created_at?: string
+          created_event_id?: string | null
+          email?: string
+          id?: string
+          paid_amount_cents?: number
+          payload?: Json
+          plan_code?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_events_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "event_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -602,6 +723,14 @@ export type Database = {
       ban_invite_cascade: {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
+      }
+      create_event_from_pending: {
+        Args: {
+          _paid_amount_cents: number
+          _pending_id: string
+          _stripe_session_id: string
+        }
+        Returns: Json
       }
       create_event_with_coupon: {
         Args: {
