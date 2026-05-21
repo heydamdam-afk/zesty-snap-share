@@ -431,6 +431,59 @@ export type Database = {
           },
         ]
       }
+      marketing_contacts: {
+        Row: {
+          brevo_synced: boolean | null
+          created_at: string | null
+          date_event: string | null
+          email: string | null
+          event_id: string | null
+          id: string
+          nom_event: string | null
+          prenom: string
+          rgpd_consent: boolean | null
+          role: string | null
+          statut_event: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          brevo_synced?: boolean | null
+          created_at?: string | null
+          date_event?: string | null
+          email?: string | null
+          event_id?: string | null
+          id?: string
+          nom_event?: string | null
+          prenom: string
+          rgpd_consent?: boolean | null
+          role?: string | null
+          statut_event?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          brevo_synced?: boolean | null
+          created_at?: string | null
+          date_event?: string | null
+          email?: string | null
+          event_id?: string | null
+          id?: string
+          nom_event?: string | null
+          prenom?: string
+          rgpd_consent?: boolean | null
+          role?: string | null
+          statut_event?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_contacts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string
