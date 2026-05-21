@@ -1,5 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
+import { syncAppScreens } from "@/server/sync-app-screens.functions";
 
 import appCss from "../styles.css?url";
 
@@ -152,6 +154,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    // Sync silencieux du catalogue de pages dans `app_screens` à chaque chargement.
+    syncAppScreens().catch((err) => {
+      console.warn("[app_screens] sync skipped:", err?.message ?? err);
+    });
+  }, []);
+
   return (
     <>
       <Outlet />
