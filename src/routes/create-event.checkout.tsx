@@ -157,7 +157,7 @@ function CheckoutPage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-5 pt-10">
-          <Link to="/" className="text-sm text-muted-foreground">← Retour</Link>
+          <a href="https://kapsul.events/" className="text-sm text-muted-foreground">← Retour</a>
           <div className="mt-10 rounded-2xl border border-border bg-card p-6 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
             <p className="mt-4 text-sm text-foreground">Création de votre événement…</p>
