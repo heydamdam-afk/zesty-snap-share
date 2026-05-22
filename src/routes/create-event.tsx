@@ -61,6 +61,8 @@ function CreateEventPage() {
     if (!planParam) return;
     const planMap: Record<string, PlanCode> = {
       gratuit: 'decouverte',
+      free: 'decouverte',
+      decouvertes: 'decouverte',
       decouverte: 'decouverte',
       essentiel: 'essentiel',
       standard: 'standard',
