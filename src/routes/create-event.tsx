@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { zodValidator, fallback } from '@tanstack/zod-adapter';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { Loader2, Lock } from 'lucide-react';
@@ -7,6 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { PLANS, formatPrice, type PlanCode } from '@/lib/plans';
 import { slugify, generateAccessCode } from '@/lib/zest-create-event';
 
+const searchSchema = z.object({
+  plan: fallback(z.string(), '').default(''),
+});
+
 export const Route = createFileRoute('/create-event')({
   head: () => ({
     meta: [
@@ -14,6 +19,7 @@ export const Route = createFileRoute('/create-event')({
       { name: 'robots', content: 'noindex' },
     ],
   }),
+  validateSearch: zodValidator(searchSchema),
   component: CreateEventPage,
 });
 
@@ -37,6 +43,7 @@ function todayIso(): string {
 
 function CreateEventPage() {
   const navigate = useNavigate();
+  const { plan: planParam } = Route.useSearch();
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>('essentiel');
   const [titre, setTitre] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -49,6 +56,20 @@ function CreateEventPage() {
 
   const plan = useMemo(() => PLANS.find((p) => p.code === selectedPlan)!, [selectedPlan]);
   const minDate = todayIso();
+
+  useEffect(() => {
+    if (!planParam) return;
+    const planMap: Record<string, PlanCode> = {
+      gratuit: 'decouverte',
+      decouverte: 'decouverte',
+      essentiel: 'essentiel',
+      standard: 'standard',
+      premium: 'premium',
+      illimite: 'illimitee',
+    };
+    const mapped = planMap[planParam.toLowerCase()];
+    if (mapped) setSelectedPlan(mapped);
+  }, [planParam]);
 
   useEffect(() => {
     let cancel = false;
