@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { zodValidator, fallback } from '@tanstack/zod-adapter';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -53,6 +53,7 @@ function CreateEventPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [backUrl, setBackUrl] = useState<string>('/my-events');
 
   const plan = useMemo(() => PLANS.find((p) => p.code === selectedPlan)!, [selectedPlan]);
   const minDate = todayIso();
@@ -72,6 +73,18 @@ function CreateEventPage() {
     const mapped = planMap[planParam.toLowerCase()];
     if (mapped) setSelectedPlan(mapped);
   }, [planParam]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const referrer = document.referrer;
+    if (!referrer) {
+      setBackUrl('/my-events');
+      return;
+    }
+    const fromLanding =
+      referrer.includes('kapsul.events') && !referrer.includes('app.kapsul.events');
+    setBackUrl(fromLanding ? 'https://kapsul.events' : '/my-events');
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -160,7 +173,7 @@ function CreateEventPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-5 pt-6 pb-16">
         <div className="mb-6 flex justify-between">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Retour</Link>
+          <a href={backUrl} className="text-sm text-muted-foreground hover:text-foreground">← Retour</a>
         </div>
 
         {/* Plan selector */}
