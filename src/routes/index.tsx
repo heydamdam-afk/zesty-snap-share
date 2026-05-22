@@ -30,8 +30,7 @@ function Landing() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [showGuestEntry, setShowGuestEntry] = useState(false);
-  const [guestCode, setGuestCode] = useState("");
+  // Guest code entry removed from login screen.
   const [hydrated, setHydrated] = useState(false);
   const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -152,26 +151,6 @@ function Landing() {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const submitGuest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = guestCode.trim();
-    if (!code) return;
-    try {
-      const event = await findEventByCode(code);
-      if (!event) {
-        toast.error("Code d'accès invalide");
-        return;
-      }
-      navigate({
-        to: "/e/$slug",
-        params: { slug: event.slug },
-        search: { code } as never,
-      });
-    } catch {
-      toast.error("Erreur lors de la recherche");
     }
   };
 
