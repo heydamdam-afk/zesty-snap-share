@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link }  from '@tanstack/react-router';
+import { zodValidator, fallback } from '@tanstack/zod-adapter';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { Loader2, Lock } from 'lucide-react';
