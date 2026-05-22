@@ -94,7 +94,26 @@ function Landing() {
           email: email.trim(),
           password,
         });
-        if (err) throw err;
+        if (err) {
+          const msg = (err.message || "").toLowerCase();
+          const alreadyExists =
+            msg.includes("already registered") ||
+            msg.includes("already exists") ||
+            msg.includes("user already") ||
+            (err as { code?: string }).code === "user_already_exists";
+          if (alreadyExists) {
+            // Cas typique : l'email existe déjà dans auth.users (paiement
+            // antérieur via magic link, ancien organisateur, etc.). On bascule
+            // l'utilisateur vers la connexion et on lui propose de définir /
+            // réinitialiser son mot de passe.
+            setMode("signin");
+            setInfo(
+              "Un compte existe déjà avec cet email. Connectez-vous, ou utilisez « Mot de passe oublié ? » pour définir un nouveau mot de passe.",
+            );
+            return;
+          }
+          throw err;
+        }
         await routeAfterAuth(navigate);
       } else {
         const cleanPrenom = prenom.trim();
