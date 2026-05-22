@@ -43,6 +43,7 @@ function todayIso(): string {
 
 function CreateEventPage() {
   const navigate = useNavigate();
+  const { plan: planParam } = Route.useSearch();
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>('essentiel');
   const [titre, setTitre] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -55,6 +56,20 @@ function CreateEventPage() {
 
   const plan = useMemo(() => PLANS.find((p) => p.code === selectedPlan)!, [selectedPlan]);
   const minDate = todayIso();
+
+  useEffect(() => {
+    if (!planParam) return;
+    const planMap: Record<string, PlanCode> = {
+      gratuit: 'decouverte',
+      decouverte: 'decouverte',
+      essentiel: 'essentiel',
+      standard: 'standard',
+      premium: 'premium',
+      illimite: 'illimitee',
+    };
+    const mapped = planMap[planParam.toLowerCase()];
+    if (mapped) setSelectedPlan(mapped);
+  }, [planParam]);
 
   useEffect(() => {
     let cancel = false;
