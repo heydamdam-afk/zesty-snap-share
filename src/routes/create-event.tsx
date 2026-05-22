@@ -8,6 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { PLANS, formatPrice, type PlanCode } from '@/lib/plans';
 import { slugify, generateAccessCode } from '@/lib/zest-create-event';
 
+const searchSchema = z.object({
+  plan: fallback(z.string(), '').default(''),
+});
+
 export const Route = createFileRoute('/create-event')({
   head: () => ({
     meta: [
@@ -15,6 +19,7 @@ export const Route = createFileRoute('/create-event')({
       { name: 'robots', content: 'noindex' },
     ],
   }),
+  validateSearch: zodValidator(searchSchema),
   component: CreateEventPage,
 });
 
