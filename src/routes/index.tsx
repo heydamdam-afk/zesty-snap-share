@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { findEventByCode } from "@/lib/zest-actions";
@@ -30,8 +30,7 @@ function Landing() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [showGuestEntry, setShowGuestEntry] = useState(false);
-  const [guestCode, setGuestCode] = useState("");
+  // Guest code entry removed from login screen.
   const [hydrated, setHydrated] = useState(false);
   const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -152,26 +151,6 @@ function Landing() {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const submitGuest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = guestCode.trim();
-    if (!code) return;
-    try {
-      const event = await findEventByCode(code);
-      if (!event) {
-        toast.error("Code d'accès invalide");
-        return;
-      }
-      navigate({
-        to: "/e/$slug",
-        params: { slug: event.slug },
-        search: { code } as never,
-      });
-    } catch {
-      toast.error("Erreur lors de la recherche");
     }
   };
 
@@ -492,74 +471,6 @@ function Landing() {
           </form>
 
           {/* ── Guest code entry ── */}
-          <div
-            style={{
-              marginTop: 28,
-              borderTop: "1px solid #E7E3DE",
-              paddingTop: 20,
-              textAlign: "center",
-            }}
-          >
-            {!showGuestEntry ? (
-              <button
-                type="button"
-                onClick={() => setShowGuestEntry(true)}
-                style={{
-                  fontSize: 13,
-                  color: "#919EAB",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: '"Public Sans", sans-serif',
-                }}
-              >
-                J'ai un code d'accès invité →
-              </button>
-            ) : (
-              <form onSubmit={submitGuest} style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="text"
-                  placeholder="CODE"
-                  value={guestCode}
-                  onChange={(e) => setGuestCode(e.target.value.toUpperCase())}
-                  className="ka-input uppercase"
-                  maxLength={20}
-                  style={{ flex: 1, textAlign: "center" }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    background: "#F4F6F8",
-                    border: "1.5px solid #E7E3DE",
-                    borderRadius: 12,
-                    padding: "0 18px",
-                    fontWeight: 600,
-                    fontSize: 14,
-                    color: "#212B36",
-                    cursor: "pointer",
-                    fontFamily: '"Public Sans", sans-serif',
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Entrer
-                </button>
-              </form>
-            )}
-          </div>
-
-          <p
-            style={{
-              marginTop: 16,
-              textAlign: "center",
-              fontSize: 12,
-              color: "#919EAB",
-              fontFamily: '"Public Sans", sans-serif',
-            }}
-          >
-            <Link to="/admin" style={{ color: "#919EAB", textDecoration: "underline" }}>
-              Admin d'un event existant ?
-            </Link>
-          </p>
         </div>
       </main>
     </div>
