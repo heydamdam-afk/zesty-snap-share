@@ -416,14 +416,23 @@ function Index() {
               className="space-y-3"
             >
               {guest && !frozen && <ComposeBar guest={guest} onPosted={reload} />}
-              {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).map((p) => (
-                <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} frozen={frozen} />
-              ))}
-              {visiblePosts.filter((p) => p.contenu_texte && p.contenu_texte.trim()).length === 0 && (
+              {(() => {
+                const feedPosts = visiblePosts.filter(
+                  (p) =>
+                    (p.contenu_texte && p.contenu_texte.trim()) ||
+                    p.photos.length > 0 ||
+                    p.url_medium,
+                );
+                return feedPosts.length > 0 ? (
+                  feedPosts.map((p) => (
+                    <PostCard key={p.id} post={p} guest={guest} isAdmin={isAdmin} onChanged={reload} frozen={frozen} />
+                  ))
+                ) : (
                 <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                   Aucun post pour le moment.
                 </p>
-              )}
+                );
+              })()}
             </motion.div>
           )}
           {tab === "gallery" && (
