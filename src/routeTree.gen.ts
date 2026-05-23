@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MyEventsRouteImport } from './routes/my-events'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as GrosEvenementRouteImport } from './routes/gros-evenement'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClosedRouteImport } from './routes/closed'
@@ -39,6 +40,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const MyEventsRoute = MyEventsRouteImport.update({
   id: '/my-events',
   path: '/my-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GrosEvenementRoute = GrosEvenementRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
+  '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
+  '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
+  '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
+    | '/login'
     | '/my-events'
     | '/reset-password'
     | '/create-event/checkout'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
+    | '/login'
     | '/my-events'
     | '/reset-password'
     | '/create-event/checkout'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
+    | '/login'
     | '/my-events'
     | '/reset-password'
     | '/create-event/checkout'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   ClosedRoute: typeof ClosedRoute
   DashboardRoute: typeof DashboardRoute
   GrosEvenementRoute: typeof GrosEvenementRoute
+  LoginRoute: typeof LoginRoute
   MyEventsRoute: typeof MyEventsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/my-events'
       fullPath: '/my-events'
       preLoaderRoute: typeof MyEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gros-evenement': {
@@ -463,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClosedRoute: ClosedRoute,
   DashboardRoute: DashboardRoute,
   GrosEvenementRoute: GrosEvenementRoute,
+  LoginRoute: LoginRoute,
   MyEventsRoute: MyEventsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   CreateEventCheckoutRoute: CreateEventCheckoutRoute,
