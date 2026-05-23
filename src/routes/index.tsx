@@ -19,7 +19,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-function Landing() {
+export function Landing() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -501,6 +501,16 @@ async function routeAfterAuth(
 ): Promise<void> {
   // Lier les éventuels event_admins invités par email
   await supabase.rpc("link_admin_user_id");
+
+  // Honor ?redirect= if it points to a safe internal path.
+  if (typeof window !== "undefined") {
+    const redirect = new URLSearchParams(window.location.search).get("redirect");
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+      window.location.assign(redirect);
+      return;
+    }
+  }
+
   const { data } = await supabase.rpc("my_admin_events");
   const events = (data as Array<{ slug: string }> | null) ?? [];
   if (events.length > 0) {

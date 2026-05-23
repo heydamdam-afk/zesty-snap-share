@@ -57,7 +57,10 @@ function AdminDashboard() {
         if (cancel) return;
         const sessionEmail = sess.session?.user.email;
         if (!sessionEmail) {
-          navigate({ to: "/$slug/admin", params: { slug } });
+          navigate({
+            to: "/login",
+            search: { redirect: `/${slug}/admin/dashboard` } as never,
+          });
           return;
         }
 
@@ -85,7 +88,10 @@ function AdminDashboard() {
         if (admErr || !adm) {
           toast.error("Vous n'êtes pas admin de cet événement.");
           await supabase.auth.signOut();
-          navigate({ to: "/$slug/admin", params: { slug } });
+          navigate({
+            to: "/login",
+            search: { redirect: `/${slug}/admin/dashboard` } as never,
+          });
           return;
         }
 
@@ -109,7 +115,10 @@ function AdminDashboard() {
         console.error("ERREUR:", error);
         if (!cancel) {
           toast.error("Erreur de chargement de l'espace admin.");
-          navigate({ to: "/$slug/admin", params: { slug } });
+          navigate({
+            to: "/login",
+            search: { redirect: `/${slug}/admin/dashboard` } as never,
+          });
         }
       } finally {
         if (!cancel) setLoading(false);

@@ -1,72 +1,32 @@
-import { useState } from "react";
-import { OrganisateurLoginModal } from "./OrganisateurLoginModal";
+import { Link } from "@tanstack/react-router";
 
 export function Footer({
-  eventId,
-  eventTitle,
   slug,
 }: {
   eventId?: string;
   eventTitle?: string;
   slug?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const canOpenModal = !!(eventId && eventTitle && slug);
+  const redirect = slug ? `/${slug}/admin/dashboard` : undefined;
   return (
-    <>
     <footer
       className="flex items-center justify-center gap-1 text-center"
       style={{ padding: 24 }}
     >
-      <span
+      <Link
+        to="/login"
+        search={redirect ? ({ redirect } as never) : undefined}
         style={{
           fontFamily: '"Public Sans", system-ui, sans-serif',
           fontWeight: 400,
           fontSize: 12,
           color: "#919EAB",
-        }}
-      >
-        Propulsé par
-      </span>
-      <span
-        style={{
-          fontFamily: '"Public Sans", system-ui, sans-serif',
-          fontWeight: 600,
-          fontSize: 12,
-          color: "#919EAB",
-        }}
-      >
-        Zeste
-      </span>
-      <span style={{ color: "#919EAB", fontSize: 12 }}>·</span>
-      <button
-        type="button"
-        onClick={() => canOpenModal && setOpen(true)}
-        disabled={!canOpenModal}
-        style={{
-          fontFamily: '"Public Sans", system-ui, sans-serif',
-          fontWeight: 400,
-          fontSize: 12,
-          color: "#919EAB",
-          background: "transparent",
-          border: "none",
-          padding: 0,
-          cursor: canOpenModal ? "pointer" : "default",
+          textDecoration: "none",
         }}
         className="hover:underline"
       >
         Organisateur ? Connectez-vous
-      </button>
+      </Link>
     </footer>
-    {canOpenModal && (
-      <OrganisateurLoginModal
-        open={open}
-        onClose={() => setOpen(false)}
-        eventId={eventId!}
-        eventTitle={eventTitle!}
-        slug={slug!}
-      />
-    )}
-    </>
   );
 }
