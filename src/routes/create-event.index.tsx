@@ -12,7 +12,7 @@ const searchSchema = z.object({
   plan: fallback(z.string(), '').default(''),
 });
 
-export const Route = createFileRoute('/create-event')({
+export const Route = createFileRoute('/create-event/')({
   head: () => ({
     meta: [
       { title: 'Créer un événement — Kapsul' },
