@@ -7,7 +7,7 @@ export type FeedPost = Tables<"posts"> & {
   liked_by_me: boolean;
   photos: Pick<Tables<"post_photos">, "id" | "position" | "url_miniature" | "url_medium" | "url_full">[];
   comments: (Tables<"commentaires"> & {
-    invites: Pick<Tables<"invites">, "id" | "prenom" | "avatar_url"> | null;
+    invites: Pick<Tables<"invites">, "id" | "prenom" | "avatar_url" | "device_id"> | null;
   })[];
 };
 
@@ -35,7 +35,7 @@ export function useEventFeed(eventId: string | null, inviteId: string | null) {
     if (postIds.length > 0) {
       const { data: cData } = await supabase
         .from("commentaires")
-        .select("*, invites(id, prenom, avatar_url)")
+        .select("*, invites(id, prenom, avatar_url, device_id)")
         .in("photo_id", postIds)
         .order("created_at", { ascending: true });
       comments = (cData ?? []) as FeedPost["comments"];
