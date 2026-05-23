@@ -82,14 +82,14 @@ const ESlugRoute = ESlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateEventSuccessRoute = CreateEventSuccessRouteImport.update({
-  id: '/success',
-  path: '/success',
-  getParentRoute: () => CreateEventRoute,
+  id: '/create-event/success',
+  path: '/create-event/success',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CreateEventCheckoutRoute = CreateEventCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => CreateEventRoute,
+  id: '/create-event/checkout',
+  path: '/create-event/checkout',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   id: '/$slug/admin/',
@@ -289,6 +289,8 @@ export interface RootRouteChildren {
   GrosEvenementRoute: typeof GrosEvenementRoute
   MyEventsRoute: typeof MyEventsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
+  CreateEventSuccessRoute: typeof CreateEventSuccessRoute
   ESlugRoute: typeof ESlugRoute
   PlatformCouponsRoute: typeof PlatformCouponsRoute
   CreateEventIndexRoute: typeof CreateEventIndexRoute
@@ -377,17 +379,17 @@ declare module '@tanstack/react-router' {
     }
     '/create-event/success': {
       id: '/create-event/success'
-      path: '/success'
+      path: '/create-event/success'
       fullPath: '/create-event/success'
       preLoaderRoute: typeof CreateEventSuccessRouteImport
-      parentRoute: typeof CreateEventRoute
+      parentRoute: typeof rootRouteImport
     }
     '/create-event/checkout': {
       id: '/create-event/checkout'
-      path: '/checkout'
+      path: '/create-event/checkout'
       fullPath: '/create-event/checkout'
       preLoaderRoute: typeof CreateEventCheckoutRouteImport
-      parentRoute: typeof CreateEventRoute
+      parentRoute: typeof rootRouteImport
     }
     '/$slug/admin/': {
       id: '/$slug/admin/'
@@ -463,6 +465,8 @@ const rootRouteChildren: RootRouteChildren = {
   GrosEvenementRoute: GrosEvenementRoute,
   MyEventsRoute: MyEventsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  CreateEventCheckoutRoute: CreateEventCheckoutRoute,
+  CreateEventSuccessRoute: CreateEventSuccessRoute,
   ESlugRoute: ESlugRoute,
   PlatformCouponsRoute: PlatformCouponsRoute,
   CreateEventIndexRoute: CreateEventIndexRoute,
@@ -479,12 +483,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
