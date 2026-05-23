@@ -46,6 +46,24 @@ export function clearDevice() {
   Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
 }
 
+/**
+ * Clear ALL guest session state from local/session storage.
+ * Used on logout and when an admin Supabase session takes priority.
+ * Note: keeps the deviceId so the next guest login can match prior invites.
+ */
+export function clearGuestSession(opts: { keepDeviceId?: boolean } = {}) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("zeste_guest_session");
+    localStorage.removeItem(STORAGE_KEYS.attempts);
+    localStorage.removeItem(STORAGE_KEYS.lockUntil);
+    if (!opts.keepDeviceId) localStorage.removeItem(STORAGE_KEYS.deviceId);
+    sessionStorage.clear();
+  } catch {
+    /* noop */
+  }
+}
+
 export function buildSession(invite: InviteRow, event: EventRow): GuestSession {
   const prenom = invite?.prenom ?? "";
   return {

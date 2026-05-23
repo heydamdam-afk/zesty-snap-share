@@ -33,7 +33,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { findEventBySlug, findInvite } from "@/lib/zest-actions";
-import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
+import { buildSession, getOrCreateDeviceId, clearGuestSession } from "@/lib/zest-session";
 import { toast } from "sonner";
 
 const QUOTA_TOTAL = 500;
@@ -85,16 +85,32 @@ function Index() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminCheckDone, setAdminCheckDone] = useState(false);
 
+  // Hydration : Supabase Auth (admin) prend la priorité sur la guest session.
+  // 1. S'il y a une session Supabase valide → on efface la guest localStorage
+  //    et on construira la session admin dans l'effet auto-admin ci-dessous.
+  // 2. Sinon → on restaure la guest session depuis localStorage (refresh-safe).
   useEffect(() => {
-    const stored = loadGuest();
-    // Si la session sauvée correspond à un autre event (navigation entre events),
-    // on l'ignore : sinon on chargerait le feed du mauvais event après refresh.
-    if (stored && stored.event?.slug && stored.event.slug !== EVENT_SLUG) {
-      setGuest(null);
-    } else {
-      setGuest(stored);
-    }
-    setHydrated(true);
+    let cancel = false;
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (sess.session?.user) {
+          // Admin connecté → purge toute guest session avant de continuer.
+          clearGuestSession({ keepDeviceId: true });
+          if (!cancel) setGuest(null);
+        } else {
+          const stored = loadGuest();
+          if (stored && stored.event?.slug && stored.event.slug !== EVENT_SLUG) {
+            if (!cancel) setGuest(null);
+          } else if (!cancel) {
+            setGuest(stored);
+          }
+        }
+      } finally {
+        if (!cancel) setHydrated(true);
+      }
+    })();
+    return () => { cancel = true; };
   }, [EVENT_SLUG]);
 
   useEffect(() => {
@@ -361,8 +377,11 @@ function Index() {
           }}
           onEditProfile={() => setProfileOpen(true)}
           onLeave={() => {
-            saveGuest(null);
-            window.location.href = `/e/${EVENT_SLUG}`;
+            void (async () => {
+              try { await supabase.auth.signOut(); } catch { /* noop */ }
+              clearGuestSession({ keepDeviceId: true });
+              window.location.href = `/e/${EVENT_SLUG}`;
+            })();
           }}
         />
         <ProfileDialog
