@@ -2,18 +2,53 @@ import type { FeedPost } from "@/hooks/useEventFeed";
 import { Shield, UserX } from "lucide-react";
 import { banInvite } from "@/lib/zest-admin";
 
+const CONNECTED_WINDOW_MS = 5 * 60 * 1000;
+
 function aggregate(posts: FeedPost[]) {
   const map = new Map<
     string,
-    { author: string; initials: string; count: number; deviceId: string | null }
+    {
+      author: string;
+      initials: string;
+      count: number;
+      deviceId: string | null;
+      lastActivity: number;
+    }
   >();
+  const bump = (
+    author: string | undefined | null,
+    deviceId: string | null,
+    ts: string | null | undefined,
+    incrementPhoto: boolean,
+  ) => {
+    const name = author ?? "Invité";
+    const initials = (name[0] ?? "?").toUpperCase();
+    const t = ts ? new Date(ts).getTime() : 0;
+    const cur = map.get(name);
+    if (cur) {
+      if (incrementPhoto) cur.count += 1;
+      if (t > cur.lastActivity) cur.lastActivity = t;
+      if (!cur.deviceId && deviceId) cur.deviceId = deviceId;
+    } else {
+      map.set(name, {
+        author: name,
+        initials,
+        count: incrementPhoto ? 1 : 0,
+        deviceId,
+        lastActivity: t,
+      });
+    }
+  };
   for (const p of posts) {
-    const author = p.invites?.prenom ?? "Invité";
-    const initials = (author[0] ?? "?").toUpperCase();
-    const deviceId = p.invites?.device_id ?? null;
-    const cur = map.get(author);
-    if (cur) cur.count += 1;
-    else map.set(author, { author, initials, count: 1, deviceId });
+    bump(p.invites?.prenom, p.invites?.device_id ?? null, p.created_at, true);
+    for (const c of p.comments) {
+      bump(
+        c.invites?.prenom,
+        c.invites?.device_id ?? null,
+        c.created_at,
+        false,
+      );
+    }
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
@@ -33,6 +68,7 @@ export function GuestsList({
 }) {
   const list = aggregate(posts);
   const totalPhotos = posts.filter((p) => p.url_medium).length;
+  const now = Date.now();
 
   const onBan = async (deviceId: string | null, name: string) => {
     if (!deviceId || !eventId) return;
@@ -65,6 +101,8 @@ export function GuestsList({
         {list.map((g) => {
           const isMe = !!currentDeviceId && g.deviceId === currentDeviceId;
           const isThisAdmin = isAdmin && isMe;
+          const connected =
+            g.lastActivity > 0 && now - g.lastActivity < CONNECTED_WINDOW_MS;
           return (
             <li
               key={g.author}
@@ -84,8 +122,16 @@ export function GuestsList({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {g.count} photo{g.count > 1 ? "s" : ""}
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span
+                    aria-hidden
+                    className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                  />
+                  <span>{connected ? "Connecté" : "Déconnecté"}</span>
+                  <span aria-hidden>·</span>
+                  <span>
+                    {g.count} photo{g.count > 1 ? "s" : ""}
+                  </span>
                 </p>
               </div>
               {isAdmin && !isMe && g.deviceId && (
