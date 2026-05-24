@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { syncAppScreens } from "@/lib/sync-app-screens.functions";
+import { SessionProvider } from "@/contexts/SessionProvider";
 
 import appCss from "../styles.css?url";
 
@@ -162,9 +163,9 @@ function RootComponent() {
   }, []);
 
   return (
-    <>
+    <SessionProvider>
       <Outlet />
       <Toaster position="top-center" richColors closeButton />
-    </>
+    </SessionProvider>
   );
 }
