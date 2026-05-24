@@ -24,7 +24,7 @@ function DashboardRedirect() {
       const user = sessionData.session?.user;
 
       if (!user) {
-        navigate({ to: "/admin" });
+        navigate({ to: "/" });
         return;
       }
 
@@ -65,7 +65,7 @@ function DashboardRedirect() {
           <>
             <p className="mt-2 text-sm text-muted-foreground">{error}</p>
             <Link
-              to="/admin"
+              to="/"
               className="mt-5 inline-flex rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
             >
               Se connecter à l'espace admin
