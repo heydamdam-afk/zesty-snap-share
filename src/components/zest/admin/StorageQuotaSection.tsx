@@ -8,9 +8,6 @@ import { RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getPlan } from "@/lib/plans";
 
-
-
-
 export function StorageQuotaSection() {
   const { event, reloadEvent } = useAdminContext();
   const [photoCount, setPhotoCount] = useState<number | null>(null);
