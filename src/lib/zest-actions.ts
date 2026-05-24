@@ -25,21 +25,21 @@ export type UploadProgress = {
 export async function findEventBySlug(slug: string) {
   const { data, error } = await supabase
     .from("events")
-    .select("*")
+    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, contact, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
 }
 
 export async function findEventByCode(code: string) {
   const { data, error } = await supabase
     .from("events")
-    .select("*")
+    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, contact, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
     .ilike("code_acces", code.trim())
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
 }
 
 export async function findInvite(eventId: string, deviceId: string) {
