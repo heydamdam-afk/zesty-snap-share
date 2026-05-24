@@ -32,8 +32,6 @@ import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
 
-const QUOTA_TOTAL = 500;
-
 export const Route = createFileRoute("/e/$slug")({
   head: () => ({
     meta: [
