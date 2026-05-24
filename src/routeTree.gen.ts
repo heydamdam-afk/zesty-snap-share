@@ -15,7 +15,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as GrosEvenementRouteImport } from './routes/gros-evenement'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClosedRouteImport } from './routes/closed'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreateEventIndexRouteImport } from './routes/create-event.index'
 import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
@@ -61,11 +60,6 @@ const DashboardRoute = DashboardRouteImport.update({
 const ClosedRoute = ClosedRouteImport.update({
   id: '/closed',
   path: '/closed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -153,7 +147,6 @@ const ApiPublicPaymentsWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
@@ -178,7 +171,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
@@ -204,7 +196,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/closed': typeof ClosedRoute
   '/dashboard': typeof DashboardRoute
   '/gros-evenement': typeof GrosEvenementRoute
@@ -231,7 +222,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
@@ -256,7 +246,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
@@ -281,7 +270,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/closed'
     | '/dashboard'
     | '/gros-evenement'
@@ -307,7 +295,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
   ClosedRoute: typeof ClosedRoute
   DashboardRoute: typeof DashboardRoute
   GrosEvenementRoute: typeof GrosEvenementRoute
@@ -373,13 +360,6 @@ declare module '@tanstack/react-router' {
       path: '/closed'
       fullPath: '/closed'
       preLoaderRoute: typeof ClosedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -499,7 +479,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
   ClosedRoute: ClosedRoute,
   DashboardRoute: DashboardRoute,
   GrosEvenementRoute: GrosEvenementRoute,
