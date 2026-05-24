@@ -18,6 +18,7 @@ export type AdminEvent = {
   frozen_at: string | null;
   zip_download_url: string | null;
   expire_at: string | null;
+  plan_code: string | null;
 };
 
 export type AdminContextValue = {

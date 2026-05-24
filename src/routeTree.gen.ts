@@ -26,6 +26,7 @@ import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
 import { Route as ApiPublicFreezeCompleteRouteImport } from './routes/api/public/freeze-complete'
 import { Route as ApiPublicExpireEventsRouteImport } from './routes/api/public/expire-events'
+import { Route as SlugAdminUpgradeRouteImport } from './routes/$slug.admin.upgrade'
 import { Route as SlugAdminDashboardRouteImport } from './routes/$slug.admin.dashboard'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -117,6 +118,11 @@ const ApiPublicExpireEventsRoute = ApiPublicExpireEventsRouteImport.update({
   path: '/api/public/expire-events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlugAdminUpgradeRoute = SlugAdminUpgradeRouteImport.update({
+  id: '/$slug/admin/upgrade',
+  path: '/$slug/admin/upgrade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlugAdminDashboardRoute = SlugAdminDashboardRouteImport.update({
   id: '/$slug/admin/dashboard',
   path: '/$slug/admin/dashboard',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/create-event/': typeof CreateEventIndexRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin/upgrade': typeof SlugAdminUpgradeRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/create-event': typeof CreateEventIndexRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin/upgrade': typeof SlugAdminUpgradeRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/platform/coupons': typeof PlatformCouponsRoute
   '/create-event/': typeof CreateEventIndexRoute
   '/$slug/admin/dashboard': typeof SlugAdminDashboardRoute
+  '/$slug/admin/upgrade': typeof SlugAdminUpgradeRoute
   '/api/public/expire-events': typeof ApiPublicExpireEventsRoute
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/create-event/'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin/upgrade'
     | '/api/public/expire-events'
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/create-event'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin/upgrade'
     | '/api/public/expire-events'
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/platform/coupons'
     | '/create-event/'
     | '/$slug/admin/dashboard'
+    | '/$slug/admin/upgrade'
     | '/api/public/expire-events'
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
@@ -308,6 +320,7 @@ export interface RootRouteChildren {
   PlatformCouponsRoute: typeof PlatformCouponsRoute
   CreateEventIndexRoute: typeof CreateEventIndexRoute
   SlugAdminDashboardRoute: typeof SlugAdminDashboardRoute
+  SlugAdminUpgradeRoute: typeof SlugAdminUpgradeRoute
   ApiPublicExpireEventsRoute: typeof ApiPublicExpireEventsRoute
   ApiPublicFreezeCompleteRoute: typeof ApiPublicFreezeCompleteRoute
   ApiPublicR2UploadRoute: typeof ApiPublicR2UploadRoute
@@ -439,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicExpireEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$slug/admin/upgrade': {
+      id: '/$slug/admin/upgrade'
+      path: '/$slug/admin/upgrade'
+      fullPath: '/$slug/admin/upgrade'
+      preLoaderRoute: typeof SlugAdminUpgradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$slug/admin/dashboard': {
       id: '/$slug/admin/dashboard'
       path: '/$slug/admin/dashboard'
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlatformCouponsRoute: PlatformCouponsRoute,
   CreateEventIndexRoute: CreateEventIndexRoute,
   SlugAdminDashboardRoute: SlugAdminDashboardRoute,
+  SlugAdminUpgradeRoute: SlugAdminUpgradeRoute,
   ApiPublicExpireEventsRoute: ApiPublicExpireEventsRoute,
   ApiPublicFreezeCompleteRoute: ApiPublicFreezeCompleteRoute,
   ApiPublicR2UploadRoute: ApiPublicR2UploadRoute,
