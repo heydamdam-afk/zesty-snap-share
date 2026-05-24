@@ -334,6 +334,8 @@ export function EventSettingsSection() {
           </div>
         </div>
 
+        <ExpireCountdown expireAt={event.expire_at} />
+
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={!dirty || saving}>
             {saving ? (
