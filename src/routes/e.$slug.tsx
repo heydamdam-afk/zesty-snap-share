@@ -313,8 +313,6 @@ function Index() {
 
   return (
     <div className="relative min-h-screen bg-background pb-32">
-      <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
-
       <div className="relative">
         <EventHero
           title={guest.event.titre}
@@ -391,6 +389,11 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
+              <QuotaBanner
+                used={quotaUsedMo}
+                total={quotaTotalMo}
+                variant="guest"
+              />
               {guest && !frozen && <ComposeBar guest={guest} onPosted={reload} />}
               {(() => {
                 const feedPosts = visiblePosts.filter(
