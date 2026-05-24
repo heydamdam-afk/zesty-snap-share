@@ -1,32 +1,64 @@
-import { AlertTriangle, Ban } from "lucide-react";
+export const QUOTA_FULL_MESSAGE =
+  "La galerie est pleine — contactez l'organisateur";
 
-export function QuotaBanner({ used, total }: { used: number; total: number }) {
-  const ratio = total > 0 ? used / total : 0;
-  if (ratio < 0.9) return null;
+export function QuotaBanner({
+  used,
+  total,
+  variant,
+  upgradeHref = "#",
+}: {
+  used: number;
+  total: number;
+  variant: "admin" | "guest";
+  upgradeHref?: string;
+}) {
+  if (total <= 0) return null;
+  const percent = Math.round((used / total) * 100);
+  if (percent < 90) return null;
+  const full = percent >= 100;
 
-  const full = ratio >= 1;
-  const bg = full ? "#FFE4E1" : "#FFF4E0";
-  const fg = full ? "#B71C1C" : "#FFA000";
-  const Icon = full ? Ban : AlertTriangle;
+  const style = full
+    ? {
+        backgroundColor: "rgba(255,72,66,0.12)",
+        borderLeft: "4px solid #FF4842",
+        color: "#B71C1C",
+      }
+    : {
+        backgroundColor: "rgba(255,160,0,0.18)",
+        borderLeft: "4px solid #FFA000",
+        color: "#8a5a00",
+      };
+
+  let text: React.ReactNode;
+  if (variant === "admin") {
+    text = full ? (
+      <>
+        🚫 Quota atteint — uploads bloqués ·{" "}
+        <a href={upgradeHref} className="font-semibold underline">
+          Upgrader maintenant
+        </a>
+      </>
+    ) : (
+      <>
+        ⚠️ Galerie presque pleine — {percent}% utilisé ·{" "}
+        <a href={upgradeHref} className="font-semibold underline">
+          Upgrader mon offre
+        </a>
+      </>
+    );
+  } else {
+    text = full
+      ? "La galerie ne peut plus accepter de nouvelles photos. Contactez l'organisateur."
+      : "La galerie est presque pleine — contactez l'organisateur";
+  }
 
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold"
-      style={{ backgroundColor: bg, color: fg }}
+      className="px-4 py-3 text-sm font-medium"
+      style={style}
       role="status"
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="flex-1">
-        {full
-          ? "Galerie pleine — plus de nouvelles photos acceptées"
-          : "Galerie presque pleine"}
-      </span>
-      <span className="tabular-nums opacity-80">
-        {used}/{total}
-      </span>
+      {text}
     </div>
   );
 }
-
-export const QUOTA_FULL_MESSAGE =
-  "La galerie ne peut plus accepter de nouvelles photos";
