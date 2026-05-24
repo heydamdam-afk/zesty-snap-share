@@ -4,14 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminContext } from "./AdminContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { HardDrive, RefreshCw, Loader2, Sparkles } from "lucide-react";
+import { RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getPlan } from "@/lib/plans";
-
-function formatSize(mo: number): string {
-  if (mo >= 1024) return `${(mo / 1024).toFixed(2)} Go`;
-  return `${mo.toFixed(0)} Mo`;
-}
 
 export function StorageQuotaSection() {
   const { event, reloadEvent } = useAdminContext();
@@ -57,10 +52,10 @@ export function StorageQuotaSection() {
       <header className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-xl text-foreground">
-            Stockage & quota
+            Photos & quota
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Espace utilisé par les photos de cet événement.
+            Suivi de votre quota photos pour cet événement.
           </p>
         </div>
         <Button
@@ -81,13 +76,9 @@ export function StorageQuotaSection() {
       <div className="space-y-4">
         <div>
           <div className="mb-2 flex items-end justify-between">
-            <div className="flex items-center gap-2">
-              <HardDrive className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-foreground">
-                <span className="font-medium">{formatSize(usedMo)}</span>
-                <span className="text-muted-foreground"> / {formatSize(quotaMo)}</span>
-              </span>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              Utilisation du quota photos
+            </span>
             <span
               className={`text-xs font-medium ${
                 full
@@ -111,9 +102,10 @@ export function StorageQuotaSection() {
         )}
         {warning && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
-            Vous avez utilisé plus de 80 % de votre stockage.
+            Vous avez utilisé plus de 80 % de votre quota photos.
           </div>
         )}
+
 
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Photos publiées" value={photoCount?.toString() ?? "…"} />
