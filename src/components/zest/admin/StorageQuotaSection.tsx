@@ -8,10 +8,8 @@ import { HardDrive, RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getPlan } from "@/lib/plans";
 
-function formatSize(mo: number): string {
-  if (mo >= 1024) return `${(mo / 1024).toFixed(2)} Go`;
-  return `${mo.toFixed(0)} Mo`;
-}
+
+
 
 export function StorageQuotaSection() {
   const { event, reloadEvent } = useAdminContext();
