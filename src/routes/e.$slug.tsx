@@ -32,8 +32,6 @@ import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
 
-const QUOTA_TOTAL = 500;
-
 export const Route = createFileRoute("/e/$slug")({
   head: () => ({
     meta: [
@@ -214,8 +212,11 @@ function Index() {
     return { guests, photos: photoCount, likes };
   }, [posts]);
 
-  const quotaUsed = stats.photos;
-  const quotaFull = quotaUsed >= QUOTA_TOTAL;
+  const quotaUsedMo = (guest?.event as { used_mo?: number } | undefined)?.used_mo ?? 0;
+  const quotaTotalMo = (guest?.event as { quota_mo?: number } | undefined)?.quota_mo ?? 0;
+  const quotaPercent =
+    quotaTotalMo > 0 ? Math.round((quotaUsedMo / quotaTotalMo) * 100) : 0;
+  const quotaFull = quotaTotalMo > 0 && quotaPercent >= 100;
 
   const handleUpload = async (files: FileList) => {
     if (!guest) return;
@@ -312,8 +313,6 @@ function Index() {
 
   return (
     <div className="relative min-h-screen bg-background pb-32">
-      <QuotaBanner used={quotaUsed} total={QUOTA_TOTAL} />
-
       <div className="relative">
         <EventHero
           title={guest.event.titre}
@@ -390,6 +389,11 @@ function Index() {
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
+              <QuotaBanner
+                used={quotaUsedMo}
+                total={quotaTotalMo}
+                variant="guest"
+              />
               {guest && !frozen && <ComposeBar guest={guest} onPosted={reload} />}
               {(() => {
                 const feedPosts = visiblePosts.filter(

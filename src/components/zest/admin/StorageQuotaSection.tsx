@@ -94,19 +94,6 @@ export function StorageQuotaSection() {
           <Progress value={percent} className="h-2" />
         </div>
 
-        {full && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-            Quota atteint. Les invités ne pourront plus uploader de photos
-            tant que vous n'aurez pas augmenté votre offre.
-          </div>
-        )}
-        {warning && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
-            Vous avez utilisé plus de 80 % de votre quota photos.
-          </div>
-        )}
-
-
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Photos publiées" value={photoCount?.toString() ?? "…"} />
           <Stat

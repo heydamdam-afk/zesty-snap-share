@@ -14,6 +14,7 @@ import { StorageQuotaSection } from "@/components/zest/admin/StorageQuotaSection
 import { AdminsSection } from "@/components/zest/admin/AdminsSection";
 import { BannedSection } from "@/components/zest/admin/BannedSection";
 import { DangerZoneSection } from "@/components/zest/admin/DangerZoneSection";
+import { QuotaBanner } from "@/components/zest/QuotaBanner";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -148,6 +149,11 @@ function AdminDashboard() {
     <AdminContext.Provider value={ctx}>
       <div className="min-h-screen bg-secondary">
         <AdminHeader />
+        <QuotaBanner
+          used={ctx.event.used_mo ?? 0}
+          total={ctx.event.quota_mo ?? 0}
+          variant="admin"
+        />
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
           <EventSettingsSection />
           <StorageQuotaSection />

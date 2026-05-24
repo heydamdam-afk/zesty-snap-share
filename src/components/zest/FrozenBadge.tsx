@@ -3,6 +3,8 @@ export function FrozenBadge({ expireAt }: { expireAt: string | null | undefined 
   const daysLeft = Math.floor(
     (new Date(expireAt).getTime() - Date.now()) / 86400000,
   );
+  // Ne s'affiche qu'à partir de J-10
+  if (daysLeft > 10) return null;
   const text =
     daysLeft <= 0
       ? "🔒 Clôturé — suppression imminente"
