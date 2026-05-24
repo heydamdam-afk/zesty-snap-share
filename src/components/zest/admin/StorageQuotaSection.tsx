@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminContext } from "./AdminContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { HardDrive, RefreshCw, Loader2, Sparkles } from "lucide-react";
+import { RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getPlan } from "@/lib/plans";
 
