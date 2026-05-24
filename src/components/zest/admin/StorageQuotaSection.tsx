@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminContext } from "./AdminContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { HardDrive, RefreshCw, Loader2 } from "lucide-react";
+import { HardDrive, RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { getPlan } from "@/lib/plans";
 
 function formatSize(mo: number): string {
   if (mo >= 1024) return `${(mo / 1024).toFixed(2)} Go`;
@@ -21,6 +23,12 @@ export function StorageQuotaSection() {
   const percent = quotaMo > 0 ? Math.min(100, (usedMo / quotaMo) * 100) : 0;
   const warning = percent >= 80 && percent < 100;
   const full = percent >= 100;
+  const plan = event.plan_code ? getPlan(event.plan_code) : undefined;
+  const maxPhotos = plan?.max_photos ?? 0;
+  const remainingPhotos =
+    photoCount != null && maxPhotos > 0
+      ? Math.max(0, maxPhotos - photoCount)
+      : null;
 
   useEffect(() => {
     let cancel = false;
@@ -110,10 +118,31 @@ export function StorageQuotaSection() {
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Photos publiées" value={photoCount?.toString() ?? "…"} />
           <Stat
-            label="Espace restant"
-            value={formatSize(Math.max(0, quotaMo - usedMo))}
+            label="Photos restantes"
+            value={
+              remainingPhotos != null
+                ? remainingPhotos.toLocaleString("fr-FR")
+                : "…"
+            }
           />
         </div>
+
+        <Link
+          to="/$slug/admin/upgrade"
+          params={{ slug: event.slug }}
+          className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm transition hover:bg-primary/10"
+        >
+          <span className="flex items-center gap-2 text-foreground">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>
+              Besoin de plus de photos&nbsp;?{" "}
+              <span className="font-semibold text-primary">
+                Découvrez nos offres
+              </span>
+            </span>
+          </span>
+          <span className="text-primary">→</span>
+        </Link>
       </div>
     </section>
   );
