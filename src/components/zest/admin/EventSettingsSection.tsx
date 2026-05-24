@@ -374,3 +374,42 @@ function ToggleRow({
     </div>
   );
 }
+
+function ExpireCountdown({ expireAt }: { expireAt: string | null }) {
+  if (!expireAt) return null;
+  const expireDate = new Date(expireAt);
+  if (Number.isNaN(expireDate.getTime())) return null;
+  const daysLeft = Math.ceil(
+    (expireDate.getTime() - Date.now()) / 86400000,
+  );
+  const formatted = expireDate.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  let color = "#637381";
+  if (daysLeft <= 2) color = "#FF4842";
+  else if (daysLeft <= 7) color = "#FFA000";
+
+  const text =
+    daysLeft <= 0
+      ? `Cette galerie est clôturée depuis le ${formatted}`
+      : `Cette galerie ferme le ${formatted} — il reste ${daysLeft} jour${daysLeft > 1 ? "s" : ""}`;
+
+  return (
+    <div
+      className="flex items-center gap-2"
+      style={{
+        backgroundColor: "#F4F6F8",
+        borderRadius: 8,
+        padding: "12px 16px",
+        color,
+        fontSize: 13,
+        fontFamily: "'Public Sans', sans-serif",
+      }}
+    >
+      <span aria-hidden>🕐</span>
+      <span>{text}</span>
+    </div>
+  );
+}
