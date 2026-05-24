@@ -11,12 +11,7 @@ import { GuestsList } from "@/components/zest/GuestsList";
 import { QrPanel } from "@/components/zest/QrPanel";
 import { ComposeBar } from "@/components/zest/ComposeBar";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AccessGate,
-  loadGuest,
-  saveGuest,
-  type GuestSession,
-} from "@/components/zest/AccessGate";
+import { AccessGate } from "@/components/zest/AccessGate";
 import { ProfileMenu } from "@/components/zest/ProfileMenu";
 import { ProfileDialog } from "@/components/zest/ProfileDialog";
 import { Footer } from "@/components/zest/Footer";
@@ -33,7 +28,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { findEventBySlug, findInvite } from "@/lib/zest-actions";
-import { buildSession, getOrCreateDeviceId, clearGuestSession } from "@/lib/zest-session";
+import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
+import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
 
 const QUOTA_TOTAL = 500;
@@ -77,58 +73,22 @@ function Index() {
   const { slug: EVENT_SLUG } = Route.useParams();
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabId>("feed");
-  const [guest, setGuest] = useState<GuestSession | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const { guest, setGuest, hydrated, user, signOut } = useSession();
   const [onlyMine, setOnlyMine] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [uploading, setUploading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminCheckDone, setAdminCheckDone] = useState(false);
 
-  // Hydration : Supabase Auth (admin) prend la priorité sur la guest session.
-  // 1. S'il y a une session Supabase valide → on efface la guest localStorage
-  //    et on construira la session admin dans l'effet auto-admin ci-dessous.
-  // 2. Sinon → on restaure la guest session depuis localStorage (refresh-safe).
-  useEffect(() => {
-    let cancel = false;
-    (async () => {
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        if (sess.session?.user) {
-          // Admin connecté → purge toute guest session avant de continuer.
-          clearGuestSession({ keepDeviceId: true });
-          if (!cancel) setGuest(null);
-        } else {
-          const stored = loadGuest();
-          if (stored && stored.event?.slug && stored.event.slug !== EVENT_SLUG) {
-            if (!cancel) setGuest(null);
-          } else if (!cancel) {
-            setGuest(stored);
-          }
-        }
-      } finally {
-        if (!cancel) setHydrated(true);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [EVENT_SLUG]);
-
+  // Discard any guest session that belongs to a different event slug
+  // (refresh-safe, but a guest who pasted another event's URL would otherwise
+  // see the wrong header).
   useEffect(() => {
     if (!hydrated) return;
-    saveGuest(guest);
-  }, [guest, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated || !guest) return;
-    const t = setTimeout(() => {
-      const stored = localStorage.getItem("zeste_guest_session");
-      if (!stored) {
-        console.error("[REGRESSION] zeste_guest_session effacée après hydration");
-        saveGuest(guest);
-      }
-    }, 500);
-    return () => clearTimeout(t);
-  }, [guest, hydrated]);
+    if (guest && guest.event?.slug && guest.event.slug !== EVENT_SLUG) {
+      setGuest(null);
+    }
+  }, [hydrated, guest, EVENT_SLUG, setGuest]);
 
   // Auto-créer une session admin si l'utilisateur est connecté côté Supabase
   // mais n'a pas (encore) de session guest locale.
@@ -137,9 +97,6 @@ function Index() {
     let cancel = false;
     (async () => {
       try {
-        const { data: sess } = await supabase.auth.getSession();
-        const session = sess.session;
-        const user = session?.user;
         // Guard : pas de session, on stoppe (pas de requête DB inutile)
         if (!user?.email) { if (!cancel) setAdminCheckDone(true); return; }
         const event = await findEventBySlug(EVENT_SLUG);
@@ -199,7 +156,7 @@ function Index() {
       }
     })();
     return () => { cancel = true; };
-  }, [hydrated, guest]);
+  }, [hydrated, guest, user, EVENT_SLUG, setGuest]);
 
   const { posts, reload } = useEventFeed(
     guest?.event.id ?? null,
@@ -378,8 +335,7 @@ function Index() {
           onEditProfile={() => setProfileOpen(true)}
           onLeave={() => {
             void (async () => {
-              try { await supabase.auth.signOut(); } catch { /* noop */ }
-              clearGuestSession({ keepDeviceId: true });
+              await signOut();
               window.location.href = `/e/${EVENT_SLUG}`;
             })();
           }}
