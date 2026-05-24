@@ -212,8 +212,11 @@ function Index() {
     return { guests, photos: photoCount, likes };
   }, [posts]);
 
-  const quotaUsed = stats.photos;
-  const quotaFull = quotaUsed >= QUOTA_TOTAL;
+  const quotaUsedMo = (guest?.event as { used_mo?: number } | undefined)?.used_mo ?? 0;
+  const quotaTotalMo = (guest?.event as { quota_mo?: number } | undefined)?.quota_mo ?? 0;
+  const quotaPercent =
+    quotaTotalMo > 0 ? Math.round((quotaUsedMo / quotaTotalMo) * 100) : 0;
+  const quotaFull = quotaTotalMo > 0 && quotaPercent >= 100;
 
   const handleUpload = async (files: FileList) => {
     if (!guest) return;
