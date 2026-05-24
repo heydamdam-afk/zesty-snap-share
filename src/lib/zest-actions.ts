@@ -29,7 +29,7 @@ export async function findEventBySlug(slug: string) {
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
 }
 
 export async function findEventByCode(code: string) {
@@ -39,7 +39,7 @@ export async function findEventByCode(code: string) {
     .ilike("code_acces", code.trim())
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
 }
 
 export async function findInvite(eventId: string, deviceId: string) {
