@@ -1,4 +1,6 @@
 import { Camera } from "lucide-react";
+import { toast } from "sonner";
+import { QUOTA_FULL_MESSAGE } from "@/components/zest/QuotaBanner";
 
 export function FloatingUploadButton({
   onPick,
@@ -10,13 +12,20 @@ export function FloatingUploadButton({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6">
       <label
-        className={`pointer-events-auto inline-flex w-full max-w-[360px] cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-semibold text-primary-foreground transition active:scale-[0.99] ${
-          disabled ? "cursor-not-allowed opacity-60" : ""
+        className={`pointer-events-auto inline-flex w-full max-w-[360px] items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-semibold text-primary-foreground transition active:scale-[0.99] ${
+          disabled ? "cursor-not-allowed" : "cursor-pointer"
         }`}
         style={{
           backgroundColor: "var(--primary)",
           boxShadow: "var(--shadow-pop)",
           fontFamily: "var(--font-display)",
+          opacity: disabled ? 0.4 : 1,
+        }}
+        onClick={(e) => {
+          if (disabled) {
+            e.preventDefault();
+            toast.error(QUOTA_FULL_MESSAGE);
+          }
         }}
       >
         <Camera className="h-5 w-5" />
