@@ -1,16 +1,26 @@
-## Problème
+## Objectif
 
-Sur navigation vers `/create-event/checkout`, la page checkout ne s'affiche pas — on reste visuellement sur le formulaire.
+Supprimer la page `/admin` (doublon) et garder uniquement l'écran de connexion/inscription porté par la landing (`/`), qui est déjà celui affiché après la redirection depuis `/my-events`.
 
-**Cause** : en routing flat de TanStack Router, `create-event.tsx` + `create-event.checkout.tsx` créent une hiérarchie parent/enfant. Le parent (`create-event.tsx`) rend `CreateEventPage` mais **ne contient pas `<Outlet />`**, donc la route enfant matche mais n'a aucun point de rendu. Même problème pour `/create-event/success`.
+## Changements
 
-## Correction
+1. **Supprimer `src/routes/admin.tsx`**
+   - La route `/admin` n'existera plus. `routeTree.gen.ts` se régénère automatiquement.
 
-Convertir `create-event` en groupe de routes sœurs sans layout partagé :
+2. **Supprimer `src/components/zest/AdminBookmark.tsx`**
+   - Composant utilisé uniquement par `admin.tsx` (vérifié via ripgrep). Plus aucune référence après suppression.
 
-1. Renommer `src/routes/create-event.tsx` → `src/routes/create-event.index.tsx`
-   - Aucune modification de contenu nécessaire ; le `createFileRoute('/create-event')` reste valide (les fichiers `*.index.tsx` mappent sur le path du parent).
+3. **Mettre à jour `src/routes/dashboard.tsx`**
+   - Remplacer les deux `to: "/admin"` (redirection si pas de session + lien d'erreur "Se connecter") par `to: "/"` pour pointer vers la landing qui héberge le formulaire de connexion.
 
-Résultat : `/create-event`, `/create-event/checkout`, `/create-event/success` deviennent trois routes indépendantes, plus de layout parent fantôme. La navigation depuis le bouton "Continuer vers le paiement" affichera bien la page checkout (qui lira `kapsul_pending_form` depuis sessionStorage comme prévu).
+4. **Conserver `/login`** (alias léger de la landing, déjà en place) — il sert au SEO/robots noindex et ne fait pas doublon visuel puisqu'il rend exactement le même composant `Landing`.
 
-Aucune autre modification nécessaire — le `routeTree.gen.ts` se régénère automatiquement.
+## Vérifications post-changement
+
+- `rg "/admin\"|to=\"/admin|'/admin'"` ne doit plus rien retourner en dehors des chemins `$slug/admin/...` (dashboards d'event, qui sont distincts).
+- Le flux : utilisateur non connecté → `/my-events` → redirect `/` → formulaire de login → succès → `/dashboard` → `/my-events` ou `/$slug/admin/dashboard` fonctionne sans `/admin`.
+- Build TanStack passe (routeTree régénéré sans `/admin`).
+
+## Hors scope
+
+- Aucune modification du formulaire de connexion lui-même, ni de `/login`, `/my-events`, ou des dashboards d'événement (`$slug.admin.*`).
