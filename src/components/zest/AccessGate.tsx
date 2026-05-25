@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { Check } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import {
   buildSession,
   getOrCreateDeviceId,
@@ -186,6 +188,9 @@ export function AccessGate({
   const [s2Error, setS2Error] = useState<string | null>(null);
   const [s2Loading, setS2Loading] = useState(false);
 
+  // ── Admin-detected state ──
+  const [adminDetected, setAdminDetected] = useState<{ slug: string } | null>(null);
+
   useEffect(() => {
     const a = readAttempts();
     if (a.locked) setLockUntil(a.lockUntil);
@@ -275,6 +280,26 @@ export function AccessGate({
         email: parsed.data.email,
         deviceId,
       });
+
+      // Determine the event resolved by the code (for admin check),
+      // regardless of whether the user is a returning guest or new.
+      const resolvedEvent =
+        res.ok ? res.event : res.reason === "new_user" ? res.event : null;
+
+      if (resolvedEvent) {
+        const emailNorm = parsed.data.email.trim().toLowerCase();
+        const { data: adminCheck } = await supabase
+          .from("event_admins")
+          .select("id")
+          .eq("event_id", resolvedEvent.id)
+          .eq("email", emailNorm)
+          .maybeSingle();
+        if (adminCheck) {
+          setEventInfo(resolvedEvent);
+          setAdminDetected({ slug: resolvedEvent.slug });
+          return;
+        }
+      }
 
       if (res.ok) {
         // Returning user → log in directly.
@@ -384,7 +409,62 @@ export function AccessGate({
             </div>
           )}
 
-          {step === 1 && (
+          {adminDetected && (
+            <div className="gi-screen" style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }} aria-hidden>👇</div>
+              <p
+                style={{
+                  color: "#637381",
+                  fontFamily: '"Public Sans", sans-serif',
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  margin: "0 0 20px",
+                }}
+              >
+                Vous êtes organisateur de cet événement.
+                <br />
+                Connectez-vous à votre espace admin.
+              </p>
+              <Link
+                to="/$slug/admin"
+                params={{ slug: adminDetected.slug }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "12px 20px",
+                  border: "1px solid #FF4842",
+                  color: "#FF4842",
+                  background: "#fff",
+                  borderRadius: 100,
+                  fontFamily: '"Public Sans", sans-serif',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  textAlign: "center",
+                }}
+              >
+                Accéder à mon espace admin →
+              </Link>
+              <button
+                type="button"
+                onClick={() => setAdminDetected(null)}
+                style={{
+                  marginTop: 16,
+                  background: "none",
+                  border: "none",
+                  color: "#637381",
+                  fontFamily: '"Public Sans", sans-serif',
+                  fontSize: 13,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                Retour
+              </button>
+            </div>
+          )}
+
+          {!adminDetected && step === 1 && (
             <form className="gi-screen" onSubmit={submitStep1} noValidate>
               <StepDots step={1} />
               <h2 className="gi-h1">Vous êtes invité !</h2>
@@ -446,6 +526,25 @@ export function AccessGate({
               <button type="submit" className="gi-cta" disabled={isLocked || s1Loading}>
                 {s1Loading ? "Vérification…" : "Accéder à la galerie →"}
               </button>
+              <p
+                style={{
+                  textAlign: "center",
+                  marginTop: 12,
+                  marginBottom: 0,
+                  fontFamily: '"Public Sans", sans-serif',
+                  fontSize: 13,
+                  color: "#637381",
+                }}
+              >
+                Organisateur / Administrateur ?{" "}
+                <Link
+                  to="/$slug/admin"
+                  params={{ slug: eventInfo?.slug ?? slug }}
+                  style={{ color: "#FF4842", textDecoration: "none", fontWeight: 600 }}
+                >
+                  Connectez-vous ici
+                </Link>
+              </p>
               <p className="gi-footnote">
                 En continuant, vous acceptez les <a href="/privacy" target="_blank" rel="noopener noreferrer">conditions</a> et la{" "}
                 <a href="/privacy" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>.
@@ -453,7 +552,7 @@ export function AccessGate({
             </form>
           )}
 
-          {step === 2 && (
+          {!adminDetected && step === 2 && (
             <form className="gi-screen" onSubmit={submitStep2} noValidate>
               <StepDots step={2} />
 
