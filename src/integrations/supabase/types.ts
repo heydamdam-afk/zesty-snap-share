@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      addon_purchases: {
+        Row: {
+          addon_type: string
+          created_at: string
+          days_extended: number
+          event_id: string
+          id: string
+          paid_amount_cents: number
+          photos_added: number
+          stripe_session_id: string | null
+        }
+        Insert: {
+          addon_type?: string
+          created_at?: string
+          days_extended?: number
+          event_id: string
+          id?: string
+          paid_amount_cents?: number
+          photos_added?: number
+          stripe_session_id?: string | null
+        }
+        Update: {
+          addon_type?: string
+          created_at?: string
+          days_extended?: number
+          event_id?: string
+          id?: string
+          paid_amount_cents?: number
+          photos_added?: number
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addon_purchases_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_screens: {
         Row: {
           created_at: string | null
@@ -831,6 +872,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_addon_images: {
+        Args: {
+          _event_id: string
+          _paid_amount_cents?: number
+          _stripe_session_id: string
+        }
+        Returns: Json
+      }
       ban_invite_cascade: {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
@@ -873,6 +922,8 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      event_addon_count: { Args: { _event_id: string }; Returns: number }
+      event_max_photos: { Args: { _event_id: string }; Returns: number }
       find_my_invite: {
         Args: { _device_id: string; _event_id: string }
         Returns: {
