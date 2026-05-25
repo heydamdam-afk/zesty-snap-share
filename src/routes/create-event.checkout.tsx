@@ -55,15 +55,6 @@ function CheckoutPage() {
   const plan = useMemo(() => (form ? PLANS.find((p) => p.code === form.planCode) : undefined), [form]);
   const finalCents = useMemo(() => (plan ? applyCoupon(plan.prix_cents, coupon) : 0), [plan, coupon]);
 
-  // If plan is free, skip the whole checkout
-  useEffect(() => {
-    if (!form || !plan) return;
-    if (plan.prix_cents === 0) {
-      void handlePay(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, plan]);
-
   // Debounced coupon validation
   useEffect(() => {
     const code = couponCode.trim();
@@ -148,22 +139,6 @@ function CheckoutPage() {
     return (
       <div className="grid min-h-screen place-items-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Free plan: spinner while we create
-  if (plan.prix_cents === 0 || finalCents === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-md px-5 pt-10">
-          <a href="https://kapsul.events/" className="text-sm text-muted-foreground">← Retour</a>
-          <div className="mt-10 rounded-2xl border border-border bg-card p-6 text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-4 text-sm text-foreground">Création de votre événement…</p>
-            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-          </div>
-        </div>
       </div>
     );
   }
