@@ -3,6 +3,26 @@ import { supabaseAdmin } from '@/integrations/supabase/client.server';
 import { verifyWebhook, type StripeEnv } from '@/lib/stripe.server';
 
 async function handleCheckoutCompleted(session: any) {
+  // Add-on Images : event existant, on étend juste le quota/expire_at
+  if (session.metadata?.addon_type === 'addon_images') {
+    const eventId = session.metadata?.event_id;
+    if (!eventId) {
+      console.error('addon_images session without event_id metadata', session.id);
+      return;
+    }
+    const paidAmount = typeof session.amount_total === 'number' ? session.amount_total : 0;
+    const { error } = await supabaseAdmin.rpc('apply_addon_images', {
+      _event_id: eventId,
+      _stripe_session_id: session.id,
+      _paid_amount_cents: paidAmount,
+    });
+    if (error) {
+      console.error('apply_addon_images failed', error);
+      throw error;
+    }
+    return;
+  }
+
   const pendingId = session.metadata?.pending_id;
   if (!pendingId) {
     console.error('checkout.session.completed without pending_id metadata', session.id);
