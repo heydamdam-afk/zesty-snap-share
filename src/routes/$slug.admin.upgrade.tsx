@@ -1,10 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PLANS, getPlan, formatPrice, type Plan } from "@/lib/plans";
 import { toast } from "sonner";
+import { getStripe, getStripeEnvironment } from "@/lib/stripe-client";
+import { createAddonImagesCheckout, getAddonImagesEligibility } from "@/lib/addon.functions";
 
 export const Route = createFileRoute("/$slug/admin/upgrade")({
   head: () => ({
@@ -28,6 +32,12 @@ function UpgradePage() {
   const navigate = useNavigate();
   const [event, setEvent] = useState<EventLite | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addonSecret, setAddonSecret] = useState<string | null>(null);
+  const [addonLoading, setAddonLoading] = useState(false);
+  const [addonEligible, setAddonEligible] = useState(false);
+
+  const createAddonCheckout = useServerFn(createAddonImagesCheckout);
+  const checkAddonEligibility = useServerFn(getAddonImagesEligibility);
 
   useEffect(() => {
     let cancel = false;
@@ -59,6 +69,38 @@ function UpgradePage() {
     };
   }, [slug, navigate]);
 
+  useEffect(() => {
+    if (!event?.id || event.plan_code !== "decouverte") return;
+    void (async () => {
+      try {
+        const res = await checkAddonEligibility({ data: { eventId: event.id } });
+        setAddonEligible(res.eligible);
+      } catch {
+        setAddonEligible(false);
+      }
+    })();
+  }, [event, checkAddonEligibility]);
+
+  const handleAddonStart = async () => {
+    if (!event?.id) return;
+    setAddonLoading(true);
+    try {
+      const res = await createAddonCheckout({
+        data: {
+          eventId: event.id,
+          returnUrl: `${window.location.origin}/${slug}/admin/upgrade`,
+          environment: getStripeEnvironment(),
+        },
+      });
+      setAddonSecret(res.clientSecret);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur";
+      toast.error(msg);
+    } finally {
+      setAddonLoading(false);
+    }
+  };
+
   if (loading || !event) {
     return (
       <div className="grid min-h-screen place-items-center bg-secondary">
@@ -69,13 +111,13 @@ function UpgradePage() {
 
   const currentPlan = event.plan_code ? getPlan(event.plan_code) : undefined;
   const currentPrice = currentPlan?.prix_cents ?? 0;
-  // Plan découverte (free) → show all paid plans
-  // Otherwise → show plans strictly more expensive than current
   const upgrades: Plan[] = PLANS.filter((p) => {
     if (p.code === currentPlan?.code) return false;
     if (p.prix_cents === 0) return false;
     return p.prix_cents > currentPrice;
   });
+
+  const showAddon = currentPlan?.code === "decouverte" && addonEligible;
 
   return (
     <div className="min-h-screen bg-secondary pb-16">
@@ -114,26 +156,70 @@ function UpgradePage() {
           </p>
         </div>
 
-        {upgrades.length === 0 ? (
-          <div className="rounded-2xl bg-card p-6 text-center shadow-card">
-            <p className="text-sm text-muted-foreground">
-              Vous êtes déjà sur notre offre la plus complète. Merci&nbsp;!
-            </p>
+        {addonSecret ? (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: addonSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
           </div>
         ) : (
           <>
-            <h2 className="mb-3 font-display text-lg text-foreground">
-              Passez à une offre supérieure
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {upgrades.map((p) => (
-                <PlanCard key={p.code} plan={p} />
-              ))}
-            </div>
+            {upgrades.length === 0 && !showAddon ? (
+              <div className="rounded-2xl bg-card p-6 text-center shadow-card">
+                <p className="text-sm text-muted-foreground">
+                  Vous êtes déjà sur notre offre la plus complète. Merci&nbsp;!
+                </p>
+              </div>
+            ) : (
+              <>
+                <h2 className="mb-3 font-display text-lg text-foreground">
+                  Passez à une offre supérieure
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {showAddon && (
+                    <AddonCard onStart={handleAddonStart} loading={addonLoading} />
+                  )}
+                  {upgrades.map((p) => (
+                    <PlanCard key={p.code} plan={p} />
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </main>
     </div>
+  );
+}
+
+function AddonCard({
+  onStart,
+  loading,
+}: {
+  onStart: () => void;
+  loading: boolean;
+}) {
+  return (
+    <article className="relative flex flex-col rounded-2xl border border-border bg-card p-5 shadow-card">
+      <h3 className="font-display text-xl text-foreground">+10€</h3>
+      <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+        <p>→ 100 photos supplémentaires</p>
+        <p>→ Durée étendue à 1 mois</p>
+      </div>
+      <ul className="mt-4 space-y-2 text-sm text-foreground">
+        <li className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-primary" />
+          100 photos au total
+        </li>
+        <li className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-primary" />
+          1 mois d'accès
+        </li>
+      </ul>
+      <Button type="button" className="mt-5" onClick={onStart} disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Choisir cette offre"}
+      </Button>
+    </article>
   );
 }
 
@@ -159,17 +245,21 @@ function PlanCard({ plan }: { plan: Plan }) {
       <ul className="mt-4 space-y-2 text-sm text-foreground">
         <li className="flex items-center gap-2">
           <Check className="h-4 w-4 text-primary" />
-          {plan.max_photos.toLocaleString("fr-FR")} photos
+          {plan.code === "illimitee"
+            ? "Photos illimitées"
+            : `${plan.max_photos.toLocaleString("fr-FR")} photos`}
         </li>
         <li className="flex items-center gap-2">
           <Check className="h-4 w-4 text-primary" />
           {plan.max_invites
-            ? `${plan.max_invites} invités`
+            ? `environ ${plan.max_invites.toLocaleString("fr-FR")} invités`
             : "Invités illimités"}
         </li>
         <li className="flex items-center gap-2">
           <Check className="h-4 w-4 text-primary" />
-          {plan.duree_jours} jours d'accès
+          {plan.code === "illimitee"
+            ? "30 jours d'accès"
+            : `${plan.duree_jours} jours d'accès`}
         </li>
       </ul>
       <Button
