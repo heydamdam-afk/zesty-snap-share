@@ -496,7 +496,7 @@ function Index() {
                 slug={guest.event.slug}
                 dateIso={guest.event.event_date ?? guest.event.expire_at}
                 lieu={guest.event.lieu}
-                contact={guest.event.contact}
+                contact={eventContact}
               />
             </motion.div>
           )}
