@@ -1,49 +1,60 @@
+
 ## Diagnostic
 
-L'audit du codebase montre que l'iPhone 14 (390px) ne souffre PAS d'un débordement horizontal :
-- Balise viewport correcte (`width=device-width, initial-scale=1` dans `src/routes/__root.tsx:117`).
-- Captures à 390px sur `/` : pas de scroll horizontal, layout propre.
-- Les seules largeurs fixes >390px sont les piles de polaroïds (`width:300px/280px`) à l'intérieur de conteneurs `overflow:hidden` — pas de débordement page.
-- Les composants shadcn (`Input`, `Textarea`) sont déjà à `text-base` (16px) sur mobile, et le composant `ComposeBar` (modale de publication) utilise `text-base` également.
+Ton assistant se trompe : la connexion invité **n'utilise pas du tout Supabase Auth**. Elle passe par des RPC PostgREST (`find_my_invite`, `find_or_adopt_invite_by_email`) avec un `device_id` stocké en localStorage. Le "Invalid Refresh Token" visible en console vient de `supabase.auth.signOut()` appelé dans le `onLeave` invité (héritage du système admin) — c'est juste un log bruyant, pas la cause.
 
-**Cause réelle du dézoom signalé sur la page de publication** : les classes CSS personnalisées `.gi-input` (formulaire invité, `src/styles.css:486`) et `.ka-input` (login admin, `src/styles.css:390`) sont définies à `font-size:15px`. Quand l'utilisateur saisit prénom/code dans le flux invité avant d'accéder au feed et à la publication, **iOS Safari déclenche un auto-zoom au focus** (règle iOS : zoom si `font-size < 16px`), et la page reste zoomée ensuite. Le rendu donne l'impression que la page « force un dézoom ».
+Le vrai bug est ailleurs, et il explique les deux symptômes que tu décris.
 
-## Changements
+### Cause racine : le `device_id` écrase l'email
 
-### Fix unique et ciblé : iOS auto-zoom
+Dans `tryReconnectToEvent` (`src/lib/zest-actions.ts`), l'ordre actuel est :
 
-Dans `src/styles.css` :
-1. `.gi-input` → passer `font-size:15px` à `font-size:16px`.
-2. `.ka-input` → passer `font-size:15px` à `font-size:16px`.
+1. **D'abord** lookup par `device_id` → si une invite existe sur cet appareil, on est connecté **quel que soit l'email tapé**.
+2. **Ensuite** seulement, lookup par email.
 
-Optionnel défensif (même fichier, sélecteur global) — pour couvrir tout futur input/textarea/select natif :
+Combiné avec `clearGuestSession({ keepDeviceId: true })` à la déconnexion (qui garde volontairement le device_id), ça donne :
 
-```css
-@media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  select,
-  textarea {
-    font-size: 16px;
-  }
-}
-```
+- **Bug "email croisé"** : tu te déconnectes (damdelbret), tu re-tapes Dbreteau ou n'importe quoi → le RPC ignore l'email et renvoie l'invite damdelbret liée au device. Tu es reconnecté sous le mauvais identifiant. Ça matche exactement ton test.
+- **Bug "ne se connecte pas tout de suite"** : très probablement le même phénomène. Selon ce qu'a fait l'invite précédente (ex. ban, ou un état incohérent côté state React après le reload), le branchement "match device" tombe sur une invite obsolète.
 
-Ce bloc neutralise le zoom iOS sur n'importe quel champ saisi sans toucher au design (la taille visuelle reste très proche de 15px).
+Le comportement attendu que tu décris ("check de l'email → si ok event, sinon mire prénom/photo") implique que **l'email doit être l'identité primaire**, pas le device.
 
-### Pas d'autre changement
+## Correctif
 
-- Aucun composant n'a `min-width` ou `width` fixe supérieur à 390px qui déborde du viewport.
-- La balise `viewport` est déjà correcte, pas de modification.
-- Aucune autre route n'est impactée.
+### 1. Inverser la priorité dans `tryReconnectToEvent` (`src/lib/zest-actions.ts`)
 
-## Vérification
+Nouvelle logique :
 
-1. Naviguer sur iPhone 14 (390px) vers `/e/{slug}` → entrer code invité → focus sur le champ prénom : plus de zoom-in automatique.
-2. Idem sur `/` (login admin) : focus email/mot de passe sans zoom.
-3. Ouvrir la modale de publication (ComposeBar) et focus textarea : déjà OK (text-base = 16px), reste OK.
-4. Pas de scroll horizontal sur les pages testées.
+1. `findEventByCode(code)` + check ban → inchangé.
+2. **Si email fourni** : appel `find_or_adopt_invite_by_email`.
+   - Si match → reconnexion ok (et la fonction RPC adopte déjà le device_id côté DB).
+   - Si pas de match → `new_user` (passage étape 2 prénom/photo).
+3. **Seulement si pas d'email** (cas théorique, l'UI l'exige) : fallback device_id.
+
+Conséquence : taper un email différent de celui enregistré sur ce device ne renvoie plus l'ancienne invite — soit on trouve une invite pour ce nouvel email, soit on bascule en création.
+
+### 2. Garde-fou supplémentaire dans le fallback device
+
+Si malgré tout on garde un lookup device_id (ex. pour les admins qui passent par `e.$slug.tsx` `useEffect`), exiger que l'email saisi corresponde à l'email de l'invite trouvée, sinon ignorer le match.
+
+### 3. Nettoyer le bruit "Invalid Refresh Token"
+
+Dans `SessionProvider.signOut`, n'appeler `supabase.auth.signOut()` que si une session Supabase existe réellement (`if (user) await supabase.auth.signOut()`). Ça supprime l'erreur 400 quand un invité pur (sans session admin) se déconnecte.
+
+## Fichiers touchés
+
+- `src/lib/zest-actions.ts` — réordonner `tryReconnectToEvent` (et idéalement `loginToEvent` pour cohérence).
+- `src/contexts/SessionProvider.tsx` — appel conditionnel à `supabase.auth.signOut()`.
 
 ## Hors scope
 
-- Pas de refonte des polaroïds ni du grid login (ils sont déjà responsive et contenus dans `overflow:hidden`).
-- Pas de modification du viewport meta.
+- Pas de changement de schéma DB ni de RPC : `find_or_adopt_invite_by_email` fait déjà l'adoption du device_id côté serveur, c'est exactement ce qu'il nous faut.
+- Pas de modification de l'UI AccessGate.
+- Le système d'auth Supabase pour les **admins** reste inchangé.
+
+## Tests manuels après fix
+
+1. Invité A se connecte avec emailA → ok.
+2. Logout, reconnexion immédiate avec emailA → doit re-rentrer direct (via email match).
+3. Logout, reconnexion avec emailB (jamais vu) → doit afficher étape 2 (prénom/photo), pas reconnecter sous emailA.
+4. Logout, reconnexion avec emailC d'un autre invité existant de l'event → doit se connecter sous emailC, pas sous emailA.

@@ -161,13 +161,9 @@ export async function tryReconnectToEvent(args: {
   });
   if (banned) return { ok: false as const, reason: "banned" as const };
 
-  // 1) Même appareil
-  const byDevice = await findInvite(event.id, args.deviceId);
-  if (byDevice) {
-    return { ok: true as const, event, invite: byDevice, isNew: false as const };
-  }
-
-  // 2) Même email sur un autre appareil
+  // L'email est l'identité primaire de l'invité — on l'interroge en PREMIER.
+  // Sinon, le device_id (gardé après logout) ferait toujours gagner l'ancienne
+  // invite et on resterait connecté sous le mauvais email.
   const emailClean = args.email.trim().toLowerCase();
   if (emailClean) {
     const { data: byEmail, error: emailErr } = await supabase.rpc(
@@ -188,8 +184,16 @@ export async function tryReconnectToEvent(args: {
     if (found?.id) {
       return { ok: true as const, event, invite: found, isNew: false as const };
     }
+    // Email inconnu pour cet event → nouvelle inscription (étape 2),
+    // même si un device_id traîne d'une session précédente.
+    return { ok: false as const, reason: "new_user" as const, event };
   }
 
+  // Fallback (email absent — théoriquement impossible via l'UI)
+  const byDevice = await findInvite(event.id, args.deviceId);
+  if (byDevice) {
+    return { ok: true as const, event, invite: byDevice, isNew: false as const };
+  }
   return { ok: false as const, reason: "new_user" as const, event };
 }
 
