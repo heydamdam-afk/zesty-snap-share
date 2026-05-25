@@ -915,6 +915,10 @@ export type Database = {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
       }
+      is_email_admin_of_event: {
+        Args: { _email: string; _event_id: string }
+        Returns: boolean
+      }
       is_event_admin: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
