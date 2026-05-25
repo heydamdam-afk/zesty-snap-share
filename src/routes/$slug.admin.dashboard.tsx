@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import {
   AdminContext,
   type AdminContextValue,
@@ -15,6 +17,10 @@ import { AdminsSection } from "@/components/zest/admin/AdminsSection";
 import { BannedSection } from "@/components/zest/admin/BannedSection";
 import { DangerZoneSection } from "@/components/zest/admin/DangerZoneSection";
 import { QuotaBanner } from "@/components/zest/QuotaBanner";
+import { Button } from "@/components/ui/button";
+import { getStripe, getStripeEnvironment } from "@/lib/stripe-client";
+import { createAddonImagesCheckout, getAddonImagesEligibility } from "@/lib/addon.functions";
+import { Camera, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
