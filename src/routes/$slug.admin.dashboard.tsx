@@ -40,6 +40,12 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [ctx, setCtx] = useState<AdminContextValue | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addonEligible, setAddonEligible] = useState(false);
+  const [addonSecret, setAddonSecret] = useState<string | null>(null);
+  const [addonLoading, setAddonLoading] = useState(false);
+
+  const createAddonCheckout = useServerFn(createAddonImagesCheckout);
+  const checkAddonEligibility = useServerFn(getAddonImagesEligibility);
 
   const loadEvent = useCallback(
     async (eventId: string): Promise<AdminEvent | null> => {
