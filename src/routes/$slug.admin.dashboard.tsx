@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import {
   AdminContext,
   type AdminContextValue,
@@ -15,6 +17,10 @@ import { AdminsSection } from "@/components/zest/admin/AdminsSection";
 import { BannedSection } from "@/components/zest/admin/BannedSection";
 import { DangerZoneSection } from "@/components/zest/admin/DangerZoneSection";
 import { QuotaBanner } from "@/components/zest/QuotaBanner";
+import { Button } from "@/components/ui/button";
+import { getStripe, getStripeEnvironment } from "@/lib/stripe-client";
+import { createAddonImagesCheckout, getAddonImagesEligibility } from "@/lib/addon.functions";
+import { Camera, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
   head: () => ({
@@ -34,6 +40,12 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [ctx, setCtx] = useState<AdminContextValue | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addonEligible, setAddonEligible] = useState(false);
+  const [addonSecret, setAddonSecret] = useState<string | null>(null);
+  const [addonLoading, setAddonLoading] = useState(false);
+
+  const createAddonCheckout = useServerFn(createAddonImagesCheckout);
+  const checkAddonEligibility = useServerFn(getAddonImagesEligibility);
 
   const loadEvent = useCallback(
     async (eventId: string): Promise<AdminEvent | null> => {
@@ -137,6 +149,45 @@ function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
+  useEffect(() => {
+    if (!ctx?.event.id || ctx.event.plan_code !== "decouverte") {
+      setAddonEligible(false);
+      return;
+    }
+    let cancel = false;
+    void (async () => {
+      try {
+        const res = await checkAddonEligibility({ data: { eventId: ctx.event.id } });
+        if (!cancel) setAddonEligible(res.eligible);
+      } catch {
+        if (!cancel) setAddonEligible(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [ctx, checkAddonEligibility]);
+
+  const handleAddonStart = async () => {
+    if (!ctx?.event.id) return;
+    setAddonLoading(true);
+    try {
+      const res = await createAddonCheckout({
+        data: {
+          eventId: ctx.event.id,
+          returnUrl: `${window.location.origin}/${slug}/admin/dashboard`,
+          environment: getStripeEnvironment(),
+        },
+      });
+      setAddonSecret(res.clientSecret);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur";
+      toast.error(msg);
+    } finally {
+      setAddonLoading(false);
+    }
+  };
+
   if (loading || !ctx) {
     return (
       <div className="grid min-h-screen place-items-center bg-secondary">
@@ -155,6 +206,43 @@ function AdminDashboard() {
           variant="admin"
         />
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
+          {addonSecret ? (
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+              <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: addonSecret }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          ) : (
+            ctx.event.plan_code === "decouverte" && addonEligible && (
+              <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
+                    <Camera className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Besoin de plus de photos ?
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      +100 photos et 30 jours d'accès pour 10 €
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddonStart}
+                  disabled={addonLoading}
+                >
+                  {addonLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Acheter +100 photos"
+                  )}
+                </Button>
+              </div>
+            )
+          )}
           <EventSettingsSection />
           <StorageQuotaSection />
           <AdminsSection />
