@@ -77,6 +77,19 @@ function Index() {
   const [uploading, setUploading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminCheckDone, setAdminCheckDone] = useState(false);
+  const [eventContact, setEventContact] = useState<string | null>(null);
+
+  // Fetch organiser contact lazily when the QR tab is opened.
+  useEffect(() => {
+    const eventId = guest?.event?.id;
+    if (!eventId || tab !== "qr" || eventContact !== null) return;
+    let cancel = false;
+    (async () => {
+      const c = await getEventContact(eventId);
+      if (!cancel) setEventContact(c);
+    })();
+    return () => { cancel = true; };
+  }, [tab, guest?.event?.id, eventContact]);
 
   // Discard any guest session that belongs to a different event slug
   // (refresh-safe, but a guest who pasted another event's URL would otherwise
