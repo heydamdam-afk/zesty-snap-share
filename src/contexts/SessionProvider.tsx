@@ -125,16 +125,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback<SessionContextValue["signOut"]>(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      /* ignore: we still want to wipe local state */
+    // N'appelle Supabase Auth que s'il existe vraiment une session admin :
+    // sinon on déclenche un "Invalid Refresh Token" inutile quand un invité
+    // pur (sans session Supabase) se déconnecte.
+    if (user) {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        /* ignore: we still want to wipe local state */
+      }
     }
     clearGuestSession({ keepDeviceId: true });
     setUser(null);
     setGuestState(null);
     prevUserIdRef.current = null;
-  }, []);
+  }, [user]);
 
   const status: SessionStatus = !hydrated
     ? "loading"
