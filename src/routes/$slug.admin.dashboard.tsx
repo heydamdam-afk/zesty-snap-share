@@ -206,6 +206,43 @@ function AdminDashboard() {
           variant="admin"
         />
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-24">
+          {addonSecret ? (
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+              <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: addonSecret }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          ) : (
+            ctx.event.plan_code === "decouverte" && addonEligible && (
+              <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
+                    <Camera className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Besoin de plus de photos ?
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      +100 photos et 30 jours d'accès pour 10 €
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddonStart}
+                  disabled={addonLoading}
+                >
+                  {addonLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Acheter +100 photos"
+                  )}
+                </Button>
+              </div>
+            )
+          )}
           <EventSettingsSection />
           <StorageQuotaSection />
           <AdminsSection />
