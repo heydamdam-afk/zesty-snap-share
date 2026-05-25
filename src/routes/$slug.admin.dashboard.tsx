@@ -149,6 +149,45 @@ function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
+  useEffect(() => {
+    if (!ctx?.event.id || ctx.event.plan_code !== "decouverte") {
+      setAddonEligible(false);
+      return;
+    }
+    let cancel = false;
+    void (async () => {
+      try {
+        const res = await checkAddonEligibility({ data: { eventId: ctx.event.id } });
+        if (!cancel) setAddonEligible(res.eligible);
+      } catch {
+        if (!cancel) setAddonEligible(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [ctx, checkAddonEligibility]);
+
+  const handleAddonStart = async () => {
+    if (!ctx?.event.id) return;
+    setAddonLoading(true);
+    try {
+      const res = await createAddonCheckout({
+        data: {
+          eventId: ctx.event.id,
+          returnUrl: `${window.location.origin}/${slug}/admin/dashboard`,
+          environment: getStripeEnvironment(),
+        },
+      });
+      setAddonSecret(res.clientSecret);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur";
+      toast.error(msg);
+    } finally {
+      setAddonLoading(false);
+    }
+  };
+
   if (loading || !ctx) {
     return (
       <div className="grid min-h-screen place-items-center bg-secondary">
