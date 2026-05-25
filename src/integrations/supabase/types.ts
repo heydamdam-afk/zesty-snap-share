@@ -962,6 +962,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_event_contact: { Args: { _event_id: string }; Returns: string }
       is_device_banned: {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
