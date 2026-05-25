@@ -227,11 +227,13 @@ function CheckoutPage() {
             <button
               type="button"
               onClick={() => handlePay()}
-              disabled={submitting}
+              disabled={submitting || couponState === 'checking'}
               className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-2xl bg-primary px-5 text-base font-bold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.28)] transition-all disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
             >
               {submitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : finalCents === 0 ? (
+                <>Créer gratuitement →</>
               ) : (
                 <>Payer {formatPrice(finalCents)} →</>
               )}
