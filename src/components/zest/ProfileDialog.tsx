@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
 import { z } from "zod";
 import type { GuestSession } from "@/lib/zest-session";
+import { normalisePrenom, generatePrenomSuggestions } from "@/lib/zest-actions";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
@@ -50,6 +51,8 @@ export function ProfileDialog({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(guest.invite.avatar_url);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [prenomError, setPrenomError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -57,6 +60,8 @@ export function ProfileDialog({
       setPrenom(guest.invite.prenom ?? "");
       setEmail(guest.invite.email ?? "");
       setAvatarUrl(guest.invite.avatar_url);
+      setPrenomError(null);
+      setSuggestions([]);
     }
   }, [open, guest.invite]);
 
@@ -93,13 +98,36 @@ export function ProfileDialog({
       toast.error(parsed.error.issues[0]?.message ?? "Champs invalides");
       return;
     }
+    const norm = normalisePrenom(parsed.data.prenom);
+    const currentNorm = normalisePrenom(guest.invite.prenom ?? "");
     setSaving(true);
+    if (norm.toLocaleLowerCase() !== currentNorm.toLocaleLowerCase()) {
+      const { data: clash } = await supabase
+        .from("invites")
+        .select("id")
+        .eq("event_id", guest.event.id)
+        .ilike("prenom", norm)
+        .neq("id", guest.invite.id)
+        .maybeSingle();
+      if (clash) {
+        const { data: rows } = await supabase
+          .from("invites")
+          .select("prenom")
+          .eq("event_id", guest.event.id)
+          .limit(200);
+        const taken = (rows ?? []).map((r) => r.prenom).filter(Boolean) as string[];
+        setSuggestions(generatePrenomSuggestions(norm, taken, 3));
+        setPrenomError(`« ${norm} » est déjà pris dans cet événement.`);
+        setSaving(false);
+        return;
+      }
+    }
     const { data, error } = await supabase.rpc("update_own_invite", {
       _device_id: guest.invite.device_id,
       _event_id: guest.event.id,
       _avatar_url: avatarUrl ?? undefined,
       _email: parsed.data.email ? parsed.data.email : undefined,
-      _prenom: parsed.data.prenom,
+      _prenom: norm,
     });
     setSaving(false);
     if (error || !data) {
@@ -108,7 +136,7 @@ export function ProfileDialog({
     }
     toast.success("Profil mis à jour");
     onUpdated({
-      prenom: parsed.data.prenom,
+      prenom: norm,
       email: parsed.data.email ? parsed.data.email : null,
       avatar_url: avatarUrl,
     });
@@ -174,14 +202,55 @@ export function ProfileDialog({
               id="prenom"
               value={prenom}
               maxLength={80}
-              onChange={(e) => setPrenom(e.target.value)}
+              onChange={(e) => {
+                setPrenom(e.target.value);
+                if (prenomError) setPrenomError(null);
+                if (suggestions.length) setSuggestions([]);
+              }}
               className="mt-1"
+              style={prenomError ? { borderColor: "#FF4842", boxShadow: "0 0 0 1px #FF4842" } : undefined}
               name="given-name"
               autoComplete="given-name"
               autoCorrect="off"
               autoCapitalize="words"
               spellCheck={false}
             />
+            {prenomError && (
+              <p
+                className="mt-1"
+                style={{ color: "#FF4842", fontSize: 13, fontFamily: '"Public Sans", sans-serif' }}
+              >
+                {prenomError}
+              </p>
+            )}
+            {suggestions.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setPrenom(s);
+                      setPrenomError(null);
+                      setSuggestions([]);
+                    }}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 100,
+                      border: "none",
+                      background: "#F4F6F8",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#212B36",
+                      cursor: "pointer",
+                      fontFamily: '"Public Sans", sans-serif',
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
