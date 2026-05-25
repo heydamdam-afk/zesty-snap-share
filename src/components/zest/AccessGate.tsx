@@ -288,13 +288,11 @@ export function AccessGate({
 
       if (resolvedEvent) {
         const emailNorm = parsed.data.email.trim().toLowerCase();
-        const { data: adminCheck } = await supabase
-          .from("event_admins")
-          .select("id")
-          .eq("event_id", resolvedEvent.id)
-          .eq("email", emailNorm)
-          .maybeSingle();
-        if (adminCheck) {
+        const { data: isAdmin } = await supabase.rpc(
+          "is_email_admin_of_event",
+          { _event_id: resolvedEvent.id, _email: emailNorm },
+        );
+        if (isAdmin === true) {
           setEventInfo(resolvedEvent);
           setAdminDetected({ slug: resolvedEvent.slug });
           return;
