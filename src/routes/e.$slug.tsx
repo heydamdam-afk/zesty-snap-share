@@ -27,7 +27,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { findEventBySlug, findInvite } from "@/lib/zest-actions";
+import { findEventBySlug, findInvite, getEventContact } from "@/lib/zest-actions";
 import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
