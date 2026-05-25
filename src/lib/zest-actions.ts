@@ -44,7 +44,7 @@ export async function findEventByCode(code: string) {
 
 /** Fetch organiser contact for a single event (uses SECURITY DEFINER RPC). */
 export async function getEventContact(eventId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("get_event_contact", { _event_id: eventId });
+  const { data, error } = await (supabase.rpc as any)("get_event_contact", { _event_id: eventId });
   if (error) return null;
   return (data as string | null) ?? null;
 }
