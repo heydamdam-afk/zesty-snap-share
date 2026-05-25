@@ -25,21 +25,28 @@ export type UploadProgress = {
 export async function findEventBySlug(slug: string) {
   const { data, error } = await supabase
     .from("events")
-    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, contact, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
+    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
-  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
+  return data ? { ...data, contact: null as string | null, stripe_session_id: null, paid_amount_cents: null } : null;
 }
 
 export async function findEventByCode(code: string) {
   const { data, error } = await supabase
     .from("events")
-    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, contact, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
+    .select("id, titre, slug, code_acces, event_date, lieu, cover_url, status, commentaires_actifs, likes_actifs, uploads_actifs, telechargement_actif, quota_mo, used_mo, expire_at, frozen_at, zip_download_url, plan_code, created_at")
     .ilike("code_acces", code.trim())
     .maybeSingle();
   if (error) throw error;
-  return data ? { ...data, stripe_session_id: null, paid_amount_cents: null } : null;
+  return data ? { ...data, contact: null as string | null, stripe_session_id: null, paid_amount_cents: null } : null;
+}
+
+/** Fetch organiser contact for a single event (uses SECURITY DEFINER RPC). */
+export async function getEventContact(eventId: string): Promise<string | null> {
+  const { data, error } = await (supabase.rpc as any)("get_event_contact", { _event_id: eventId });
+  if (error) return null;
+  return (data as string | null) ?? null;
 }
 
 export async function findInvite(eventId: string, deviceId: string) {

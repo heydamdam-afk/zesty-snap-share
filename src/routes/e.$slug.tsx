@@ -27,7 +27,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { findEventBySlug, findInvite } from "@/lib/zest-actions";
+import { findEventBySlug, findInvite, getEventContact } from "@/lib/zest-actions";
 import { buildSession, getOrCreateDeviceId } from "@/lib/zest-session";
 import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
@@ -77,6 +77,19 @@ function Index() {
   const [uploading, setUploading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminCheckDone, setAdminCheckDone] = useState(false);
+  const [eventContact, setEventContact] = useState<string | null>(null);
+
+  // Fetch organiser contact lazily when the QR tab is opened.
+  useEffect(() => {
+    const eventId = guest?.event?.id;
+    if (!eventId || tab !== "qr" || eventContact !== null) return;
+    let cancel = false;
+    (async () => {
+      const c = await getEventContact(eventId);
+      if (!cancel) setEventContact(c);
+    })();
+    return () => { cancel = true; };
+  }, [tab, guest?.event?.id, eventContact]);
 
   // Discard any guest session that belongs to a different event slug
   // (refresh-safe, but a guest who pasted another event's URL would otherwise
@@ -483,7 +496,7 @@ function Index() {
                 slug={guest.event.slug}
                 dateIso={guest.event.event_date ?? guest.event.expire_at}
                 lieu={guest.event.lieu}
-                contact={guest.event.contact}
+                contact={eventContact}
               />
             </motion.div>
           )}
