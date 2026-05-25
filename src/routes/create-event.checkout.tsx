@@ -55,15 +55,6 @@ function CheckoutPage() {
   const plan = useMemo(() => (form ? PLANS.find((p) => p.code === form.planCode) : undefined), [form]);
   const finalCents = useMemo(() => (plan ? applyCoupon(plan.prix_cents, coupon) : 0), [plan, coupon]);
 
-  // If plan is free, skip the whole checkout
-  useEffect(() => {
-    if (!form || !plan) return;
-    if (plan.prix_cents === 0) {
-      void handlePay(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, plan]);
-
   // Debounced coupon validation
   useEffect(() => {
     const code = couponCode.trim();
@@ -152,22 +143,6 @@ function CheckoutPage() {
     );
   }
 
-  // Free plan: spinner while we create
-  if (plan.prix_cents === 0 || finalCents === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-md px-5 pt-10">
-          <a href="https://kapsul.events/" className="text-sm text-muted-foreground">← Retour</a>
-          <div className="mt-10 rounded-2xl border border-border bg-card p-6 text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-4 text-sm text-foreground">Création de votre événement…</p>
-            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-xl px-5 pt-6 pb-16">
@@ -252,11 +227,13 @@ function CheckoutPage() {
             <button
               type="button"
               onClick={() => handlePay()}
-              disabled={submitting}
+              disabled={submitting || couponState === 'checking'}
               className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-2xl bg-primary px-5 text-base font-bold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.28)] transition-all disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
             >
               {submitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : finalCents === 0 ? (
+                <>Créer gratuitement →</>
               ) : (
                 <>Payer {formatPrice(finalCents)} →</>
               )}
