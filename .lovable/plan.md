@@ -1,43 +1,35 @@
-## Problème
+## Cause identifiée
 
-Le bouton « Me connecter » du site marketing (kapsul.events) pointe vers `https://app.kapsul.events/my-events`. La logique actuelle de `/my-events` cause la redirection en cascade :
+Dans `src/routes/lovable/email/auth/webhook.ts`, les constantes de domaine ne correspondent pas au domaine email réellement vérifié :
 
-```text
-/my-events
-  ├─ beforeLoad : si pas de session → redirige vers "/"
-  │       └─ "/" (Landing) : si une session existe → routeAfterAuth()
-  │             ├─ events.length > 0 → /my-events    (boucle)
-  │             └─ events.length === 0 → /create-event
-  │
-  └─ load() : si events.length === 0 → navigate("/create-event", replace: true)
-```
+| Constante (code actuel) | Valeur réelle vérifiée |
+|---|---|
+| `SENDER_DOMAIN = "notify.app.kapsul.events"` | `notify.kapsul.events` ✅ vérifié |
+| `ROOT_DOMAIN = "app.kapsul.events"` | `kapsul.events` |
+| `FROM_DOMAIN = "app.kapsul.events"` | `kapsul.events` |
 
-Deux cas posent problème quand l'utilisateur arrive sur `/my-events` via le bouton « Me connecter » :
+Le `SENDER_DOMAIN` envoyé à l'API Lovable Email **doit être exactement le FQDN du sous-domaine vérifié**. Avec `notify.app.kapsul.events`, aucun enregistrement de domaine n'existe côté API → l'envoi est rejeté silencieusement et l'email n'arrive jamais en boîte.
 
-1. **Session existante mais sans événements** → `/my-events` redirige automatiquement vers `/create-event` (paramètre `?plan=` éventuellement passé par le lien marketing, ou vide, conservé tel quel).
-2. **Pas de session** → redirige vers `/` (Landing/login). Si une session reliquat traîne, on retombe dans le cas 1.
+Les logs `email_send_log` confirment qu'aucun email n'a été enqueué dans les dernières 24h pour les tests récents (les "sent" plus anciens datent d'avant un changement de config). Les flux UI (signup, recovery) marchent — c'est bien l'étape d'envoi côté webhook qui échoue.
 
-Résultat observé : « Me connecter » envoie immédiatement vers `/create-event?plan=` au lieu de présenter la page de connexion ou la liste vide.
+## Plan
 
-## Correctif
+1. **Modifier `src/routes/lovable/email/auth/webhook.ts`** — corriger les 3 constantes :
+   ```ts
+   const SENDER_DOMAIN = "notify.kapsul.events"
+   const ROOT_DOMAIN   = "kapsul.events"
+   const FROM_DOMAIN   = "kapsul.events"
+   ```
+   (Aucun autre changement de logique. Les templates et la signature webhook restent identiques.)
 
-### 1. `src/routes/my-events.tsx`
-- **Supprimer la redirection automatique** vers `/create-event` quand la liste est vide (`if (list.length === 0) navigate({ to: "/create-event" })`).
-- À la place, afficher un **état vide** dans la page : titre, court message (« Vous n'avez pas encore d'événement »), et un bouton CTA « Créer mon premier événement » → `/create-event` (sans paramètre `plan`).
-- Garder le `beforeLoad` actuel qui redirige vers `/` si l'utilisateur n'est pas connecté — mais le rediriger vers `/login` plutôt que `/` pour que l'intention « Me connecter » soit explicite (les deux routes rendent le même composant `Landing`, mais `/login` est noindex et plus parlant).
+2. **Vérification après publication** :
+   - Déclencher un "mot de passe oublié" sur un compte connu
+   - Vérifier que `email_send_log` enregistre une ligne `pending` puis `sent` pour `recovery`
+   - Vérifier réception en boîte mail
 
-### 2. `src/routes/index.tsx` — `routeAfterAuth`
-- Quand `events.length === 0`, **ne plus rediriger vers `/create-event`**. Rediriger vers `/my-events` dans tous les cas où une session existe. La page `/my-events` gère désormais l'état vide.
-- Conserver le respect du paramètre `?redirect=` interne.
+Si après ce fix les emails passent en `sent` mais n'arrivent toujours pas, on ira inspecter Cloud → Emails (état de delivery côté provider) et `suppressed_emails`.
 
-### Effet
-- « Me connecter » (lien externe vers `/my-events`) :
-  - non connecté → page `/login` (formulaire de connexion).
-  - connecté avec événements → liste des événements.
-  - connecté sans événement → page `/my-events` avec état vide + CTA explicite vers création.
-- Plus aucun saut silencieux vers `/create-event?plan=`.
+## Notes techniques
 
-## Hors-périmètre
-- Pas de modification du site marketing externe (kapsul.events).
-- Pas de modification du tunnel `/create-event/checkout` ni de `create-event.functions.ts`.
-- Aucun changement de style général : on réutilise les classes Tailwind déjà présentes dans `/my-events` (carte `bg-card`, `shadow-card`, bouton `bg-primary`).
+- Le domaine racine du projet (publié sur `app.kapsul.events`) n'a pas d'impact sur `SENDER_DOMAIN` — seul le sous-domaine `notify.*` réellement délégué aux NS Lovable compte pour l'envoi.
+- `FROM_DOMAIN` détermine l'adresse `From:` affichée. La passer à `kapsul.events` donne `noreply@kapsul.events`, ce qui est cohérent avec la marque.
