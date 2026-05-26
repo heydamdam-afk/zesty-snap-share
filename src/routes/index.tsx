@@ -513,9 +513,5 @@ async function routeAfterAuth(
 
   const { data } = await supabase.rpc("my_admin_events");
   const events = (data as Array<{ slug: string }> | null) ?? [];
-  if (events.length > 0) {
-    navigate({ to: "/my-events" });
-  } else {
-    navigate({ to: "/create-event" });
-  }
+  navigate({ to: "/my-events" });
 }
