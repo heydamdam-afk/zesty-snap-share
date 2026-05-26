@@ -16,7 +16,7 @@ export const Route = createFileRoute("/my-events")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/login" });
     }
   },
   component: MyEvents,
@@ -61,7 +61,7 @@ function MyEvents() {
       if (rpcErr) throw rpcErr;
       const list = (rpcData as Array<{ event_id: string; slug: string; titre: string; role: "organisateur" | "secondaire" }> | null) ?? [];
       if (list.length === 0) {
-        navigate({ to: "/create-event", replace: true });
+        setEvents([]);
         return;
       }
       const ids = list.map((e) => e.event_id);
