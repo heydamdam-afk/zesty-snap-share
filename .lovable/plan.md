@@ -1,24 +1,43 @@
-## Plan de correction
+## Problème
 
-1. **Supprimer le déclenchement automatique à 0 €**
-   - Retirer le rendu spécial qui remplace l’écran par un spinner quand `finalCents === 0`.
-   - Garder l’écran checkout visible même si le coupon rend le total gratuit.
-   - Le paiement/création ne démarrera qu’au clic sur le bouton d’action.
+Le bouton « Me connecter » du site marketing (kapsul.events) pointe vers `https://app.kapsul.events/my-events`. La logique actuelle de `/my-events` cause la redirection en cascade :
 
-2. **Mettre à jour le bouton selon la réduction**
-   - Afficher le prix final directement dans le bouton, par exemple :
-     - `Payer 29 €`
-     - `Payer 19 €` si remise en montant ou pourcentage
-     - `Créer gratuitement` si le coupon met le prix à 0 €
-   - Conserver le prix barré dans le récapitulatif quand une réduction s’applique.
+```text
+/my-events
+  ├─ beforeLoad : si pas de session → redirige vers "/"
+  │       └─ "/" (Landing) : si une session existe → routeAfterAuth()
+  │             ├─ events.length > 0 → /my-events    (boucle)
+  │             └─ events.length === 0 → /create-event
+  │
+  └─ load() : si events.length === 0 → navigate("/create-event", replace: true)
+```
 
-3. **Stabiliser l’état du coupon**
-   - Empêcher qu’un code en cours de validation déclenche une action implicite.
-   - Désactiver le bouton pendant la validation du coupon pour éviter de payer avec un état intermédiaire.
-   - Conserver la validation automatique du champ coupon uniquement pour l’affichage du prix, pas pour lancer le paiement.
+Deux cas posent problème quand l'utilisateur arrive sur `/my-events` via le bouton « Me connecter » :
 
-4. **Flux au clic uniquement**
-   - Au clic :
-     - si total > 0, création de la session Stripe Embedded Checkout puis affichage du formulaire Stripe ;
-     - si total = 0, création immédiate de l’événement via le flux gratuit existant.
-   - Ne pas modifier le tunnel Stripe côté serveur ni les coupons en base.
+1. **Session existante mais sans événements** → `/my-events` redirige automatiquement vers `/create-event` (paramètre `?plan=` éventuellement passé par le lien marketing, ou vide, conservé tel quel).
+2. **Pas de session** → redirige vers `/` (Landing/login). Si une session reliquat traîne, on retombe dans le cas 1.
+
+Résultat observé : « Me connecter » envoie immédiatement vers `/create-event?plan=` au lieu de présenter la page de connexion ou la liste vide.
+
+## Correctif
+
+### 1. `src/routes/my-events.tsx`
+- **Supprimer la redirection automatique** vers `/create-event` quand la liste est vide (`if (list.length === 0) navigate({ to: "/create-event" })`).
+- À la place, afficher un **état vide** dans la page : titre, court message (« Vous n'avez pas encore d'événement »), et un bouton CTA « Créer mon premier événement » → `/create-event` (sans paramètre `plan`).
+- Garder le `beforeLoad` actuel qui redirige vers `/` si l'utilisateur n'est pas connecté — mais le rediriger vers `/login` plutôt que `/` pour que l'intention « Me connecter » soit explicite (les deux routes rendent le même composant `Landing`, mais `/login` est noindex et plus parlant).
+
+### 2. `src/routes/index.tsx` — `routeAfterAuth`
+- Quand `events.length === 0`, **ne plus rediriger vers `/create-event`**. Rediriger vers `/my-events` dans tous les cas où une session existe. La page `/my-events` gère désormais l'état vide.
+- Conserver le respect du paramètre `?redirect=` interne.
+
+### Effet
+- « Me connecter » (lien externe vers `/my-events`) :
+  - non connecté → page `/login` (formulaire de connexion).
+  - connecté avec événements → liste des événements.
+  - connecté sans événement → page `/my-events` avec état vide + CTA explicite vers création.
+- Plus aucun saut silencieux vers `/create-event?plan=`.
+
+## Hors-périmètre
+- Pas de modification du site marketing externe (kapsul.events).
+- Pas de modification du tunnel `/create-event/checkout` ni de `create-event.functions.ts`.
+- Aucun changement de style général : on réutilise les classes Tailwind déjà présentes dans `/my-events` (carte `bg-card`, `shadow-card`, bouton `bg-primary`).

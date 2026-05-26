@@ -16,7 +16,7 @@ export const Route = createFileRoute("/my-events")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/login" });
     }
   },
   component: MyEvents,
@@ -61,7 +61,7 @@ function MyEvents() {
       if (rpcErr) throw rpcErr;
       const list = (rpcData as Array<{ event_id: string; slug: string; titre: string; role: "organisateur" | "secondaire" }> | null) ?? [];
       if (list.length === 0) {
-        navigate({ to: "/create-event", replace: true });
+        setEvents([]);
         return;
       }
       const ids = list.map((e) => e.event_id);
@@ -245,6 +245,24 @@ function MyEvents() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {events && events.length === 0 && (
+          <div className="rounded-2xl bg-card/95 p-8 text-center shadow-card">
+            <h2 className="font-display text-xl text-foreground">
+              Vous n'avez pas encore d'événement
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Créez votre première galerie photo collaborative en quelques minutes.
+            </p>
+            <Link
+              to="/create-event"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:opacity-95"
+            >
+              <Plus className="h-4 w-4" />
+              Créer mon premier événement
+            </Link>
           </div>
         )}
       </main>
