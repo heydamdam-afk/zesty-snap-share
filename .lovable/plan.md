@@ -1,31 +1,53 @@
-## Diagnostic
+# Vérification du flow "utilisateur non confirmé"
 
-Le domaine email est bien vérifié : `notify.kapsul.events` est actif.
+Objectif : confirmer que lorsqu'un compte existe dans `auth.users` avec `email_confirmed_at = null`, la landing page affiche bien le message "première fois" + le bouton "Renvoyer l'email de confirmation".
 
-Les logs d’envoi montrent que les emails `magiclink` et `recovery` partent bien (`pending` puis `sent`), mais il n’existe aucun email de type `signup` dans `email_send_log`.
+## 1. Préparer un utilisateur de test non confirmé
 
-Côté base, les comptes récents ont `email_confirmed_at` rempli immédiatement et `confirmation_sent_at = null`. Cela indique que la validation email est actuellement contournée/auto-confirmée pour les créations de compte : aucun email de confirmation n’est généré, donc rien ne peut arriver en boîte mail.
+Créer (ou réutiliser) un compte dans Lovable Cloud avec :
+- email : `test-unconfirmed+{timestamp}@kapsul.events`
+- mot de passe défini
+- `email_confirmed_at = NULL`
+- `confirmation_sent_at` rempli (signup envoyé)
 
-Pour les collaborateurs ajoutés depuis l’admin, le code ajoute seulement une ligne dans `event_admins`. Il n’appelle aucun flux d’invitation/validation email ; le texte indique simplement que la personne pourra se connecter via un lien, mais aucun email n’est envoyé à ce moment-là.
+Méthode : insérer via l'API admin Supabase (un seul appel serveur), pas via le formulaire (sinon auto-confirm pourrait interférer).
 
-## Plan de correction
+## 2. Vérifier le comportement UI sur `/`
 
-1. Désactiver l’auto-confirmation des nouveaux comptes
-   - Configurer l’authentification pour que les nouvelles inscriptions nécessitent bien une confirmation email.
-   - Conserver l’inscription email/password active.
-   - Ne pas activer d’inscriptions anonymes.
+Étapes simulées dans le navigateur (preview) :
+1. Aller sur `/`, rester en mode "Se connecter"
+2. Saisir l'email du compte non confirmé + le mot de passe
+3. Cliquer "Se connecter"
 
-2. Corriger le flux “nouveau compte organisateur”
-   - Garder l’appel `signUp` existant sur la landing page.
-   - Après désactivation de l’auto-confirmation, ce flux déclenchera un email `signup` au lieu de confirmer immédiatement l’utilisateur.
-   - Vérifier que le redirect après validation pointe vers le bon écran.
+Attendu :
+- Pas de redirection vers `/my-events`
+- Le bandeau vert "Bienvenue ! Votre compte a bien été créé, mais votre email n'est pas encore confirmé…" s'affiche
+- Le bouton **"Renvoyer l'email de confirmation"** est visible sous le message
+- Le state `unconfirmed` est à `true` (validé via le rendu du bouton)
 
-3. Corriger le flux “nouveau collaborateur”
-   - Au moment où un organisateur ajoute un admin secondaire, déclencher explicitement un email de connexion/activation vers cet email.
-   - Utiliser le flux d’auth existant qui génère déjà des emails `magiclink`, car il est confirmé comme fonctionnel dans les logs.
-   - Rediriger le collaborateur vers le dashboard de l’événement après clic dans l’email.
+## 3. Vérifier le renvoi d'email
 
-4. Vérifier après implémentation
-   - Créer un compte test et vérifier qu’une ligne `signup` apparaît dans `email_send_log` avec `pending` puis `sent`.
-   - Ajouter un collaborateur test et vérifier qu’une ligne `magiclink` apparaît avec `pending` puis `sent`.
-   - Confirmer qu’il n’y a pas d’entrée en suppression email pour le destinataire.
+1. Cliquer "Renvoyer l'email de confirmation"
+2. Attendu UI : le bouton passe à "Envoi…" puis message "Email de confirmation renvoyé…"
+3. Vérification backend :
+   - Une nouvelle ligne `type = 'signup'` (ou `confirmation`) apparaît dans `email_send_log` avec `status` passant de `pending` à `sent`
+   - `auth.users.confirmation_sent_at` est mis à jour
+
+## 4. Cas négatif (sanity check)
+
+Refaire le même flow avec un compte **confirmé** :
+- Le bandeau "première fois" NE doit PAS s'afficher
+- L'utilisateur est redirigé vers `/my-events`
+
+## 5. Nettoyage
+
+Supprimer le compte de test créé à l'étape 1 (`auth.admin.deleteUser`).
+
+## Détails techniques
+
+- Création du compte non confirmé : appel `supabase.auth.admin.createUser({ email, password, email_confirm: false })` via `supabaseAdmin` dans un script `code--exec` ponctuel (pas de nouvelle route).
+- Vérification UI : `browser--act` + `browser--read_console_logs` sur la preview `/`.
+- Vérification email_send_log : `supabase--read_query` filtré sur l'email de test, ordre `created_at DESC`.
+- Le code de `src/routes/index.tsx` détecte déjà `err.code === "email_not_confirmed"` — aucune modification de code prévue, c'est une phase de **test/validation** uniquement.
+
+Aucun fichier ne sera modifié sauf si le test révèle un bug (auquel cas un nouveau plan sera proposé).
