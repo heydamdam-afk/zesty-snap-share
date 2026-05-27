@@ -1,35 +1,31 @@
-## Cause identifiée
+## Diagnostic
 
-Dans `src/routes/lovable/email/auth/webhook.ts`, les constantes de domaine ne correspondent pas au domaine email réellement vérifié :
+Le domaine email est bien vérifié : `notify.kapsul.events` est actif.
 
-| Constante (code actuel) | Valeur réelle vérifiée |
-|---|---|
-| `SENDER_DOMAIN = "notify.app.kapsul.events"` | `notify.kapsul.events` ✅ vérifié |
-| `ROOT_DOMAIN = "app.kapsul.events"` | `kapsul.events` |
-| `FROM_DOMAIN = "app.kapsul.events"` | `kapsul.events` |
+Les logs d’envoi montrent que les emails `magiclink` et `recovery` partent bien (`pending` puis `sent`), mais il n’existe aucun email de type `signup` dans `email_send_log`.
 
-Le `SENDER_DOMAIN` envoyé à l'API Lovable Email **doit être exactement le FQDN du sous-domaine vérifié**. Avec `notify.app.kapsul.events`, aucun enregistrement de domaine n'existe côté API → l'envoi est rejeté silencieusement et l'email n'arrive jamais en boîte.
+Côté base, les comptes récents ont `email_confirmed_at` rempli immédiatement et `confirmation_sent_at = null`. Cela indique que la validation email est actuellement contournée/auto-confirmée pour les créations de compte : aucun email de confirmation n’est généré, donc rien ne peut arriver en boîte mail.
 
-Les logs `email_send_log` confirment qu'aucun email n'a été enqueué dans les dernières 24h pour les tests récents (les "sent" plus anciens datent d'avant un changement de config). Les flux UI (signup, recovery) marchent — c'est bien l'étape d'envoi côté webhook qui échoue.
+Pour les collaborateurs ajoutés depuis l’admin, le code ajoute seulement une ligne dans `event_admins`. Il n’appelle aucun flux d’invitation/validation email ; le texte indique simplement que la personne pourra se connecter via un lien, mais aucun email n’est envoyé à ce moment-là.
 
-## Plan
+## Plan de correction
 
-1. **Modifier `src/routes/lovable/email/auth/webhook.ts`** — corriger les 3 constantes :
-   ```ts
-   const SENDER_DOMAIN = "notify.kapsul.events"
-   const ROOT_DOMAIN   = "kapsul.events"
-   const FROM_DOMAIN   = "kapsul.events"
-   ```
-   (Aucun autre changement de logique. Les templates et la signature webhook restent identiques.)
+1. Désactiver l’auto-confirmation des nouveaux comptes
+   - Configurer l’authentification pour que les nouvelles inscriptions nécessitent bien une confirmation email.
+   - Conserver l’inscription email/password active.
+   - Ne pas activer d’inscriptions anonymes.
 
-2. **Vérification après publication** :
-   - Déclencher un "mot de passe oublié" sur un compte connu
-   - Vérifier que `email_send_log` enregistre une ligne `pending` puis `sent` pour `recovery`
-   - Vérifier réception en boîte mail
+2. Corriger le flux “nouveau compte organisateur”
+   - Garder l’appel `signUp` existant sur la landing page.
+   - Après désactivation de l’auto-confirmation, ce flux déclenchera un email `signup` au lieu de confirmer immédiatement l’utilisateur.
+   - Vérifier que le redirect après validation pointe vers le bon écran.
 
-Si après ce fix les emails passent en `sent` mais n'arrivent toujours pas, on ira inspecter Cloud → Emails (état de delivery côté provider) et `suppressed_emails`.
+3. Corriger le flux “nouveau collaborateur”
+   - Au moment où un organisateur ajoute un admin secondaire, déclencher explicitement un email de connexion/activation vers cet email.
+   - Utiliser le flux d’auth existant qui génère déjà des emails `magiclink`, car il est confirmé comme fonctionnel dans les logs.
+   - Rediriger le collaborateur vers le dashboard de l’événement après clic dans l’email.
 
-## Notes techniques
-
-- Le domaine racine du projet (publié sur `app.kapsul.events`) n'a pas d'impact sur `SENDER_DOMAIN` — seul le sous-domaine `notify.*` réellement délégué aux NS Lovable compte pour l'envoi.
-- `FROM_DOMAIN` détermine l'adresse `From:` affichée. La passer à `kapsul.events` donne `noreply@kapsul.events`, ce qui est cohérent avec la marque.
+4. Vérifier après implémentation
+   - Créer un compte test et vérifier qu’une ligne `signup` apparaît dans `email_send_log` avec `pending` puis `sent`.
+   - Ajouter un collaborateur test et vérifier qu’une ligne `magiclink` apparaît avec `pending` puis `sent`.
+   - Confirmer qu’il n’y a pas d’entrée en suppression email pour le destinataire.
