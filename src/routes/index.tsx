@@ -33,6 +33,8 @@ export function Landing() {
   // Guest code entry removed from login screen.
   const [hydrated, setHydrated] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resending, setResending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Rétro-compat : ancien QR `/?code=XXXX` → redirige vers /e/{slug}?code=XXXX
@@ -80,6 +82,7 @@ export function Landing() {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    setUnconfirmed(false);
     if (mode === "signup") {
       const p = prenom.trim();
       if (p.length < 2 || p.length > 40) {
@@ -96,6 +99,21 @@ export function Landing() {
         });
         if (err) {
           const msg = (err.message || "").toLowerCase();
+          const code = (err as { code?: string }).code;
+          const notConfirmed =
+            code === "email_not_confirmed" ||
+            msg.includes("email not confirmed") ||
+            msg.includes("not confirmed");
+          if (notConfirmed) {
+            // L'utilisateur existe mais n'a jamais confirmé son email.
+            // On le traite comme une "première connexion" et on lui propose
+            // de renvoyer l'email de confirmation.
+            setUnconfirmed(true);
+            setInfo(
+              "Bienvenue ! Votre compte a bien été créé, mais votre email n'est pas encore confirmé. Cliquez sur le lien reçu par email, ou demandez un nouvel envoi ci-dessous.",
+            );
+            return;
+          }
           const alreadyExists =
             msg.includes("already registered") ||
             msg.includes("already exists") ||
@@ -162,6 +180,7 @@ export function Landing() {
           }
         }
 
+        setUnconfirmed(true);
         setInfo(
           "Vérifiez votre boîte mail pour confirmer votre compte. Une fois confirmé, vous pourrez créer votre premier événement.",
         );
@@ -170,6 +189,31 @@ export function Landing() {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    const target = email.trim();
+    if (!target) {
+      setError("Saisissez votre email puis cliquez à nouveau sur « Renvoyer ».");
+      return;
+    }
+    setError(null);
+    setResending(true);
+    try {
+      const { error: err } = await supabase.auth.resend({
+        type: "signup",
+        email: target,
+        options: {
+          emailRedirectTo: `${window.location.origin}/create-event`,
+        },
+      });
+      if (err) throw err;
+      setInfo("Email de confirmation renvoyé. Vérifiez votre boîte mail (et vos spams).");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -276,6 +320,28 @@ export function Landing() {
                 }}
               >
                 {info}
+                {unconfirmed && (
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={resendConfirmation}
+                      disabled={resending}
+                      style={{
+                        background: "#00AB55",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 14px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: resending ? "default" : "pointer",
+                        fontFamily: '"Public Sans", sans-serif',
+                      }}
+                    >
+                      {resending ? "Envoi…" : "Renvoyer l'email de confirmation"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
