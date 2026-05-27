@@ -85,12 +85,26 @@ export function AdminsSection() {
       prenom: parsed.data.prenom ? parsed.data.prenom : null,
       role: "secondaire",
     });
-    setAdding(false);
     if (error) {
+      setAdding(false);
       toast.error("Échec de l'ajout");
       return;
     }
-    toast.success("Admin secondaire ajouté");
+
+    // Envoie un magic link pour que la personne puisse activer son accès
+    // immédiatement (création de compte si nécessaire, sinon connexion).
+    const redirectTo = `${window.location.origin}/${event.slug}/admin/dashboard`;
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: normalized,
+      options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
+    });
+    setAdding(false);
+    if (otpErr) {
+      console.error("[AdminsSection] signInWithOtp failed", otpErr);
+      toast.success("Admin ajouté, mais l'email d'invitation n'a pas pu être envoyé.");
+    } else {
+      toast.success("Admin secondaire ajouté. Un email d'invitation lui a été envoyé.");
+    }
     setEmail("");
     setPrenom("");
     await load();
