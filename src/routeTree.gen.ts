@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MyEventsRouteImport } from './routes/my-events'
 import { Route as LoginRouteImport } from './routes/login'
@@ -32,6 +33,11 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/set-password': typeof SetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/set-password': typeof SetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/set-password': typeof SetPasswordRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-events'
     | '/reset-password'
+    | '/set-password'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-events'
     | '/reset-password'
+    | '/set-password'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-events'
     | '/reset-password'
+    | '/set-password'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyEventsRoute: typeof MyEventsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SetPasswordRoute: typeof SetPasswordRoute
   CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
   CreateEventSuccessRoute: typeof CreateEventSuccessRoute
   ESlugRoute: typeof ESlugRoute
@@ -320,6 +333,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -485,6 +505,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyEventsRoute: MyEventsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SetPasswordRoute: SetPasswordRoute,
   CreateEventCheckoutRoute: CreateEventCheckoutRoute,
   CreateEventSuccessRoute: CreateEventSuccessRoute,
   ESlugRoute: ESlugRoute,
@@ -504,12 +525,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -45,9 +45,13 @@ function SuccessPage() {
         const res = await lookup({ data: { sessionId: search.session_id! } });
         if (cancel) return;
         if (res.ready) {
-          // Redirect directly to the event admin dashboard.
-          // Auth guard will prompt magic link login if needed.
-          navigate({ to: "/$slug/admin/dashboard", params: { slug: res.slug }, replace: true });
+          // First-time user just paid: send them to /set-password to define
+          // their initial password. No magic-link email is sent.
+          navigate({
+            to: "/set-password",
+            search: { session_id: search.session_id! } as never,
+            replace: true,
+          });
           setResolved({ slug: res.slug });
           return;
         }

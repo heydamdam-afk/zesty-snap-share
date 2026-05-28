@@ -180,6 +180,112 @@ export const resendMagicLinkForSession = createServerFn({ method: 'POST' })
     return { sent: true };
   });
 
+/**
+ * Prepare the "first-time set password" page after paid checkout.
+ * Given a Stripe session id, returns the email + slug if the user can still
+ * define an initial password (i.e. no password set yet and never signed in).
+ */
+export const prepareSetPassword = createServerFn({ method: 'POST' })
+  .inputValidator((input) => z.object({ sessionId: z.string().min(1).max(255) }).parse(input))
+  .handler(async ({ data }) => {
+    const { data: pending } = await supabaseAdmin
+      .from('pending_events')
+      .select('email, created_event_id')
+      .eq('stripe_session_id', data.sessionId)
+      .maybeSingle();
+    if (!pending?.email) return { ready: false as const };
+    const email = pending.email.toLowerCase().trim();
+
+    let slug: string | null = null;
+    if (pending.created_event_id) {
+      const { data: ev } = await supabaseAdmin
+        .from('events')
+        .select('slug')
+        .eq('id', pending.created_event_id)
+        .maybeSingle();
+      slug = ev?.slug ?? null;
+    }
+    if (!slug) return { ready: false as const };
+
+    const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', {
+      _email: email,
+    });
+    const row = (Array.isArray(summary) ? summary[0] : summary) as
+      | { id: string; last_sign_in_at: string | null; has_password: boolean }
+      | null
+      | undefined;
+    const alreadyOnboarded = !!(row && row.has_password && row.last_sign_in_at);
+
+    return {
+      ready: true as const,
+      email,
+      slug,
+      alreadyOnboarded,
+    };
+  });
+
+/**
+ * Set the initial password for an account just created via paid checkout.
+ * Only allowed when the matching auth.users row either does not exist yet
+ * or has never signed in / has no password. Confirms the email at the same
+ * time so the user can immediately sign in with email + password.
+ */
+export const setInitialPassword = createServerFn({ method: 'POST' })
+  .inputValidator((input) =>
+    z
+      .object({
+        sessionId: z.string().min(1).max(255),
+        password: z.string().min(8).max(128),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { data: pending } = await supabaseAdmin
+      .from('pending_events')
+      .select('email, created_event_id, payload')
+      .eq('stripe_session_id', data.sessionId)
+      .maybeSingle();
+    if (!pending?.email || !pending.created_event_id) {
+      throw new Error('session_not_found');
+    }
+    const email = pending.email.toLowerCase().trim();
+
+    const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', {
+      _email: email,
+    });
+    const row = (Array.isArray(summary) ? summary[0] : summary) as
+      | { id: string; last_sign_in_at: string | null; has_password: boolean }
+      | null
+      | undefined;
+
+    if (row && row.has_password && row.last_sign_in_at) {
+      throw new Error('already_onboarded');
+    }
+
+    if (row?.id) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(row.id, {
+        password: data.password,
+        email_confirm: true,
+      });
+      if (error) throw new Error(`update_failed: ${error.message}`);
+    } else {
+      const { error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: data.password,
+        email_confirm: true,
+      });
+      if (error) throw new Error(`create_failed: ${error.message}`);
+    }
+
+    return { ok: true as const, email };
+  });
+
 async function sendMagicLinkInternal(email: string, slug: string | null, originUrl: string) {
   const origin = new URL(originUrl).origin;
   const redirectTo = slug ? `${origin}/${slug}/admin/dashboard` : `${origin}/my-events`;
