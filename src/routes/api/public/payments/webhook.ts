@@ -43,28 +43,11 @@ async function handleCheckoutCompleted(session: any) {
 
   const created = result as unknown as { event_id: string; slug: string; already_created?: boolean };
   if (created.already_created) {
-    console.log('event already created, skipping magic link', created.event_id);
+    console.log('event already created, skipping post-create steps', created.event_id);
     return;
   }
-
-  // Send magic link
-  const email = (session.customer_details?.email || session.customer_email || '').toLowerCase();
-  if (!email) {
-    console.error('no email on session', session.id);
-    return;
-  }
-
-  const origin = new URL(session.url || session.return_url || 'https://app.kapsul.events').origin;
-  const redirectTo = `${origin}/${created.slug}/admin/dashboard`;
-
-  try {
-    await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: true },
-    });
-  } catch (e) {
-    console.error('signInWithOtp failed', e);
-  }
+  // No magic-link email is sent: first-time users will be redirected by the
+  // success page to /set-password to define their initial password.
 }
 
 async function handleWebhook(req: Request, env: StripeEnv) {
