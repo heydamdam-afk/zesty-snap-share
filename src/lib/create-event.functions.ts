@@ -207,7 +207,10 @@ export const prepareSetPassword = createServerFn({ method: 'POST' })
     }
     if (!slug) return { ready: false as const };
 
-    const { data: summary } = await supabaseAdmin.rpc('get_auth_user_summary_by_email', {
+    const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', {
       _email: email,
     });
     const row = (Array.isArray(summary) ? summary[0] : summary) as
@@ -250,7 +253,10 @@ export const setInitialPassword = createServerFn({ method: 'POST' })
     }
     const email = pending.email.toLowerCase().trim();
 
-    const { data: summary } = await supabaseAdmin.rpc('get_auth_user_summary_by_email', {
+    const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', {
       _email: email,
     });
     const row = (Array.isArray(summary) ? summary[0] : summary) as
