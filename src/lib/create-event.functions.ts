@@ -154,7 +154,34 @@ export const lookupEventBySessionId = createServerFn({ method: 'POST' })
       .eq('stripe_session_id', data.sessionId)
       .maybeSingle();
     if (!event) return { ready: false } as const;
-    return { ready: true, slug: event.slug, eventId: event.id } as const;
+    // Determine whether the buyer still needs to set an initial password
+    // (first-time user: account has no password and never signed in).
+    let needsSetPassword = false;
+    const { data: pending } = await supabaseAdmin
+      .from('pending_events')
+      .select('email')
+      .eq('stripe_session_id', data.sessionId)
+      .maybeSingle();
+    if (pending?.email) {
+      const email = pending.email.toLowerCase().trim();
+      const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', { _email: email });
+      const row = (Array.isArray(summary) ? summary[0] : summary) as
+        | { id: string; last_sign_in_at: string | null; has_password: boolean }
+        | null
+        | undefined;
+      // First-time = either no auth user yet, or user with no password and
+      // never signed in.
+      needsSetPassword = !row || (!row.has_password && !row.last_sign_in_at);
+    }
+    return {
+      ready: true,
+      slug: event.slug,
+      eventId: event.id,
+      needsSetPassword,
+    } as const;
   });
 
 /** Resend magic link for the email associated with a Stripe session (used on success page). */
@@ -283,6 +310,53 @@ export const setInitialPassword = createServerFn({ method: 'POST' })
       if (error) throw new Error(`create_failed: ${error.message}`);
     }
 
+    return { ok: true as const, email };
+  });
+
+/**
+ * Set the initial password for an account by email alone (no Stripe session
+ * binding). Only permitted when the matching auth.users row either does not
+ * exist or has no password AND has never signed in. Used by the dedicated
+ * /login?mode=set-password page after paid checkout.
+ */
+export const setPasswordForNewAccount = createServerFn({ method: 'POST' })
+  .inputValidator((input) =>
+    z
+      .object({
+        email: z.string().email().max(255),
+        password: z.string().min(8).max(128),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const email = data.email.toLowerCase().trim();
+    const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', { _email: email });
+    const row = (Array.isArray(summary) ? summary[0] : summary) as
+      | { id: string; last_sign_in_at: string | null; has_password: boolean }
+      | null
+      | undefined;
+
+    if (row && (row.has_password || row.last_sign_in_at)) {
+      throw new Error('already_onboarded');
+    }
+
+    if (row?.id) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(row.id, {
+        password: data.password,
+        email_confirm: true,
+      });
+      if (error) throw new Error(`update_failed: ${error.message}`);
+    } else {
+      const { error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: data.password,
+        email_confirm: true,
+      });
+      if (error) throw new Error(`create_failed: ${error.message}`);
+    }
     return { ok: true as const, email };
   });
 

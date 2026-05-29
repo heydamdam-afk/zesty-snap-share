@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { findEventByCode } from "@/lib/zest-actions";
 import { pickAvatarColor } from "@/lib/zest-session";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { setPasswordForNewAccount } from "@/lib/create-event.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,9 +23,11 @@ export const Route = createFileRoute("/")({
 
 export function Landing() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const setPasswordFn = useServerFn(setPasswordForNewAccount);
+  const [mode, setMode] = useState<"signin" | "signup" | "set-password">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [prenom, setPrenom] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -42,6 +46,10 @@ export function Landing() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const urlMode = params.get("mode");
+    if (urlMode === "set-password") {
+      setMode("set-password");
+    }
     if (!code) {
       setHydrated(true);
       return;
@@ -67,6 +75,9 @@ export function Landing() {
   // Si user déjà loggé → on redirige vers son dashboard ou /create-event
   useEffect(() => {
     if (!hydrated) return;
+    // In set-password mode we do NOT auto-redirect: the buyer must complete
+    // initial password setup even if a stale session lingers.
+    if (mode === "set-password") return;
     let cancel = false;
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -76,13 +87,51 @@ export function Landing() {
     return () => {
       cancel = true;
     };
-  }, [hydrated, navigate]);
+  }, [hydrated, navigate, mode]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfo(null);
     setUnconfirmed(false);
+    if (mode === "set-password") {
+      const target = email.trim();
+      if (!target) {
+        setError("Saisissez votre email.");
+        return;
+      }
+      if (password.length < 8) {
+        setError("Le mot de passe doit faire au moins 8 caractères.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Les deux mots de passe ne correspondent pas.");
+        return;
+      }
+      setLoading(true);
+      try {
+        await setPasswordFn({ data: { email: target, password } });
+        const { error: signErr } = await supabase.auth.signInWithPassword({
+          email: target,
+          password,
+        });
+        if (signErr) throw signErr;
+        await routeAfterAuth(navigate);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erreur";
+        if (msg.includes("already_onboarded")) {
+          setMode("signin");
+          setInfo(
+            "Un compte avec mot de passe existe déjà pour cet email. Connectez-vous, ou utilisez « Mot de passe oublié ? ».",
+          );
+        } else {
+          setError(msg);
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (mode === "signup") {
       const p = prenom.trim();
       if (p.length < 2 || p.length > 40) {
@@ -289,12 +338,18 @@ export function Landing() {
         <div className="ka-form-inner">
           <form onSubmit={submit} className="ka-screen" noValidate>
             <h2 className="ka-h1">
-              {mode === "signin" ? "Bon retour !" : "Créez votre compte organisateur"}
+              {mode === "signin"
+                ? "Bon retour !"
+                : mode === "signup"
+                  ? "Créez votre compte organisateur"
+                  : "Activez votre compte"}
             </h2>
             <p className="ka-sub">
               {mode === "signin"
                 ? "Connectez-vous pour créer ou gérer vos événements. Espace réservé aux organisateurs."
-                : "Quelques infos et vous démarrez votre première galerie. Réservé aux organisateurs et administrateurs."}
+                : mode === "signup"
+                  ? "Quelques infos et vous démarrez votre première galerie. Réservé aux organisateurs et administrateurs."
+                  : "Votre paiement est validé. Choisissez votre mot de passe pour accéder à votre tableau de bord."}
             </p>
 
             {error && (
@@ -526,10 +581,36 @@ export function Landing() {
               />
             </div>
 
+            {mode === "set-password" && (
+              <div className="ka-field">
+                <div className="ka-label-row">
+                  <span className="ka-label">Confirmer le mot de passe</span>
+                </div>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="ka-input"
+                />
+              </div>
+            )}
+
             <button type="submit" disabled={loading} className="ka-cta">
-              {loading ? "…" : mode === "signin" ? "Se connecter →" : "Créer mon compte →"}
+              {loading
+                ? "…"
+                : mode === "signin"
+                  ? "Se connecter →"
+                  : mode === "signup"
+                    ? "Créer mon compte →"
+                    : "Activer mon compte →"}
             </button>
 
+            {mode !== "set-password" && (
             <p className="ka-switch">
               {mode === "signin" ? "Pas encore de compte ?" : "Déjà un compte ?"}
               <button
@@ -553,6 +634,7 @@ export function Landing() {
                 {mode === "signin" ? "Créer un compte organisateur" : "J'ai déjà un compte"}
               </button>
             </p>
+            )}
           </form>
 
           {/* ── Guest code entry ── */}

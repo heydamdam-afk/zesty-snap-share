@@ -45,13 +45,16 @@ function SuccessPage() {
         const res = await lookup({ data: { sessionId: search.session_id! } });
         if (cancel) return;
         if (res.ready) {
-          // First-time user just paid: send them to /set-password to define
-          // their initial password. No magic-link email is sent.
-          navigate({
-            to: "/set-password",
-            search: { session_id: search.session_id! } as never,
-            replace: true,
-          });
+          // Redirect post-checkout straight into the login page.
+          // First-time buyer (no password yet) → set-password mode.
+          // Returning buyer (already has a password) → classic signin.
+          const redirect = `/${res.slug}/admin/dashboard`;
+          const qs = new URLSearchParams();
+          if (res.needsSetPassword) qs.set("mode", "set-password");
+          qs.set("redirect", redirect);
+          if (typeof window !== "undefined") {
+            window.location.replace(`/login?${qs.toString()}`);
+          }
           setResolved({ slug: res.slug });
           return;
         }
