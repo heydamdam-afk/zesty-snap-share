@@ -581,10 +581,36 @@ export function Landing() {
               />
             </div>
 
+            {mode === "set-password" && (
+              <div className="ka-field">
+                <div className="ka-label-row">
+                  <span className="ka-label">Confirmer le mot de passe</span>
+                </div>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="ka-input"
+                />
+              </div>
+            )}
+
             <button type="submit" disabled={loading} className="ka-cta">
-              {loading ? "…" : mode === "signin" ? "Se connecter →" : "Créer mon compte →"}
+              {loading
+                ? "…"
+                : mode === "signin"
+                  ? "Se connecter →"
+                  : mode === "signup"
+                    ? "Créer mon compte →"
+                    : "Activer mon compte →"}
             </button>
 
+            {mode !== "set-password" && (
             <p className="ka-switch">
               {mode === "signin" ? "Pas encore de compte ?" : "Déjà un compte ?"}
               <button
@@ -608,6 +634,7 @@ export function Landing() {
                 {mode === "signin" ? "Créer un compte organisateur" : "J'ai déjà un compte"}
               </button>
             </p>
+            )}
           </form>
 
           {/* ── Guest code entry ── */}
