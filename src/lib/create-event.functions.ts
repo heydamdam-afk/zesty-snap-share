@@ -154,7 +154,34 @@ export const lookupEventBySessionId = createServerFn({ method: 'POST' })
       .eq('stripe_session_id', data.sessionId)
       .maybeSingle();
     if (!event) return { ready: false } as const;
-    return { ready: true, slug: event.slug, eventId: event.id } as const;
+    // Determine whether the buyer still needs to set an initial password
+    // (first-time user: account has no password and never signed in).
+    let needsSetPassword = false;
+    const { data: pending } = await supabaseAdmin
+      .from('pending_events')
+      .select('email')
+      .eq('stripe_session_id', data.sessionId)
+      .maybeSingle();
+    if (pending?.email) {
+      const email = pending.email.toLowerCase().trim();
+      const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', { _email: email });
+      const row = (Array.isArray(summary) ? summary[0] : summary) as
+        | { id: string; last_sign_in_at: string | null; has_password: boolean }
+        | null
+        | undefined;
+      // First-time = either no auth user yet, or user with no password and
+      // never signed in.
+      needsSetPassword = !row || (!row.has_password && !row.last_sign_in_at);
+    }
+    return {
+      ready: true,
+      slug: event.slug,
+      eventId: event.id,
+      needsSetPassword,
+    } as const;
   });
 
 /** Resend magic link for the email associated with a Stripe session (used on success page). */
