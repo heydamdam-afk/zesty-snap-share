@@ -338,12 +338,18 @@ export function Landing() {
         <div className="ka-form-inner">
           <form onSubmit={submit} className="ka-screen" noValidate>
             <h2 className="ka-h1">
-              {mode === "signin" ? "Bon retour !" : "Créez votre compte organisateur"}
+              {mode === "signin"
+                ? "Bon retour !"
+                : mode === "signup"
+                  ? "Créez votre compte organisateur"
+                  : "Activez votre compte"}
             </h2>
             <p className="ka-sub">
               {mode === "signin"
                 ? "Connectez-vous pour créer ou gérer vos événements. Espace réservé aux organisateurs."
-                : "Quelques infos et vous démarrez votre première galerie. Réservé aux organisateurs et administrateurs."}
+                : mode === "signup"
+                  ? "Quelques infos et vous démarrez votre première galerie. Réservé aux organisateurs et administrateurs."
+                  : "Votre paiement est validé. Choisissez votre mot de passe pour accéder à votre tableau de bord."}
             </p>
 
             {error && (
