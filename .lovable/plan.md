@@ -1,53 +1,35 @@
-# Vérification du flow "utilisateur non confirmé"
+## Objectif
 
-Objectif : confirmer que lorsqu'un compte existe dans `auth.users` avec `email_confirmed_at = null`, la landing page affiche bien le message "première fois" + le bouton "Renvoyer l'email de confirmation".
+Unifier la redirection post-création d'événement (gratuit ET payant) :
+- Nouvel utilisateur sans mot de passe → `/login?mode=set-password&redirect=/{slug}/admin/dashboard`
+- Utilisateur existant avec mot de passe → `/login?redirect=/{slug}/admin/dashboard`
 
-## 1. Préparer un utilisateur de test non confirmé
+Et supprimer l'envoi automatique du « login link » par email.
 
-Créer (ou réutiliser) un compte dans Lovable Cloud avec :
-- email : `test-unconfirmed+{timestamp}@kapsul.events`
-- mot de passe défini
-- `email_confirmed_at = NULL`
-- `confirmation_sent_at` rempli (signup envoyé)
+## Sur le cas Lisa
 
-Méthode : insérer via l'API admin Supabase (un seul appel serveur), pas via le formulaire (sinon auto-confirm pourrait interférer).
+Dans la base : `has_password = true`, `last_sign_in_at = 2026-05-29 12:25`. Lisa a donc déjà un mot de passe et s'est déjà connectée. Pour elle, le flow correct est CAS 2 (login classique). Le message « pas admin de ce compte » vient d'une vérification côté dashboard après login : si la session active correspond à un autre email que celui qui a payé l'événement, la vérification `event_admins` échoue. La correction de la redirection ne change pas ce point — elle garantit juste qu'on atterrit sur le bon écran de login dès le départ.
 
-## 2. Vérifier le comportement UI sur `/`
+## Changements
 
-Étapes simulées dans le navigateur (preview) :
-1. Aller sur `/`, rester en mode "Se connecter"
-2. Saisir l'email du compte non confirmé + le mot de passe
-3. Cliquer "Se connecter"
+1. `src/lib/create-event.functions.ts`
+   - Dans `createCheckoutSession`, pour la branche `finalCents === 0` (free) :
+     - Supprimer l'appel à `sendMagicLinkInternal`.
+     - Calculer `needsSetPassword` via `get_auth_user_summary_by_email`.
+     - Retourner `{ mode: 'free', slug, eventId, needsSetPassword }`.
+   - Supprimer la fonction `sendMagicLinkInternal` et `resendMagicLinkForSession` (plus utilisées). Vérifier qu'aucun autre fichier ne les importe.
 
-Attendu :
-- Pas de redirection vers `/my-events`
-- Le bandeau vert "Bienvenue ! Votre compte a bien été créé, mais votre email n'est pas encore confirmé…" s'affiche
-- Le bouton **"Renvoyer l'email de confirmation"** est visible sous le message
-- Le state `unconfirmed` est à `true` (validé via le rendu du bouton)
+2. `src/routes/create-event.checkout.tsx`
+   - Quand `result.mode === 'free'` : remplacer la navigation vers `/create-event/success` par un `window.location.replace` direct vers `/login?...&redirect=/{slug}/admin/dashboard`, avec `mode=set-password` si `result.needsSetPassword`.
 
-## 3. Vérifier le renvoi d'email
+3. `src/routes/create-event.success.tsx`
+   - Conserver le polling pour la branche payante (utilise déjà `lookupEventBySessionId` qui gère déjà `needsSetPassword`).
+   - Nettoyer les chemins morts liés au magic link s'il y en a.
 
-1. Cliquer "Renvoyer l'email de confirmation"
-2. Attendu UI : le bouton passe à "Envoi…" puis message "Email de confirmation renvoyé…"
-3. Vérification backend :
-   - Une nouvelle ligne `type = 'signup'` (ou `confirmation`) apparaît dans `email_send_log` avec `status` passant de `pending` à `sent`
-   - `auth.users.confirmation_sent_at` est mis à jour
+4. Vérification ciblée (sans browser, juste lecture/logs)
+   - Vérifier qu'aucun import résiduel ne référence `resendMagicLinkForSession` / `sendMagicLinkInternal`.
+   - Relire `routeAfterAuth` pour confirmer que la redirection `?redirect=...` est bien respectée après login.
 
-## 4. Cas négatif (sanity check)
+## Hors-scope
 
-Refaire le même flow avec un compte **confirmé** :
-- Le bandeau "première fois" NE doit PAS s'afficher
-- L'utilisateur est redirigé vers `/my-events`
-
-## 5. Nettoyage
-
-Supprimer le compte de test créé à l'étape 1 (`auth.admin.deleteUser`).
-
-## Détails techniques
-
-- Création du compte non confirmé : appel `supabase.auth.admin.createUser({ email, password, email_confirm: false })` via `supabaseAdmin` dans un script `code--exec` ponctuel (pas de nouvelle route).
-- Vérification UI : `browser--act` + `browser--read_console_logs` sur la preview `/`.
-- Vérification email_send_log : `supabase--read_query` filtré sur l'email de test, ordre `created_at DESC`.
-- Le code de `src/routes/index.tsx` détecte déjà `err.code === "email_not_confirmed"` — aucune modification de code prévue, c'est une phase de **test/validation** uniquement.
-
-Aucun fichier ne sera modifié sauf si le test révèle un bug (auquel cas un nouveau plan sera proposé).
+- Le message « pas admin de ce compte » lors d'un mismatch de session : non corrigé ici, c'est un autre sujet (gestion d'une session déjà active sur un autre compte au moment du paiement). À traiter dans un prochain ticket si besoin (par ex. : forcer un `signOut` avant d'atterrir sur `/login` post-paiement).
