@@ -34,7 +34,7 @@ const InputSchema = z.object({
 
 type CreateResult =
   | { mode: 'paid'; clientSecret: string; sessionId: string; pendingId: string }
-  | { mode: 'free'; slug: string; eventId: string };
+  | { mode: 'free'; slug: string; eventId: string; needsSetPassword: boolean };
 
 export const createCheckoutSession = createServerFn({ method: 'POST' })
   .inputValidator((input) => InputSchema.parse(input))
@@ -84,7 +84,8 @@ export const createCheckoutSession = createServerFn({ method: 'POST' })
       .single();
     if (pErr || !pending) throw new Error('pending_insert_failed');
 
-    // Free path: create the event immediately, send magic link
+    // Free path: create the event immediately. No magic link is sent —
+    // the client redirects directly to /login (set-password or signin).
     if (finalCents === 0) {
       const { data: created, error: cErr } = await supabaseAdmin.rpc('create_event_from_pending', {
         _pending_id: pending.id,
@@ -93,8 +94,24 @@ export const createCheckoutSession = createServerFn({ method: 'POST' })
       });
       if (cErr) throw new Error(`event_create_failed: ${cErr.message}`);
       const result = created as unknown as { event_id: string; slug: string };
-      await sendMagicLinkInternal(data.email, result.slug, data.returnUrl);
-      return { mode: 'free', slug: result.slug, eventId: result.event_id };
+      const emailNorm = data.email.toLowerCase().trim();
+      const { data: summary } = await (supabaseAdmin.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown }>)('get_auth_user_summary_by_email', {
+        _email: emailNorm,
+      });
+      const row = (Array.isArray(summary) ? summary[0] : summary) as
+        | { id: string; last_sign_in_at: string | null; has_password: boolean }
+        | null
+        | undefined;
+      const needsSetPassword = !row || (!row.has_password && !row.last_sign_in_at);
+      return {
+        mode: 'free',
+        slug: result.slug,
+        eventId: result.event_id,
+        needsSetPassword,
+      };
     }
 
     // Paid path: Stripe Embedded Checkout
@@ -182,29 +199,6 @@ export const lookupEventBySessionId = createServerFn({ method: 'POST' })
       eventId: event.id,
       needsSetPassword,
     } as const;
-  });
-
-/** Resend magic link for the email associated with a Stripe session (used on success page). */
-export const resendMagicLinkForSession = createServerFn({ method: 'POST' })
-  .inputValidator((input) => z.object({ sessionId: z.string().min(1), originUrl: z.string().url() }).parse(input))
-  .handler(async ({ data }) => {
-    const { data: pending } = await supabaseAdmin
-      .from('pending_events')
-      .select('email, created_event_id')
-      .eq('stripe_session_id', data.sessionId)
-      .maybeSingle();
-    if (!pending) return { sent: false };
-    let slug: string | null = null;
-    if (pending.created_event_id) {
-      const { data: ev } = await supabaseAdmin
-        .from('events')
-        .select('slug')
-        .eq('id', pending.created_event_id)
-        .maybeSingle();
-      slug = ev?.slug ?? null;
-    }
-    await sendMagicLinkInternal(pending.email, slug, data.originUrl);
-    return { sent: true };
   });
 
 /**
@@ -359,19 +353,6 @@ export const setPasswordForNewAccount = createServerFn({ method: 'POST' })
     }
     return { ok: true as const, email };
   });
-
-async function sendMagicLinkInternal(email: string, slug: string | null, originUrl: string) {
-  const origin = new URL(originUrl).origin;
-  const redirectTo = slug ? `${origin}/${slug}/admin/dashboard` : `${origin}/my-events`;
-  try {
-    await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: true },
-    });
-  } catch (e) {
-    console.error('signInWithOtp failed', e);
-  }
-}
 
 async function getOrCreateStripeCoupon(
   stripe: ReturnType<typeof createStripeClient>,

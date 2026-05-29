@@ -119,10 +119,11 @@ function CheckoutPage() {
       });
       if (result.mode === 'free') {
         sessionStorage.removeItem('kapsul_pending_form');
-        navigate({
-          to: '/create-event/success',
-          search: { slug: result.slug, code: form.payload.code_acces },
-        });
+        const redirect = `/${result.slug}/admin/dashboard`;
+        const qs = new URLSearchParams();
+        if (result.needsSetPassword) qs.set('mode', 'set-password');
+        qs.set('redirect', redirect);
+        window.location.replace(`/login?${qs.toString()}`);
         return;
       }
       // Paid path: mount embedded checkout
