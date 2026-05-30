@@ -422,6 +422,57 @@ export type Database = {
         }
         Relationships: []
       }
+      event_flow_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          email: string | null
+          error_code: string | null
+          error_message: string | null
+          event_id: string | null
+          flow_id: string
+          id: string
+          pending_id: string | null
+          plan_code: string | null
+          slug: string | null
+          status: string
+          step: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          email?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          flow_id: string
+          id?: string
+          pending_id?: string | null
+          plan_code?: string | null
+          slug?: string | null
+          status: string
+          step: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          email?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          flow_id?: string
+          id?: string
+          pending_id?: string | null
+          plan_code?: string | null
+          slug?: string | null
+          status?: string
+          step?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: []
+      }
       event_plans: {
         Row: {
           active: boolean
