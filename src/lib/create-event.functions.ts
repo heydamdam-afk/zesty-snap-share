@@ -105,7 +105,7 @@ export const createCheckoutSession = createServerFn({ method: 'POST' })
         plan_code: plan.code,
         paid_amount_cents: finalCents,
         coupon_code: data.couponCode?.trim() || null,
-        payload: { ...data.payload, flow_id: flowId } as Record<string, unknown>,
+        payload: { ...data.payload, flow_id: flowId } as never,
       })
       .select('id')
       .single();
