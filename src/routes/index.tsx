@@ -6,6 +6,7 @@ import { pickAvatarColor } from "@/lib/zest-session";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { setPasswordForNewAccount } from "@/lib/create-event.functions";
+import { logFlowClient } from "@/lib/flow-log-client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,6 +50,9 @@ export function Landing() {
     const urlMode = params.get("mode");
     if (urlMode === "set-password") {
       setMode("set-password");
+      logFlowClient({ step: 'set_password_view' });
+    } else {
+      logFlowClient({ step: 'login_view', context: { mode: 'signin' } });
     }
     if (!code) {
       setHydrated(true);
@@ -109,6 +113,7 @@ export function Landing() {
         return;
       }
       setLoading(true);
+      logFlowClient({ step: 'set_password_submit', email: target });
       try {
         await setPasswordFn({ data: { email: target, password } });
         const { error: signErr } = await supabase.auth.signInWithPassword({
@@ -116,9 +121,11 @@ export function Landing() {
           password,
         });
         if (signErr) throw signErr;
+        logFlowClient({ step: 'set_password_signed_in', status: 'success', email: target });
         await routeAfterAuth(navigate);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erreur";
+        logFlowClient({ step: 'set_password_submit', status: 'error', email: target, errorCode: msg.includes('already_onboarded') ? 'already_onboarded' : 'set_password_failed', errorMessage: msg });
         if (msg.includes("already_onboarded")) {
           setMode("signin");
           setInfo(
@@ -142,6 +149,7 @@ export function Landing() {
     setLoading(true);
     try {
       if (mode === "signin") {
+        logFlowClient({ step: 'login_submit', email: email.trim() });
         const { error: err } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -161,6 +169,7 @@ export function Landing() {
             setInfo(
               "Bienvenue ! Votre compte a bien été créé, mais votre email n'est pas encore confirmé. Cliquez sur le lien reçu par email, ou demandez un nouvel envoi ci-dessous.",
             );
+            logFlowClient({ step: 'login_submit', status: 'error', email: email.trim(), errorCode: 'email_not_confirmed' });
             return;
           }
           const alreadyExists =
@@ -177,13 +186,17 @@ export function Landing() {
             setInfo(
               "Un compte existe déjà avec cet email. Connectez-vous, ou utilisez « Mot de passe oublié ? » pour définir un nouveau mot de passe.",
             );
+            logFlowClient({ step: 'login_submit', status: 'error', email: email.trim(), errorCode: 'user_already_exists' });
             return;
           }
+          logFlowClient({ step: 'login_submit', status: 'error', email: email.trim(), errorCode: code ?? 'signin_failed', errorMessage: err.message });
           throw err;
         }
+        logFlowClient({ step: 'login_success', status: 'success', email: email.trim() });
         await routeAfterAuth(navigate);
       } else {
         const cleanPrenom = prenom.trim();
+        logFlowClient({ step: 'signup_submit', email: email.trim() });
         const { error: err } = await supabase.auth.signUp({
           email: email.trim(),
           password,
