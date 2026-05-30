@@ -320,16 +320,19 @@ export const setInitialPassword = createServerFn({ method: 'POST' })
       .object({
         sessionId: z.string().min(1).max(255),
         password: z.string().min(8).max(128),
+        flowId: z.string().min(4).max(100).optional().nullable(),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
+    const flowId = data.flowId || `srv_${Date.now()}`;
     const { data: pending } = await supabaseAdmin
       .from('pending_events')
       .select('email, created_event_id, payload')
       .eq('stripe_session_id', data.sessionId)
       .maybeSingle();
     if (!pending?.email || !pending.created_event_id) {
+      await logFlow({ flowId, step: 'set_initial_password', status: 'error', stripeSessionId: data.sessionId, errorCode: 'session_not_found' });
       throw new Error('session_not_found');
     }
     const email = pending.email.toLowerCase().trim();
@@ -346,6 +349,7 @@ export const setInitialPassword = createServerFn({ method: 'POST' })
       | undefined;
 
     if (row && row.has_password && row.last_sign_in_at) {
+      await logFlow({ flowId, step: 'set_initial_password', status: 'error', email, stripeSessionId: data.sessionId, errorCode: 'already_onboarded' });
       throw new Error('already_onboarded');
     }
 
@@ -354,16 +358,23 @@ export const setInitialPassword = createServerFn({ method: 'POST' })
         password: data.password,
         email_confirm: true,
       });
-      if (error) throw new Error(`update_failed: ${error.message}`);
+      if (error) {
+        await logFlow({ flowId, step: 'set_initial_password', status: 'error', email, stripeSessionId: data.sessionId, errorCode: 'update_failed', errorMessage: error.message });
+        throw new Error(`update_failed: ${error.message}`);
+      }
     } else {
       const { error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: data.password,
         email_confirm: true,
       });
-      if (error) throw new Error(`create_failed: ${error.message}`);
+      if (error) {
+        await logFlow({ flowId, step: 'set_initial_password', status: 'error', email, stripeSessionId: data.sessionId, errorCode: 'create_failed', errorMessage: error.message });
+        throw new Error(`create_failed: ${error.message}`);
+      }
     }
 
+    await logFlow({ flowId, step: 'set_initial_password', status: 'success', email, stripeSessionId: data.sessionId });
     return { ok: true as const, email };
   });
 
@@ -379,10 +390,12 @@ export const setPasswordForNewAccount = createServerFn({ method: 'POST' })
       .object({
         email: z.string().email().max(255),
         password: z.string().min(8).max(128),
+        flowId: z.string().min(4).max(100).optional().nullable(),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
+    const flowId = data.flowId || `srv_${Date.now()}`;
     const email = data.email.toLowerCase().trim();
     const { data: summary } = await (supabaseAdmin.rpc as unknown as (
       fn: string,
@@ -394,6 +407,7 @@ export const setPasswordForNewAccount = createServerFn({ method: 'POST' })
       | undefined;
 
     if (row && (row.has_password || row.last_sign_in_at)) {
+      await logFlow({ flowId, step: 'set_password_new_account', status: 'error', email, errorCode: 'already_onboarded' });
       throw new Error('already_onboarded');
     }
 
@@ -402,15 +416,22 @@ export const setPasswordForNewAccount = createServerFn({ method: 'POST' })
         password: data.password,
         email_confirm: true,
       });
-      if (error) throw new Error(`update_failed: ${error.message}`);
+      if (error) {
+        await logFlow({ flowId, step: 'set_password_new_account', status: 'error', email, errorCode: 'update_failed', errorMessage: error.message });
+        throw new Error(`update_failed: ${error.message}`);
+      }
     } else {
       const { error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: data.password,
         email_confirm: true,
       });
-      if (error) throw new Error(`create_failed: ${error.message}`);
+      if (error) {
+        await logFlow({ flowId, step: 'set_password_new_account', status: 'error', email, errorCode: 'create_failed', errorMessage: error.message });
+        throw new Error(`create_failed: ${error.message}`);
+      }
     }
+    await logFlow({ flowId, step: 'set_password_new_account', status: 'success', email });
     return { ok: true as const, email };
   });
 
