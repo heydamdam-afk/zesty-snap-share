@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getStripe, getStripeEnvironment } from '@/lib/stripe-client';
 import { PLANS, formatPrice, applyCoupon, type CouponInfo, type PlanCode } from '@/lib/plans';
 import { createCheckoutSession } from '@/lib/create-event.functions';
+import { getOrCreateFlowId, logFlowClient } from '@/lib/flow-log-client';
 
 export const Route = createFileRoute('/create-event/checkout')({
   head: () => ({
@@ -49,7 +50,9 @@ function CheckoutPage() {
       navigate({ to: '/create-event' });
       return;
     }
-    setForm(JSON.parse(raw));
+    const parsed = JSON.parse(raw) as PendingForm;
+    setForm(parsed);
+    logFlowClient({ step: 'checkout_form_view', email: parsed.email, planCode: parsed.planCode });
   }, [navigate]);
 
   const plan = useMemo(() => (form ? PLANS.find((p) => p.code === form.planCode) : undefined), [form]);
@@ -106,6 +109,8 @@ function CheckoutPage() {
     if (!form || !plan) return;
     setSubmitting(true);
     setError(null);
+    const flowId = getOrCreateFlowId();
+    logFlowClient({ step: 'checkout_submit', email: form.email, planCode: form.planCode, context: { hasCoupon: !!couponCode.trim() } });
     try {
       const result = await createSession({
         data: {
@@ -115,9 +120,19 @@ function CheckoutPage() {
           payload: form.payload,
           returnUrl: `${window.location.origin}/create-event/success`,
           environment: getStripeEnvironment(),
+          flowId,
         },
       });
       if (result.mode === 'free') {
+        logFlowClient({
+          step: 'free_redirect',
+          status: 'success',
+          email: form.email,
+          planCode: form.planCode,
+          eventId: result.eventId,
+          slug: result.slug,
+          context: { needsSetPassword: result.needsSetPassword },
+        });
         sessionStorage.removeItem('kapsul_pending_form');
         const redirect = `/${result.slug}/admin/dashboard`;
         const qs = new URLSearchParams();
@@ -127,9 +142,11 @@ function CheckoutPage() {
         return;
       }
       // Paid path: mount embedded checkout
+      logFlowClient({ step: 'stripe_embedded_mounted', email: form.email, planCode: form.planCode, stripeSessionId: result.sessionId, pendingId: result.pendingId });
       setClientSecret(result.clientSecret);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur';
+      logFlowClient({ step: 'checkout_submit', status: 'error', email: form.email, planCode: form.planCode, errorCode: msg.split(':')[0]?.slice(0, 80), errorMessage: msg });
       if (!silent) setError(translateError(msg));
     } finally {
       setSubmitting(false);

@@ -20,6 +20,7 @@ import { QuotaBanner } from "@/components/zest/QuotaBanner";
 import { Button } from "@/components/ui/button";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe-client";
 import { createAddonImagesCheckout, getAddonImagesEligibility } from "@/lib/addon.functions";
+import { clearFlowId, logFlowClient } from "@/lib/flow-log-client";
 import { Camera, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/admin/dashboard")({
@@ -99,6 +100,14 @@ function AdminDashboard() {
           .maybeSingle();
         if (cancel) return;
         if (admErr || !adm) {
+          logFlowClient({
+            step: 'dashboard_not_admin',
+            status: 'error',
+            email: sessionEmail,
+            eventId: ev.id,
+            slug,
+            errorCode: 'not_admin',
+          });
           toast.error("Vous n'êtes pas admin de cet événement.");
           await supabase.auth.signOut();
           navigate({
@@ -123,6 +132,15 @@ function AdminDashboard() {
         };
         console.log("3. ctx avant setCtx:", ctx);
         setCtx(value);
+        logFlowClient({
+          step: 'dashboard_reached',
+          status: 'success',
+          email: sessionEmail,
+          eventId: event.id,
+          slug,
+          context: { role: adm.role },
+        });
+        clearFlowId();
         console.log("4. setCtx appelé");
       } catch (error) {
         console.error("ERREUR:", error);

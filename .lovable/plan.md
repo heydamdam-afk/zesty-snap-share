@@ -1,82 +1,78 @@
-## Objectif
+# Logging flow création event — version minimale
 
-Créer un puits de log centralisé qui trace, étape par étape, toute la séquence "création d'événement → redirection → connexion → arrivée sur le dashboard", avec tous les messages d'erreur. Objectif : pouvoir diagnostiquer en quelques secondes pourquoi un user comme Lisa tombe sur "vous n'êtes pas admin" ou sur le mauvais écran.
+Périmètre réduit : pas de page d'inspection in-app. Tu interrogeras `event_flow_logs` via le tooling Cloud (read_query).
 
-## Ce qui sera mis en place
+## 1. Table `event_flow_logs` (migration)
 
-### 1. Table `event_flow_logs` (Supabase)
+Colonnes :
+- `id` uuid PK
+- `created_at` timestamptz default now()
+- `flow_id` text (généré côté client, persiste jusqu'au dashboard)
+- `step` text (ex: `checkout_start`, `stripe_session_created`, `webhook_received`, `pending_consumed`, `event_created`, `free_redirect`, `login_attempt`, `set_password`, `dashboard_reached`, …)
+- `status` text check in (`info`, `success`, `error`)
+- `email` text null
+- `event_id` uuid null
+- `slug` text null
+- `plan_code` text null
+- `stripe_session_id` text null
+- `pending_id` uuid null
+- `error_code` text null
+- `error_message` text null
+- `context` jsonb null
 
-Une seule table append-only qui stocke tous les événements du tunnel.
-
-Colonnes principales :
-- `id`, `created_at`
-- `flow_id` (uuid généré côté client au début du tunnel, conservé jusqu'à l'arrivée sur le dashboard — permet de reconstituer une session complète)
-- `step` (texte court : `checkout_start`, `pending_inserted`, `stripe_session_created`, `free_event_created`, `paid_event_created_webhook`, `needs_set_password_check`, `redirect_to_login`, `login_attempt`, `login_success`, `login_failure`, `admin_check`, `admin_check_failure`, `dashboard_reached`, `set_password_attempt`, `set_password_success`, `set_password_failure`)
-- `status` (`info` | `success` | `error`)
-- `email` (lowercased, nullable)
-- `event_id`, `slug`, `plan_code`, `stripe_session_id`, `pending_id` (tous nullables)
-- `error_code`, `error_message` (textes courts, nullables)
-- `context` (jsonb : payload arbitraire — needsSetPassword, has_password, last_sign_in_at, user_agent, redirect target, etc.)
+Index : `(flow_id, created_at)`, `(created_at desc)`, `(email)`, `(event_id)`.
 
 RLS :
-- `service_role` : ALL
-- `authenticated` : SELECT uniquement si `is_platform_admin(auth.uid())`
-- pas d'accès `anon`
-- GRANT explicites (insert via service_role only — toutes les écritures passent par le backend)
+- `service_role` ALL
+- `authenticated` SELECT uniquement si `is_platform_admin(auth.uid())`
+- pas d'`anon`
 
-### 2. Helper d'écriture côté serveur
+GRANTs : `service_role` ALL, `authenticated` SELECT.
 
-`src/lib/flow-log.server.ts` exporte `logFlow({ flowId, step, status, ... })`. Implémentation : insert dans `event_flow_logs` via `supabaseAdmin`, jamais throw (catch + console.error pour ne pas casser le flow utilisateur si l'insert échoue).
+## 2. Helpers
 
-### 3. Server function d'ingestion côté client
+**`src/lib/flow-log.server.ts`** — `logFlow(payload)` qui insert via `supabaseAdmin`, never throws (try/catch silencieux + `console.warn`).
 
-`src/lib/flow-log.functions.ts` expose `logFlowEvent` (createServerFn POST, pas de auth middleware — public, validé via Zod, rate-limit léger par flow_id côté handler) pour que le navigateur puisse pusher les événements qu'il est seul à voir (clic sur "créer mon event", redirection, tentative de login, échec admin, etc.).
+**`src/lib/flow-log.functions.ts`** — `logFlowEvent` serverFn publique, `inputValidator` Zod (step/status enum, longueurs bornées), appelle `logFlow`. Rate-limit simple en mémoire par `flow_id` (max ~50 events/flow).
 
-### 4. Points d'instrumentation
+## 3. Génération et propagation du `flow_id`
 
-Tous existent déjà — on ajoute un `logFlow(...)` aux endroits clés, sans changer la logique métier :
+- Généré côté client (`crypto.randomUUID()`) au premier point d'entrée du flow (clic offre sur `/` ou arrivée sur `create-event.checkout`).
+- Stocké dans `sessionStorage` sous `kapsul_flow_id`.
+- Passé en métadonnée Stripe (`metadata.flow_id`) pour relier webhook ↔ client.
+- Récupéré par le webhook depuis `session.metadata.flow_id` et propagé dans `pending_events.payload.flow_id` puis dans les logs serveur.
+- Nettoyé du `sessionStorage` à l'arrivée sur le dashboard.
 
-Backend (`src/lib/create-event.functions.ts`) :
-- entrée de `createCheckoutSession` → `checkout_start`
-- après insert pending → `pending_inserted`
-- erreurs (`slug_taken`, `code_taken`, `coupon_*`, `pending_insert_failed`, `event_create_failed`, `stripe_price_not_found`) → `status: error` avec `error_code`
-- création event gratuit → `free_event_created` (+ `needsSetPassword` dans context)
-- création session Stripe → `stripe_session_created`
-- `lookupEventBySessionId` quand `ready: true` → `paid_event_created_webhook`
-- `prepareSetPassword` / `setInitialPassword` / `setPasswordForNewAccount` → succès et erreurs
+## 4. Points d'instrumentation
 
-Webhook Stripe (`src/routes/api/public/payments/webhook.ts`) :
-- succès → `paid_event_created_webhook`
-- erreurs de signature, de RPC `create_event_from_pending` → `status: error`
+Frontend (via `logFlowEvent` serverFn) :
+- `src/routes/index.tsx` : `landing_view`, `offer_selected`, `checkout_redirect`
+- `src/routes/create-event.checkout.tsx` : `checkout_form_view`, `checkout_submit`, `stripe_redirect`, `free_event_create_start`, `free_event_create_success`, `free_event_create_error`, `free_redirect`
+- `src/routes/create-event.success.tsx` : `success_page_view`, `success_poll_*`, `dashboard_redirect`
+- `src/routes/login.tsx` (ou équivalent) : `login_view`, `login_submit`, `login_error` (avec `error_code` = `not_admin`, `invalid_password`, …), `set_password_view`, `set_password_success`
+- `src/routes/$slug.admin.dashboard.tsx` : `dashboard_reached` + cleanup `sessionStorage`
 
-Frontend :
-- `src/routes/create-event.checkout.tsx` : génération du `flow_id` au montage, push à chaque étape (envoi formulaire, retour serveur, redirection finale vers `/login?...`)
-- `src/routes/create-event.success.tsx` : push à chaque poll, à la redirection finale
-- `src/routes/index.tsx` (page login) : push `login_attempt` / `login_success` / `login_failure` (avec le message d'erreur Supabase exact), push `admin_check_failure` quand la popup "vous n'êtes pas admin" apparaît
-- `src/routes/$slug.admin.dashboard.tsx` : push `dashboard_reached` au montage
+Serveur (via `logFlow` direct) :
+- `src/lib/create-event.functions.ts` : `pending_created`, `event_created`, chaque branche d'erreur avec `error_code`
+- Webhook Stripe (`src/routes/api/...`) : `webhook_received`, `webhook_signature_ok`, `pending_consumed`, `event_created_from_webhook`, erreurs
 
-Le `flow_id` voyage via `sessionStorage` (clé `kapsul_flow_id`), conservé jusqu'à l'arrivée sur le dashboard puis nettoyé.
+Chaque appel inclut `flow_id`, `email`, `plan_code`, et le contexte pertinent (ex: `stripe_session_id`).
 
-### 5. Page d'inspection (platform admin uniquement)
+## 5. Hors périmètre (confirmé)
 
-Nouvelle route `src/routes/platform.flow-logs.tsx` réservée aux platform admins :
-- liste paginée des derniers `flow_id`, regroupés (timestamp début, email, slug, plan, statut final, dernière erreur)
-- détail d'un flow : timeline verticale de tous les `step` avec status (vert/rouge), tous les `context` dépliables, error_code / error_message en évidence
-- filtres : email, slug, date, statut (avec erreur uniquement)
+- Pas de page `/platform/flow-logs`.
+- Pas de purge automatique (à ajouter plus tard si besoin).
+- Pas d'alerting.
+- Pas de modification de la logique d'auth/redirection existante.
 
-### 6. Vérifications
+## Détails techniques
 
-- politique RLS : un user lambda ne peut rien lire
-- un flow complet de création gratuite produit la timeline attendue
-- un échec volontaire (slug déjà pris, mauvais mot de passe) apparaît bien en rouge dans la page d'inspection
-- aucune PII sensible loggée au-delà de l'email (pas de mot de passe, pas de token)
-
-## Hors scope
-
-- Pas de modification de la logique de redirection ou de l'auth (uniquement de l'observation).
-- Pas d'alerting / webhook externe — la page d'inspection suffit pour ce premier jet.
-- Pas de purge automatique — à voir plus tard si volume.
-
-## Question pour validation
-
-Tu confirmes que tu veux la page d'inspection intégrée dans l'app (route `/platform/flow-logs` accessible aux platform admins) ? Sinon je peux me limiter à la table + l'instrumentation, et tu interroges via le tooling Cloud.
+- `logFlow` ne bloque jamais le flow utilisateur : tout est en `try/catch` avec `console.warn` seulement.
+- `logFlowEvent` (serverFn publique) protège contre les abus avec rate-limit par `flow_id` + validation Zod stricte.
+- Les colonnes nullables permettent d'instrumenter chaque étape sans dépendance.
+- Requêtes type Cloud pour debug :
+  ```sql
+  select * from event_flow_logs where email = 'x@y.z' order by created_at;
+  select * from event_flow_logs where flow_id = '...' order by created_at;
+  select * from event_flow_logs where status = 'error' and created_at > now() - interval '24h';
+  ```

@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { ZestLogo } from "@/components/zest/Logo";
 import { Check, Copy, ExternalLink, Loader2, Mail } from "lucide-react";
 import { lookupEventBySessionId } from "@/lib/create-event.functions";
+import { logFlowClient } from "@/lib/flow-log-client";
 
 type Search = { slug?: string; code?: string; session_id?: string };
 
@@ -34,6 +35,10 @@ function SuccessPage() {
   );
   const [pollError, setPollError] = useState<string | null>(null);
 
+  useEffect(() => {
+    logFlowClient({ step: 'success_page_view', stripeSessionId: search.session_id ?? null, slug: search.slug ?? null });
+  }, [search.session_id, search.slug]);
+
   // Poll if we only have session_id (paid flow)
   useEffect(() => {
     if (resolved || !search.session_id) return;
@@ -45,6 +50,14 @@ function SuccessPage() {
         const res = await lookup({ data: { sessionId: search.session_id! } });
         if (cancel) return;
         if (res.ready) {
+          logFlowClient({
+            step: 'paid_redirect',
+            status: 'success',
+            stripeSessionId: search.session_id ?? null,
+            eventId: res.eventId,
+            slug: res.slug,
+            context: { needsSetPassword: res.needsSetPassword, tries },
+          });
           // Redirect post-checkout straight into the login page.
           // First-time buyer (no password yet) → set-password mode.
           // Returning buyer (already has a password) → classic signin.
@@ -62,6 +75,7 @@ function SuccessPage() {
         /* keep polling */
       }
       if (tries > 30) {
+        logFlowClient({ step: 'paid_poll_timeout', status: 'error', stripeSessionId: search.session_id ?? null, errorCode: 'poll_timeout', context: { tries } });
         setPollError("Le paiement est en cours de validation. Vérifiez vos emails dans quelques instants.");
         return;
       }
