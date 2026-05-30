@@ -246,9 +246,12 @@ export function Landing() {
         setInfo(
           "Vérifiez votre boîte mail pour confirmer votre compte. Une fois confirmé, vous pourrez créer votre premier événement.",
         );
+        logFlowClient({ step: 'signup_email_sent', status: 'success', email: email.trim() });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur");
+      const msg = err instanceof Error ? err.message : "Erreur";
+      logFlowClient({ step: 'auth_submit', status: 'error', email: email.trim(), errorCode: 'unhandled', errorMessage: msg });
+      setError(msg);
     } finally {
       setLoading(false);
     }
