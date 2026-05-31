@@ -411,9 +411,10 @@ function Index() {
               {(() => {
                 const feedPosts = visiblePosts.filter(
                   (p) =>
-                    (p.contenu_texte && p.contenu_texte.trim()) ||
-                    p.photos.length > 0 ||
-                    p.url_medium,
+                    !p.gallery_only &&
+                    ((p.contenu_texte && p.contenu_texte.trim()) ||
+                      p.photos.length > 0 ||
+                      p.url_medium),
                 );
                 return feedPosts.length > 0 ? (
                   feedPosts.map((p) => (
