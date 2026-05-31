@@ -21,6 +21,7 @@ import {
   uploadGalleryBatch,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
+  MAX_GALLERY_PHOTOS_PER_BATCH,
   type UploadProgress,
 } from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
