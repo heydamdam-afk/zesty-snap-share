@@ -848,6 +848,7 @@ export type Database = {
           contenu_texte: string | null
           created_at: string
           event_id: string
+          gallery_only: boolean
           id: string
           invite_id: string
           nb_likes: number
@@ -859,6 +860,7 @@ export type Database = {
           contenu_texte?: string | null
           created_at?: string
           event_id: string
+          gallery_only?: boolean
           id?: string
           invite_id: string
           nb_likes?: number
@@ -870,6 +872,7 @@ export type Database = {
           contenu_texte?: string | null
           created_at?: string
           event_id?: string
+          gallery_only?: boolean
           id?: string
           invite_id?: string
           nb_likes?: number

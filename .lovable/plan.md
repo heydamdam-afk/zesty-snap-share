@@ -1,78 +1,48 @@
-# Logging flow création event — version minimale
+# Galerie ≠ Feed : ne plus créer de post pour les uploads galerie
 
-Périmètre réduit : pas de page d'inspection in-app. Tu interrogeras `event_flow_logs` via le tooling Cloud (read_query).
+## Problème
 
-## 1. Table `event_flow_logs` (migration)
+Aujourd'hui, `uploadGalleryBatch` (bouton "Ajouter mes photos" dans l'onglet Galerie) crée **un post par photo** dans la table `posts`. Comme le feed lit toutes les lignes de `posts` qui ont au moins une photo, ces uploads remontent dans le feed → 6 photos = 6 posts.
 
-Colonnes :
-- `id` uuid PK
-- `created_at` timestamptz default now()
-- `flow_id` text (généré côté client, persiste jusqu'au dashboard)
-- `step` text (ex: `checkout_start`, `stripe_session_created`, `webhook_received`, `pending_consumed`, `event_created`, `free_redirect`, `login_attempt`, `set_password`, `dashboard_reached`, …)
-- `status` text check in (`info`, `success`, `error`)
-- `email` text null
-- `event_id` uuid null
-- `slug` text null
-- `plan_code` text null
-- `stripe_session_id` text null
-- `pending_id` uuid null
-- `error_code` text null
-- `error_message` text null
-- `context` jsonb null
+On veut :
+- **Upload via ComposeBar (Feed)** → crée un post visible dans le feed, photos aussi visibles dans la galerie. (déjà OK)
+- **Upload via bouton galerie** → photos visibles dans la galerie uniquement, **aucun post** dans le feed.
 
-Index : `(flow_id, created_at)`, `(created_at desc)`, `(email)`, `(event_id)`.
+## Approche
 
-RLS :
-- `service_role` ALL
-- `authenticated` SELECT uniquement si `is_platform_admin(auth.uid())`
-- pas d'`anon`
+Ajouter un flag `gallery_only` sur `posts`. Les uploads galerie créent toujours des lignes `posts` + `post_photos` (pour ne pas casser likes/commentaires/suppression qui ciblent `post.id`), mais le feed les ignore. La galerie continue de lire toutes les photos.
 
-GRANTs : `service_role` ALL, `authenticated` SELECT.
+## Changements
 
-## 2. Helpers
+### 1. Migration SQL
+- `ALTER TABLE public.posts ADD COLUMN gallery_only boolean NOT NULL DEFAULT false;`
+- Index partiel pour le feed : `CREATE INDEX posts_feed_idx ON public.posts (event_id, created_at DESC) WHERE gallery_only = false;`
+- (Pas de backfill : les anciens posts gardent `false`, c'est-à-dire visibles dans le feed comme avant. Si tu veux nettoyer le feed actuel de Lisa, on pourra faire un UPDATE ciblé après coup.)
 
-**`src/lib/flow-log.server.ts`** — `logFlow(payload)` qui insert via `supabaseAdmin`, never throws (try/catch silencieux + `console.warn`).
+### 2. `src/lib/zest-actions.ts` — `uploadGalleryBatch`
+- Insérer chaque post avec `gallery_only: true`.
+- Le reste (upload R2 + `post_photos`) inchangé.
 
-**`src/lib/flow-log.functions.ts`** — `logFlowEvent` serverFn publique, `inputValidator` Zod (step/status enum, longueurs bornées), appelle `logFlow`. Rate-limit simple en mémoire par `flow_id` (max ~50 events/flow).
+### 3. `src/hooks/useEventFeed.ts`
+- Ajouter `.eq("gallery_only", false)` sur la requête `posts`.
+- Realtime : ignorer les INSERT dont `payload.new.gallery_only === true`.
 
-## 3. Génération et propagation du `flow_id`
+### 4. `src/routes/e.$slug.tsx`
+- Le calcul `stats.photos` continue de compter via `posts` → comme le feed exclut désormais les gallery-only, il faut soit :
+  - garder le compteur basé sur `posts` (sous-estimé) — non,
+  - **préférable** : faire un second fetch léger (ou exposer un `galleryPosts` séparé via `useEventFeed`) pour compter toutes les photos de l'event.
+- Choix : ajouter un retour `allPhotosCount` dans `useEventFeed` (requête `count` sur `post_photos` filtrée par `event_id` via jointure) pour garder un compteur exact.
 
-- Généré côté client (`crypto.randomUUID()`) au premier point d'entrée du flow (clic offre sur `/` ou arrivée sur `create-event.checkout`).
-- Stocké dans `sessionStorage` sous `kapsul_flow_id`.
-- Passé en métadonnée Stripe (`metadata.flow_id`) pour relier webhook ↔ client.
-- Récupéré par le webhook depuis `session.metadata.flow_id` et propagé dans `pending_events.payload.flow_id` puis dans les logs serveur.
-- Nettoyé du `sessionStorage` à l'arrivée sur le dashboard.
-
-## 4. Points d'instrumentation
-
-Frontend (via `logFlowEvent` serverFn) :
-- `src/routes/index.tsx` : `landing_view`, `offer_selected`, `checkout_redirect`
-- `src/routes/create-event.checkout.tsx` : `checkout_form_view`, `checkout_submit`, `stripe_redirect`, `free_event_create_start`, `free_event_create_success`, `free_event_create_error`, `free_redirect`
-- `src/routes/create-event.success.tsx` : `success_page_view`, `success_poll_*`, `dashboard_redirect`
-- `src/routes/login.tsx` (ou équivalent) : `login_view`, `login_submit`, `login_error` (avec `error_code` = `not_admin`, `invalid_password`, …), `set_password_view`, `set_password_success`
-- `src/routes/$slug.admin.dashboard.tsx` : `dashboard_reached` + cleanup `sessionStorage`
-
-Serveur (via `logFlow` direct) :
-- `src/lib/create-event.functions.ts` : `pending_created`, `event_created`, chaque branche d'erreur avec `error_code`
-- Webhook Stripe (`src/routes/api/...`) : `webhook_received`, `webhook_signature_ok`, `pending_consumed`, `event_created_from_webhook`, erreurs
-
-Chaque appel inclut `flow_id`, `email`, `plan_code`, et le contexte pertinent (ex: `stripe_session_id`).
-
-## 5. Hors périmètre (confirmé)
-
-- Pas de page `/platform/flow-logs`.
-- Pas de purge automatique (à ajouter plus tard si besoin).
-- Pas d'alerting.
-- Pas de modification de la logique d'auth/redirection existante.
+### 5. `Gallery` component
+- Inchangé côté UI : il faut lui passer **toutes** les photos (feed + gallery_only). On expose donc depuis `useEventFeed` un second tableau `galleryPosts` (posts incluant gallery_only) ou on fait `posts` = tous + on filtre côté Feed render. Plus simple : `useEventFeed` retourne `{ feedPosts, galleryPosts }` ; `feedPosts` exclut gallery_only, `galleryPosts` inclut tout.
 
 ## Détails techniques
 
-- `logFlow` ne bloque jamais le flow utilisateur : tout est en `try/catch` avec `console.warn` seulement.
-- `logFlowEvent` (serverFn publique) protège contre les abus avec rate-limit par `flow_id` + validation Zod stricte.
-- Les colonnes nullables permettent d'instrumenter chaque étape sans dépendance.
-- Requêtes type Cloud pour debug :
-  ```sql
-  select * from event_flow_logs where email = 'x@y.z' order by created_at;
-  select * from event_flow_logs where flow_id = '...' order by created_at;
-  select * from event_flow_logs where status = 'error' and created_at > now() - interval '24h';
-  ```
+- Suppression : `deletePost(postId)` continue de fonctionner pour les deux types (RLS basée sur event admin / ownership via device_id).
+- Likes/commentaires sur photos gallery-only : non exposés (pas de PostCard rendu), donc no-op fonctionnel.
+- Pas de changement Stripe / auth / RLS.
+
+## Hors scope
+
+- Pas de migration des posts existants (ceux créés avant ce fix restent dans le feed).
+- Pas de refonte du modèle `posts` / pas de table `gallery_photos` séparée (over-engineering pour ce besoin).
