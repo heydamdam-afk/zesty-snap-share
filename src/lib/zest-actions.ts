@@ -13,6 +13,9 @@ export const ACCEPTED_PHOTO_TYPES = [
 
 export const MAX_PHOTOS_PER_POST = 4;
 
+/** Plafond dur de photos par envoi via la galerie. */
+export const MAX_GALLERY_PHOTOS_PER_BATCH = 25;
+
 export type UploadProgress = {
   index: number;
   total: number;
