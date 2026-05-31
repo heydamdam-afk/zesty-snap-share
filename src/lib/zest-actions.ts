@@ -506,6 +506,11 @@ export async function uploadGalleryBatch(args: {
   concurrency?: number;
 }): Promise<{ ok: number; errors: { file: string; error: string }[] }> {
   const { eventId, inviteId, files } = args;
+  if (files.length > MAX_GALLERY_PHOTOS_PER_BATCH) {
+    throw new Error(
+      `Maximum ${MAX_GALLERY_PHOTOS_PER_BATCH} photos par envoi`,
+    );
+  }
   const concurrency = Math.max(1, Math.min(args.concurrency ?? 5, 5));
   const total = files.length;
   const errors: { file: string; error: string }[] = [];
