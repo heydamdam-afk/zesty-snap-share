@@ -526,6 +526,7 @@ export async function uploadGalleryBatch(args: {
           url_miniature: u.urlMini,
           url_medium: u.urlMedium,
           url_full: u.urlFull,
+          gallery_only: true,
         })
         .select()
         .single();
