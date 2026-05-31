@@ -21,6 +21,7 @@ import {
   uploadGalleryBatch,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
+  MAX_GALLERY_PHOTOS_PER_BATCH,
   type UploadProgress,
 } from "@/lib/zest-actions";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -259,11 +260,23 @@ function Index() {
       });
     }
     if (valid.length === 0) return;
+    let capped = valid;
+    if (capped.length > MAX_GALLERY_PHOTOS_PER_BATCH) {
+      const ignored = capped.length - MAX_GALLERY_PHOTOS_PER_BATCH;
+      capped = capped.slice(0, MAX_GALLERY_PHOTOS_PER_BATCH);
+      toast.error(
+        `Maximum ${MAX_GALLERY_PHOTOS_PER_BATCH} photos par envoi`,
+        {
+          description: `Les ${ignored} photo(s) supplémentaire(s) ont été ignorée(s). Renvoie-les dans un second envoi.`,
+          duration: 10000,
+        },
+      );
+    }
     setUploading(true);
     setUploads(
-      valid.map((f, i) => ({
+      capped.map((f, i) => ({
         index: i,
-        total: valid.length,
+        total: capped.length,
         fileName: f.name,
         status: "pending" as const,
         percent: 0,
@@ -273,13 +286,13 @@ function Index() {
       const res = await uploadGalleryBatch({
         eventId: guest.event.id,
         inviteId: guest.invite.id,
-        files: valid,
+        files: capped,
         onProgress: (p) =>
           setUploads((list) => list.map((it) => (it.index === p.index ? p : it))),
       });
       await reload();
       if (res.errors.length > 0 && res.ok > 0) {
-        toast.warning(`${res.ok}/${valid.length} photo(s) envoyée(s)`, {
+        toast.warning(`${res.ok}/${capped.length} photo(s) envoyée(s)`, {
           description:
             `${res.errors.length} échec(s) :\n` +
             res.errors.map((e) => `• ${e.file} — ${e.error}`).join("\n"),

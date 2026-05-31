@@ -13,6 +13,9 @@ export const ACCEPTED_PHOTO_TYPES = [
 
 export const MAX_PHOTOS_PER_POST = 4;
 
+/** Plafond dur de photos par envoi via la galerie. */
+export const MAX_GALLERY_PHOTOS_PER_BATCH = 25;
+
 export type UploadProgress = {
   index: number;
   total: number;
@@ -503,6 +506,11 @@ export async function uploadGalleryBatch(args: {
   concurrency?: number;
 }): Promise<{ ok: number; errors: { file: string; error: string }[] }> {
   const { eventId, inviteId, files } = args;
+  if (files.length > MAX_GALLERY_PHOTOS_PER_BATCH) {
+    throw new Error(
+      `Maximum ${MAX_GALLERY_PHOTOS_PER_BATCH} photos par envoi`,
+    );
+  }
   const concurrency = Math.max(1, Math.min(args.concurrency ?? 5, 5));
   const total = files.length;
   const errors: { file: string; error: string }[] = [];
