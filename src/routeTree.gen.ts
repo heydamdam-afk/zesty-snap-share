@@ -22,6 +22,7 @@ import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as CreateEventCheckoutRouteImport } from './routes/create-event.checkout'
+import { Route as ApiBugReportRouteImport } from './routes/api/bug-report'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
 import { Route as ApiPublicFreezeCompleteRouteImport } from './routes/api/public/freeze-complete'
@@ -98,6 +99,11 @@ const CreateEventCheckoutRoute = CreateEventCheckoutRouteImport.update({
   path: '/create-event/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBugReportRoute = ApiBugReportRouteImport.update({
+  id: '/api/bug-report',
+  path: '/api/bug-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlugAdminIndexRoute = SlugAdminIndexRouteImport.update({
   id: '/$slug/admin/',
   path: '/$slug/admin/',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
+  '/api/bug-report': typeof ApiBugReportRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
+  '/api/bug-report': typeof ApiBugReportRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/my-events': typeof MyEventsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
+  '/api/bug-report': typeof ApiBugReportRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/my-events'
     | '/reset-password'
     | '/set-password'
+    | '/api/bug-report'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/my-events'
     | '/reset-password'
     | '/set-password'
+    | '/api/bug-report'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/my-events'
     | '/reset-password'
     | '/set-password'
+    | '/api/bug-report'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -314,6 +326,7 @@ export interface RootRouteChildren {
   MyEventsRoute: typeof MyEventsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetPasswordRoute: typeof SetPasswordRoute
+  ApiBugReportRoute: typeof ApiBugReportRoute
   CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
   CreateEventSuccessRoute: typeof CreateEventSuccessRoute
   ESlugRoute: typeof ESlugRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateEventCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/bug-report': {
+      id: '/api/bug-report'
+      path: '/api/bug-report'
+      fullPath: '/api/bug-report'
+      preLoaderRoute: typeof ApiBugReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$slug/admin/': {
       id: '/$slug/admin/'
       path: '/$slug/admin'
@@ -506,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyEventsRoute: MyEventsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SetPasswordRoute: SetPasswordRoute,
+  ApiBugReportRoute: ApiBugReportRoute,
   CreateEventCheckoutRoute: CreateEventCheckoutRoute,
   CreateEventSuccessRoute: CreateEventSuccessRoute,
   ESlugRoute: ESlugRoute,
