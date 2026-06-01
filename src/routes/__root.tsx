@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { syncAppScreens } from "@/lib/sync-app-screens.functions";
 import { SessionProvider } from "@/contexts/SessionProvider";
+import { BugReportWidget } from "@/components/bug-report/BugReportWidget";
 
 import appCss from "../styles.css?url";
 
@@ -166,6 +167,7 @@ function RootComponent() {
     <SessionProvider>
       <Outlet />
       <Toaster position="top-center" richColors closeButton />
+      <BugReportWidget />
     </SessionProvider>
   );
 }
