@@ -117,6 +117,69 @@ export type Database = {
           },
         ]
       }
+      bug_tickets: {
+        Row: {
+          as_who: string | null
+          browser: string | null
+          contact_email: string
+          contact_phone: string | null
+          created_at: string
+          email_error: string | null
+          email_sent: boolean
+          expected_behavior: string | null
+          id: string
+          os: string | null
+          page_url: string | null
+          screenshots_count: number
+          severity: string
+          ticket_number: number
+          title: string
+          user_agent: string | null
+          wanted_to: string | null
+          was_doing: string | null
+        }
+        Insert: {
+          as_who?: string | null
+          browser?: string | null
+          contact_email: string
+          contact_phone?: string | null
+          created_at?: string
+          email_error?: string | null
+          email_sent?: boolean
+          expected_behavior?: string | null
+          id?: string
+          os?: string | null
+          page_url?: string | null
+          screenshots_count?: number
+          severity: string
+          ticket_number?: number
+          title: string
+          user_agent?: string | null
+          wanted_to?: string | null
+          was_doing?: string | null
+        }
+        Update: {
+          as_who?: string | null
+          browser?: string | null
+          contact_email?: string
+          contact_phone?: string | null
+          created_at?: string
+          email_error?: string | null
+          email_sent?: boolean
+          expected_behavior?: string | null
+          id?: string
+          os?: string | null
+          page_url?: string | null
+          screenshots_count?: number
+          severity?: string
+          ticket_number?: number
+          title?: string
+          user_agent?: string | null
+          wanted_to?: string | null
+          was_doing?: string | null
+        }
+        Relationships: []
+      }
       commentaires: {
         Row: {
           contenu: string
