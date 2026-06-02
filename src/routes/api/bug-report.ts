@@ -3,8 +3,8 @@ import { sendLovableEmail } from "@lovable.dev/email-js";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const SENDER_DOMAIN = "app.kapsul.events";
-const FROM = "Kapsul Bugs <bugs@app.kapsul.events>";
+const SENDER_DOMAIN = "notify.kapsul.events";
+const FROM = "Kapsul Bugs <bugs@notify.kapsul.events>";
 const TO = "debbito@gmail.com";
 
 const SeverityEnum = z.enum(["critique", "elevee", "moyenne", "faible"]);
@@ -104,6 +104,33 @@ function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null
 </div></body></html>`;
 }
 
+function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null): string {
+  const sevLabel = SEVERITY_LABEL[data.severity] ?? data.severity;
+  return [
+    `Bug report kapsul.events${ticketNumber ? ` — Ticket #${ticketNumber}` : ""}`,
+    `Titre: ${data.title}`,
+    `Sévérité: ${sevLabel}`,
+    `Date/heure: ${data.dateLabel || "Non renseigné"}`,
+    "",
+    "Description",
+    `En tant que: ${data.asWho || "Non renseigné"}`,
+    `Je faisais: ${data.wasDoing || "Non renseigné"}`,
+    `Parce que je voulais: ${data.wantedTo || "Non renseigné"}`,
+    `Comportement attendu: ${data.expectedBehavior || "Non renseigné"}`,
+    "",
+    "Contact",
+    `Email: ${data.contactEmail}`,
+    `Téléphone: ${data.contactPhone || "Non renseigné"}`,
+    "",
+    "Contexte technique",
+    `URL: ${data.pageUrl || "Non renseigné"}`,
+    `Navigateur: ${data.browser || "Non renseigné"}`,
+    `OS: ${data.os || "Non renseigné"}`,
+    `User agent: ${data.userAgent || "Non renseigné"}`,
+    `Captures: ${data.screenshots?.length ?? 0}`,
+  ].join("\n");
+}
+
 export const Route = createFileRoute("/api/bug-report")({
   server: {
     handlers: {
@@ -160,6 +187,7 @@ export const Route = createFileRoute("/api/bug-report")({
 
         const subject = `[Bug${ticketNumber ? ` #${ticketNumber}` : ""}] ${data.title} — kapsul.events`;
         const html = buildHtml(data, ticketNumber);
+        const text = buildText(data, ticketNumber);
 
         try {
           await sendLovableEmail(
@@ -169,6 +197,7 @@ export const Route = createFileRoute("/api/bug-report")({
               sender_domain: SENDER_DOMAIN,
               subject,
               html,
+              text,
               purpose: "transactional",
               label: "bug-report",
               reply_to: data.contactEmail,
