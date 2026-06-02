@@ -1,25 +1,28 @@
-# Plafond 25 photos – upload galerie
+## Diagnostic
 
-## Objectif
-Empêcher la sélection de plus de 25 photos en une seule fois via le bouton "Ajouter mes photos" de la galerie, avec un message clair pour l'utilisateur. La concurrence d'upload (5 en parallèle) reste inchangée.
+Le domaine d’envoi `notify.kapsul.events` est bien vérifié. Les logs montrent que la route `/api/bug-report` échoue encore avec :
 
-## Changements
+```text
+Email API error: 400 missing_parameter: text
+```
 
-### 1. `src/lib/zest-actions.ts`
-- Ajouter une constante exportée `MAX_GALLERY_PHOTOS_PER_BATCH = 25`.
-- Dans `uploadGalleryBatch`, throw une erreur explicite si `files.length > 25` (filet de sécurité côté logique, en plus de la garde UI).
+Le fichier actuel contient bien un champ `text`, donc le problème vient très probablement du déploiement live qui utilise encore une ancienne version du code, ou d’un appel SDK dont la forme n’est pas celle réellement attendue par l’API email en production.
 
-### 2. `src/routes/e.$slug.tsx` (`handleUpload`)
-- Après validation taille/format, si `valid.length > 25` :
-  - Garder uniquement les 25 premiers fichiers.
-  - Afficher un `toast.error` : « Maximum 25 photos par envoi. Les X photos supplémentaires ont été ignorées. »
-- Continuer l'upload normalement avec ces 25 fichiers.
+## Plan de correction
 
-### 3. `src/components/zest/FloatingUploadButton.tsx`
-- Aucune modif fonctionnelle nécessaire (l'input `multiple` reste ouvert) — la garde se fait dans `handleUpload` pour conserver un seul point de vérité et bien gérer le cas où des fichiers ont déjà été filtrés (trop gros, mauvais format).
+1. **Sécuriser l’appel email**
+   - Remplacer l’appel direct fragile à `sendLovableEmail(...)` par un payload explicite conforme à l’API email attendue.
+   - Garantir que `text` est toujours une chaîne non vide, même si certaines données optionnelles sont absentes.
+   - Conserver `html`, `subject`, `reply_to`, `purpose`, `label` et `idempotency_key`.
 
-## Hors scope
-- Pas de changement de concurrence.
-- Pas de retry/backoff.
-- Pas de modif serveur (`/api/public/r2-upload`).
-- Pas de batch séquentiels au-delà de 25 (l'utilisateur fera plusieurs envois).
+2. **Améliorer le diagnostic côté serveur**
+   - Ajouter un log serveur minimal avant envoi indiquant uniquement les champs présents (`hasText`, `hasHtml`, domaine, sujet), sans exposer de données sensibles.
+   - Garder le message utilisateur inchangé côté formulaire.
+
+3. **Vérifier l’endpoint après correction**
+   - Tester `/api/bug-report` avec un payload sans image et sans téléphone, comme votre cas.
+   - Vérifier que la route ne renvoie plus `502`.
+   - Reconsulter les logs serveur pour confirmer qu’il n’y a plus d’erreur `missing_parameter: text`.
+
+4. **Si nécessaire : synchronisation live**
+   - Si la preview fonctionne mais pas `app.kapsul.events`, publier la version corrigée pour que le domaine live utilise bien le nouveau code.
