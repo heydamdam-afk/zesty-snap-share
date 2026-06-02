@@ -172,6 +172,7 @@ export const Route = createFileRoute("/api/bug-report")({
               purpose: "transactional",
               label: "bug-report",
               reply_to: data.contactEmail,
+              idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
             } as Parameters<typeof sendLovableEmail>[0],
             { apiKey, sendUrl: process.env.LOVABLE_SEND_URL },
           );
