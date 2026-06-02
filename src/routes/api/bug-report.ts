@@ -200,6 +200,7 @@ export const Route = createFileRoute("/api/bug-report")({
           label: "bug-report",
           reply_to: data.contactEmail,
           idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
+          unsubscribe_token: `bug-report-admin-${TO}`,
         };
 
         console.log("[bug-report] sending email", {
