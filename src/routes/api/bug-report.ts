@@ -187,24 +187,35 @@ export const Route = createFileRoute("/api/bug-report")({
 
         const subject = `[Bug${ticketNumber ? ` #${ticketNumber}` : ""}] ${data.title} — kapsul.events`;
         const html = buildHtml(data, ticketNumber);
-        const text = buildText(data, ticketNumber);
+        const text = buildText(data, ticketNumber) || `Bug report: ${data.title}`;
+
+        const emailPayload = {
+          to: TO,
+          from: FROM,
+          sender_domain: SENDER_DOMAIN,
+          subject,
+          html,
+          text,
+          purpose: "transactional",
+          label: "bug-report",
+          reply_to: data.contactEmail,
+          idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
+        };
+
+        console.log("[bug-report] sending email", {
+          hasHtml: !!emailPayload.html,
+          htmlLen: emailPayload.html.length,
+          hasText: !!emailPayload.text,
+          textLen: emailPayload.text.length,
+          subjectLen: emailPayload.subject.length,
+          sender_domain: emailPayload.sender_domain,
+        });
 
         try {
-          await sendLovableEmail(
-            {
-              to: TO,
-              from: FROM,
-              sender_domain: SENDER_DOMAIN,
-              subject,
-              html,
-              text,
-              purpose: "transactional",
-              label: "bug-report",
-              reply_to: data.contactEmail,
-              idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
-            } as Parameters<typeof sendLovableEmail>[0],
-            { apiKey, sendUrl: process.env.LOVABLE_SEND_URL },
-          );
+          await sendLovableEmail(emailPayload, {
+            apiKey,
+            sendUrl: process.env.LOVABLE_SEND_URL,
+          });
           if (ticketId) {
             await supabaseAdmin
               .from("bug_tickets")
