@@ -1,26 +1,13 @@
-## Problème
+Diagnostic confirmé côté serveur:
+- Le service email réellement appelé est Lovable Emails via `@lovable.dev/email-js`, pas Brevo.
+- Le domaine email configuré et vérifié est `notify.kapsul.events`.
+- C’est pour ça que le `from` actuel est `bugs@notify.kapsul.events`: avec Lovable Emails, l’envoi passe par le sous-domaine email délégué et vérifié. `bugs@kapsul.events` ne peut être utilisé en From visible que si la configuration Lovable Emails permet l’affichage depuis le domaine racine; sinon le From doit rester sur le sous-domaine vérifié.
+- L’erreur publiée actuelle est toujours: `missing_unsubscribe` / “Transactional emails must include an unsubscribe_token”. Donc la requête envoyée au service email ne contient toujours pas le champ attendu au bon endroit/format, malgré le code local qui le prévoit.
 
-Vite/Lightning CSS plante avec `ENOENT` parce que `src/styles.css` commence par :
-
-```css
-@import url("https://fonts.googleapis.com/css2?family=Josefin+Sans...&family=Public+Sans...");
-```
-
-Lightning CSS résout les `@import` depuis le système de fichiers — il essaie de lire l'URL comme un chemin local et fait crasher la compilation de la feuille de style. Résultat : la page n'a plus de CSS et l'overlay d'erreur s'affiche.
-
-C'est un gotcha connu de Tailwind v4 sur ce stack : les polices distantes doivent être chargées via `<link>` dans le `<head>`, pas via `@import` CSS.
-
-## Correctif
-
-1. **`src/styles.css`** — supprimer la ligne 1 (`@import url("https://fonts.googleapis.com/...")`).
-2. **`src/routes/__root.tsx`** — ajouter dans le `links` du `head()` de la route racine :
-   - `preconnect` vers `https://fonts.googleapis.com`
-   - `preconnect` vers `https://fonts.gstatic.com` (crossOrigin)
-   - `stylesheet` vers l'URL Google Fonts avec les mêmes familles/poids (Josefin Sans 600;700 + Public Sans 400;600;700, `display=swap`)
-
-Aucun autre fichier touché. Aucune modification du formulaire de bug ni du backend.
-
-## Vérification
-
-- L'overlay Vite disparaît, la page se recharge avec styles.
-- Les polices Josefin Sans et Public Sans restent appliquées (404 page, design system).
+Plan backend uniquement:
+1. Modifier uniquement `src/routes/api/bug-report.ts`.
+2. Remplacer l’appel direct bas niveau à `sendLovableEmail` par le chemin Lovable Emails standard déjà prévu pour les emails applicatifs, afin que l’unsubscribe token soit géré correctement par l’infrastructure email.
+3. Garder l’expéditeur compatible avec le domaine vérifié `notify.kapsul.events` pour garantir la délivrabilité; ne pas passer en `bugs@kapsul.events` tant que la config email ne confirme pas que le From racine est autorisé.
+4. Ajouter des logs serveur utiles mais sûrs: domaine expéditeur, présence de token, message id / statut de succès, sans exposer de secret.
+5. Tester moi-même un POST complet sur `/api/bug-report` après correction.
+6. Vérifier les logs serveur et ne considérer la correction terminée que si le log montre un envoi accepté avec succès.
