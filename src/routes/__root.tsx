@@ -130,6 +130,12 @@ export const Route = createRootRoute({
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d6f6f5bb-fa7e-4e41-b00b-6e7831a18884/id-preview-9af09840--4daa509d-17a4-4a16-b776-872270e66045.lovable.app-1778071739120.png" },
     ],
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@600;700&family=Public+Sans:wght@400;600;700&display=swap",
+      },
       {
         rel: "stylesheet",
         href: appCss,

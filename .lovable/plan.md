@@ -1,28 +1,26 @@
-## Diagnostic
+## Problème
 
-Le domaine d’envoi `notify.kapsul.events` est bien vérifié. Les logs montrent que la route `/api/bug-report` échoue encore avec :
+Vite/Lightning CSS plante avec `ENOENT` parce que `src/styles.css` commence par :
 
-```text
-Email API error: 400 missing_parameter: text
+```css
+@import url("https://fonts.googleapis.com/css2?family=Josefin+Sans...&family=Public+Sans...");
 ```
 
-Le fichier actuel contient bien un champ `text`, donc le problème vient très probablement du déploiement live qui utilise encore une ancienne version du code, ou d’un appel SDK dont la forme n’est pas celle réellement attendue par l’API email en production.
+Lightning CSS résout les `@import` depuis le système de fichiers — il essaie de lire l'URL comme un chemin local et fait crasher la compilation de la feuille de style. Résultat : la page n'a plus de CSS et l'overlay d'erreur s'affiche.
 
-## Plan de correction
+C'est un gotcha connu de Tailwind v4 sur ce stack : les polices distantes doivent être chargées via `<link>` dans le `<head>`, pas via `@import` CSS.
 
-1. **Sécuriser l’appel email**
-   - Remplacer l’appel direct fragile à `sendLovableEmail(...)` par un payload explicite conforme à l’API email attendue.
-   - Garantir que `text` est toujours une chaîne non vide, même si certaines données optionnelles sont absentes.
-   - Conserver `html`, `subject`, `reply_to`, `purpose`, `label` et `idempotency_key`.
+## Correctif
 
-2. **Améliorer le diagnostic côté serveur**
-   - Ajouter un log serveur minimal avant envoi indiquant uniquement les champs présents (`hasText`, `hasHtml`, domaine, sujet), sans exposer de données sensibles.
-   - Garder le message utilisateur inchangé côté formulaire.
+1. **`src/styles.css`** — supprimer la ligne 1 (`@import url("https://fonts.googleapis.com/...")`).
+2. **`src/routes/__root.tsx`** — ajouter dans le `links` du `head()` de la route racine :
+   - `preconnect` vers `https://fonts.googleapis.com`
+   - `preconnect` vers `https://fonts.gstatic.com` (crossOrigin)
+   - `stylesheet` vers l'URL Google Fonts avec les mêmes familles/poids (Josefin Sans 600;700 + Public Sans 400;600;700, `display=swap`)
 
-3. **Vérifier l’endpoint après correction**
-   - Tester `/api/bug-report` avec un payload sans image et sans téléphone, comme votre cas.
-   - Vérifier que la route ne renvoie plus `502`.
-   - Reconsulter les logs serveur pour confirmer qu’il n’y a plus d’erreur `missing_parameter: text`.
+Aucun autre fichier touché. Aucune modification du formulaire de bug ni du backend.
 
-4. **Si nécessaire : synchronisation live**
-   - Si la preview fonctionne mais pas `app.kapsul.events`, publier la version corrigée pour que le domaine live utilise bien le nouveau code.
+## Vérification
+
+- L'overlay Vite disparaît, la page se recharge avec styles.
+- Les polices Josefin Sans et Public Sans restent appliquées (404 page, design system).
