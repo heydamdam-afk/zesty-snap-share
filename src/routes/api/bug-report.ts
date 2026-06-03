@@ -189,6 +189,36 @@ export const Route = createFileRoute("/api/bug-report")({
         const html = buildHtml(data, ticketNumber);
         const text = buildText(data, ticketNumber) || `Bug report: ${data.title}`;
 
+        // Lovable Emails requires a registered unsubscribe token (row in
+        // public.email_unsubscribe_tokens) for transactional sends. Ensure one
+        // exists for the recipient and reuse it across sends.
+        let unsubscribeToken: string | null = null;
+        try {
+          const { data: existing } = await supabaseAdmin
+            .from("email_unsubscribe_tokens")
+            .select("token")
+            .eq("email", TO)
+            .maybeSingle();
+          if (existing?.token) {
+            unsubscribeToken = existing.token as string;
+          } else {
+            const newToken = crypto.randomUUID();
+            const { data: inserted, error: insErr } = await supabaseAdmin
+              .from("email_unsubscribe_tokens")
+              .insert({ token: newToken, email: TO })
+              .select("token")
+              .single();
+            if (insErr) throw insErr;
+            unsubscribeToken = inserted.token as string;
+          }
+        } catch (err) {
+          console.error("[bug-report] failed to ensure unsubscribe token", err);
+          return Response.json(
+            { error: "Email setup failed", ticketNumber },
+            { status: 500 },
+          );
+        }
+
         const emailPayload = {
           to: TO,
           from: FROM,
@@ -200,7 +230,7 @@ export const Route = createFileRoute("/api/bug-report")({
           label: "bug-report",
           reply_to: data.contactEmail,
           idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
-          unsubscribe_token: `bug-report-admin-${TO}`,
+          unsubscribe_token: unsubscribeToken,
         };
 
         console.log("[bug-report] sending email", {
