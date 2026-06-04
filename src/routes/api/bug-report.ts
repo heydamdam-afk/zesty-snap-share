@@ -50,14 +50,14 @@ function section(title: string, inner: string): string {
   return `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:8px">━━ ${escape(title)} ━━</div><table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${inner}</table></div>`;
 }
 
-function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null): string {
-  const sevLabel = SEVERITY_LABEL[data.severity] ?? data.severity;
-  const shots = data.screenshots ?? [];
-  const imagesHtml = shots.length
-    ? `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:12px">━━ CAPTURES (${shots.length}) ━━</div>${shots
+type ShotLink = { name: string; url: string };
+
+function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null, shotLinks: ShotLink[]): string {
+  const imagesHtml = shotLinks.length
+    ? `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:12px">━━ CAPTURES (${shotLinks.length}) ━━</div>${shotLinks
         .map(
           (s) =>
-            `<div style="margin:0 0 16px"><div style="font-size:12px;color:#637381;margin-bottom:4px">${escape(s.name)}</div><img src="${escape(s.dataUrl)}" alt="${escape(s.name)}" style="max-width:100%;border:1px solid #F4F6F8;border-radius:8px"/></div>`,
+            `<div style="margin:0 0 16px"><div style="font-size:12px;color:#637381;margin-bottom:4px">${escape(s.name)}</div><a href="${escape(s.url)}" style="color:#FF4842;font-size:13px;word-break:break-all">${escape(s.url)}</a><div style="margin-top:6px"><a href="${escape(s.url)}"><img src="${escape(s.url)}" alt="${escape(s.name)}" style="max-width:100%;border:1px solid #F4F6F8;border-radius:8px"/></a></div></div>`,
         )
         .join("")}</div>`
     : `<div style="margin:24px 0 0;color:#919EAB;font-size:13px">Aucune capture jointe.</div>`;
@@ -72,7 +72,6 @@ function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null
     <h1 style="font-family:'Josefin Sans',Arial,sans-serif;font-size:24px;margin:0 0 4px;color:#212B36">${escape(data.title)}</h1>
     <div style="color:#637381;font-size:13px">${ticketNumber ? `Ticket #${ticketNumber} — ` : ""}${escape(data.dateLabel || "")}</div>
 
-    ${section("INFORMATIONS BUG", row("Sévérité", sevLabel))}
     ${section(
       "DESCRIPTION",
       row("En tant que", data.asWho) +
@@ -97,12 +96,10 @@ function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null
 </div></body></html>`;
 }
 
-function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null): string {
-  const sevLabel = SEVERITY_LABEL[data.severity] ?? data.severity;
+function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null, shotLinks: ShotLink[]): string {
   return [
     `Bug report kapsul.events${ticketNumber ? ` — Ticket #${ticketNumber}` : ""}`,
     `Titre: ${data.title}`,
-    `Sévérité: ${sevLabel}`,
     `Date/heure: ${data.dateLabel || "Non renseigné"}`,
     "",
     "Description",
@@ -120,7 +117,8 @@ function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null
     `Navigateur: ${data.browser || "Non renseigné"}`,
     `OS: ${data.os || "Non renseigné"}`,
     `User agent: ${data.userAgent || "Non renseigné"}`,
-    `Captures: ${data.screenshots?.length ?? 0}`,
+    `Captures: ${shotLinks.length}`,
+    ...shotLinks.map((s) => `- ${s.name}: ${s.url}`),
   ].join("\n");
 }
 
