@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Eye } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import { ZestLogo } from "@/components/zest/Logo";
 import { useAdminContext } from "./AdminContext";
 
