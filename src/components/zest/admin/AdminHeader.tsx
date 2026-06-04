@@ -28,14 +28,6 @@ export function AdminHeader() {
         {/* Mobile : 2 boutons icônes uniquement */}
         <div className="flex items-center gap-1.5 sm:hidden">
           <Link
-            to="/my-events"
-            title="Mes événements"
-            aria-label="Mes événements"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <Link
             to="/e/$slug"
             params={{ slug: event.slug }}
             title="Voir le feed"
@@ -43,6 +35,14 @@ export function AdminHeader() {
             className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
           >
             <Eye className="h-5 w-5" />
+          </Link>
+          <Link
+            to="/my-events"
+            title="Mes événements"
+            aria-label="Mes événements"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
+          >
+            <ArrowRight className="h-5 w-5" />
           </Link>
         </div>
 
