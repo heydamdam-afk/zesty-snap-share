@@ -177,8 +177,34 @@ export const Route = createFileRoute("/api/bug-report")({
         }
 
         const subject = `[Bug${ticketNumber ? ` #${ticketNumber}` : ""}] ${data.title} — kapsul.events`;
-        const html = buildHtml(data, ticketNumber);
-        const text = buildText(data, ticketNumber) || `Bug report: ${data.title}`;
+
+        // Upload screenshots to private bucket and generate signed URLs (30 days).
+        const shotLinks: ShotLink[] = [];
+        const shots = data.screenshots ?? [];
+        const folder = ticketId ?? `noid-${Date.now()}`;
+        for (let i = 0; i < shots.length; i++) {
+          const s = shots[i];
+          try {
+            const base64 = s.dataUrl.includes(",") ? s.dataUrl.split(",")[1] : s.dataUrl;
+            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+            const safeName = s.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "capture";
+            const path = `${folder}/${i}-${safeName}`;
+            const { error: upErr } = await supabaseAdmin.storage
+              .from("bug-screenshots")
+              .upload(path, bytes, { contentType: s.contentType, upsert: true });
+            if (upErr) throw upErr;
+            const { data: signed, error: sErr } = await supabaseAdmin.storage
+              .from("bug-screenshots")
+              .createSignedUrl(path, 60 * 60 * 24 * 30);
+            if (sErr || !signed?.signedUrl) throw sErr ?? new Error("no signed url");
+            shotLinks.push({ name: s.name, url: signed.signedUrl });
+          } catch (err) {
+            console.error("[bug-report] screenshot upload failed", { name: s.name, err });
+          }
+        }
+
+        const html = buildHtml(data, ticketNumber, shotLinks);
+        const text = buildText(data, ticketNumber, shotLinks) || `Bug report: ${data.title}`;
 
         // Ensure an unsubscribe token exists for each recipient (required by Lovable Emails).
         async function ensureUnsubscribeToken(email: string): Promise<string> {
