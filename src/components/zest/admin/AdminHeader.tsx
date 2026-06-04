@@ -1,22 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Eye, LogOut } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { ZestLogo } from "@/components/zest/Logo";
 import { useAdminContext } from "./AdminContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "@tanstack/react-router";
 
 export function AdminHeader() {
   const { event, role } = useAdminContext();
-  const navigate = useNavigate();
-
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("[AdminHeader] signOut failed", e);
-    }
-    navigate({ to: "/" });
-  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
@@ -36,30 +24,46 @@ export function AdminHeader() {
             {role === "organisateur" ? "Organisateur" : "Admin secondaire"}
           </span>
         </div>
-        <Link
-          to="/e/$slug"
-          params={{ slug: event.slug }}
-          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Voir le feed</span>
-        </Link>
-        <Link
-          to="/"
-          className="hidden items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary sm:inline-flex"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Mes events
-        </Link>
-        <button
-          type="button"
-          onClick={signOut}
-          title="Se déconnecter"
-          aria-label="Se déconnecter"
-          className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
+
+        {/* Mobile : 2 boutons icônes uniquement */}
+        <div className="flex items-center gap-1.5 sm:hidden">
+          <Link
+            to="/my-events"
+            title="Mes événements"
+            aria-label="Mes événements"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <Link
+            to="/e/$slug"
+            params={{ slug: event.slug }}
+            title="Voir le feed"
+            aria-label="Voir le feed"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary"
+          >
+            <Eye className="h-5 w-5" />
+          </Link>
+        </div>
+
+        {/* Desktop / tablette : liens avec texte */}
+        <div className="hidden items-center gap-3 sm:flex">
+          <Link
+            to="/e/$slug"
+            params={{ slug: event.slug }}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>Voir le feed</span>
+          </Link>
+          <Link
+            to="/my-events"
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Mes events</span>
+          </Link>
+        </div>
       </div>
     </header>
   );
