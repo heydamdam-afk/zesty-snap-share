@@ -1,9 +1,10 @@
 import type { GuestSession } from "@/lib/zest-session";
 import { Avatar } from "./Avatar";
-import { LogOut, Image as ImageIcon, Shield, UserCog } from "lucide-react";
+import { LogOut, Image as ImageIcon, Shield, UserCog, Bug } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { BugReportModal } from "@/components/bug-report/BugReportWidget";
 
 export function ProfileMenu({
   guest,
@@ -19,6 +20,7 @@ export function ProfileMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [adminSlug, setAdminSlug] = useState<string | null>(null);
+  const [bugOpen, setBugOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +109,16 @@ export function ProfileMenu({
           <button
             onClick={() => {
               setOpen(false);
+              setBugOpen(true);
+            }}
+            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <Bug className="h-4 w-4" />
+            Signaler un problème
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
               onLeave?.();
             }}
             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-destructive hover:bg-secondary"
@@ -116,6 +128,7 @@ export function ProfileMenu({
           </button>
         </div>
       )}
+      {bugOpen && <BugReportModal onClose={() => setBugOpen(false)} />}
     </div>
   );
 }
