@@ -18,7 +18,7 @@ const ScreenshotSchema = z.object({
 
 const BodySchema = z.object({
   title: z.string().trim().min(1).max(200),
-  severity: SeverityEnum,
+  severity: SeverityEnum.optional().default("moyenne"),
   asWho: z.string().trim().max(500).optional().default(""),
   wasDoing: z.string().trim().max(500).optional().default(""),
   wantedTo: z.string().trim().max(500).optional().default(""),
@@ -32,13 +32,6 @@ const BodySchema = z.object({
   dateLabel: z.string().max(100).optional().default(""),
   screenshots: z.array(ScreenshotSchema).max(5).optional().default([]),
 });
-
-const SEVERITY_LABEL: Record<string, string> = {
-  critique: "🔴 Critique (bloque l'app)",
-  elevee: "🟠 Élevée",
-  moyenne: "🟡 Moyenne",
-  faible: "🟢 Faible",
-};
 
 function escape(s: string): string {
   return s
