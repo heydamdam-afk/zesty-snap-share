@@ -18,7 +18,7 @@ const ScreenshotSchema = z.object({
 
 const BodySchema = z.object({
   title: z.string().trim().min(1).max(200),
-  severity: SeverityEnum,
+  severity: SeverityEnum.optional().default("moyenne"),
   asWho: z.string().trim().max(500).optional().default(""),
   wasDoing: z.string().trim().max(500).optional().default(""),
   wantedTo: z.string().trim().max(500).optional().default(""),
@@ -32,13 +32,6 @@ const BodySchema = z.object({
   dateLabel: z.string().max(100).optional().default(""),
   screenshots: z.array(ScreenshotSchema).max(5).optional().default([]),
 });
-
-const SEVERITY_LABEL: Record<string, string> = {
-  critique: "🔴 Critique (bloque l'app)",
-  elevee: "🟠 Élevée",
-  moyenne: "🟡 Moyenne",
-  faible: "🟢 Faible",
-};
 
 function escape(s: string): string {
   return s
@@ -57,14 +50,14 @@ function section(title: string, inner: string): string {
   return `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:8px">━━ ${escape(title)} ━━</div><table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${inner}</table></div>`;
 }
 
-function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null): string {
-  const sevLabel = SEVERITY_LABEL[data.severity] ?? data.severity;
-  const shots = data.screenshots ?? [];
-  const imagesHtml = shots.length
-    ? `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:12px">━━ CAPTURES (${shots.length}) ━━</div>${shots
+type ShotLink = { name: string; url: string };
+
+function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null, shotLinks: ShotLink[]): string {
+  const imagesHtml = shotLinks.length
+    ? `<div style="margin:24px 0 0"><div style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#919EAB;font-weight:700;margin-bottom:12px">━━ CAPTURES (${shotLinks.length}) ━━</div>${shotLinks
         .map(
           (s) =>
-            `<div style="margin:0 0 16px"><div style="font-size:12px;color:#637381;margin-bottom:4px">${escape(s.name)}</div><img src="${escape(s.dataUrl)}" alt="${escape(s.name)}" style="max-width:100%;border:1px solid #F4F6F8;border-radius:8px"/></div>`,
+            `<div style="margin:0 0 16px"><div style="font-size:12px;color:#637381;margin-bottom:4px">${escape(s.name)}</div><a href="${escape(s.url)}" style="color:#FF4842;font-size:13px;word-break:break-all">${escape(s.url)}</a><div style="margin-top:6px"><a href="${escape(s.url)}"><img src="${escape(s.url)}" alt="${escape(s.name)}" style="max-width:100%;border:1px solid #F4F6F8;border-radius:8px"/></a></div></div>`,
         )
         .join("")}</div>`
     : `<div style="margin:24px 0 0;color:#919EAB;font-size:13px">Aucune capture jointe.</div>`;
@@ -79,7 +72,6 @@ function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null
     <h1 style="font-family:'Josefin Sans',Arial,sans-serif;font-size:24px;margin:0 0 4px;color:#212B36">${escape(data.title)}</h1>
     <div style="color:#637381;font-size:13px">${ticketNumber ? `Ticket #${ticketNumber} — ` : ""}${escape(data.dateLabel || "")}</div>
 
-    ${section("INFORMATIONS BUG", row("Sévérité", sevLabel))}
     ${section(
       "DESCRIPTION",
       row("En tant que", data.asWho) +
@@ -104,12 +96,10 @@ function buildHtml(data: z.infer<typeof BodySchema>, ticketNumber: number | null
 </div></body></html>`;
 }
 
-function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null): string {
-  const sevLabel = SEVERITY_LABEL[data.severity] ?? data.severity;
+function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null, shotLinks: ShotLink[]): string {
   return [
     `Bug report kapsul.events${ticketNumber ? ` — Ticket #${ticketNumber}` : ""}`,
     `Titre: ${data.title}`,
-    `Sévérité: ${sevLabel}`,
     `Date/heure: ${data.dateLabel || "Non renseigné"}`,
     "",
     "Description",
@@ -127,7 +117,8 @@ function buildText(data: z.infer<typeof BodySchema>, ticketNumber: number | null
     `Navigateur: ${data.browser || "Non renseigné"}`,
     `OS: ${data.os || "Non renseigné"}`,
     `User agent: ${data.userAgent || "Non renseigné"}`,
-    `Captures: ${data.screenshots?.length ?? 0}`,
+    `Captures: ${shotLinks.length}`,
+    ...shotLinks.map((s) => `- ${s.name}: ${s.url}`),
   ].join("\n");
 }
 
@@ -186,8 +177,34 @@ export const Route = createFileRoute("/api/bug-report")({
         }
 
         const subject = `[Bug${ticketNumber ? ` #${ticketNumber}` : ""}] ${data.title} — kapsul.events`;
-        const html = buildHtml(data, ticketNumber);
-        const text = buildText(data, ticketNumber) || `Bug report: ${data.title}`;
+
+        // Upload screenshots to private bucket and generate signed URLs (30 days).
+        const shotLinks: ShotLink[] = [];
+        const shots = data.screenshots ?? [];
+        const folder = ticketId ?? `noid-${Date.now()}`;
+        for (let i = 0; i < shots.length; i++) {
+          const s = shots[i];
+          try {
+            const base64 = s.dataUrl.includes(",") ? s.dataUrl.split(",")[1] : s.dataUrl;
+            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+            const safeName = s.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "capture";
+            const path = `${folder}/${i}-${safeName}`;
+            const { error: upErr } = await supabaseAdmin.storage
+              .from("bug-screenshots")
+              .upload(path, bytes, { contentType: s.contentType, upsert: true });
+            if (upErr) throw upErr;
+            const { data: signed, error: sErr } = await supabaseAdmin.storage
+              .from("bug-screenshots")
+              .createSignedUrl(path, 60 * 60 * 24 * 30);
+            if (sErr || !signed?.signedUrl) throw sErr ?? new Error("no signed url");
+            shotLinks.push({ name: s.name, url: signed.signedUrl });
+          } catch (err) {
+            console.error("[bug-report] screenshot upload failed", { name: s.name, err });
+          }
+        }
+
+        const html = buildHtml(data, ticketNumber, shotLinks);
+        const text = buildText(data, ticketNumber, shotLinks) || `Bug report: ${data.title}`;
 
         // Ensure an unsubscribe token exists for each recipient (required by Lovable Emails).
         async function ensureUnsubscribeToken(email: string): Promise<string> {
