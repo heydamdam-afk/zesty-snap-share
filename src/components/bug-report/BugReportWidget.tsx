@@ -96,7 +96,7 @@ export function BugReportWidget() {
   );
 }
 
-function BugReportModal({ onClose }: { onClose: () => void }) {
+export function BugReportModal({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState("");
   const [asWho, setAsWho] = useState("");
   const [wasDoing, setWasDoing] = useState("");
