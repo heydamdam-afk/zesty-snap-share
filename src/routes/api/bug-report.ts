@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const SENDER_DOMAIN = "notify.kapsul.events";
 const FROM = "Kapsul Bugs <bugs@notify.kapsul.events>";
-const TO = "debbito@gmail.com";
+const RECIPIENTS = ["debbito@gmail.com", "damien@baruuu.fr"];
 
 const SeverityEnum = z.enum(["critique", "elevee", "moyenne", "faible"]);
 
@@ -189,86 +189,83 @@ export const Route = createFileRoute("/api/bug-report")({
         const html = buildHtml(data, ticketNumber);
         const text = buildText(data, ticketNumber) || `Bug report: ${data.title}`;
 
-        // Lovable Emails requires a registered unsubscribe token (row in
-        // public.email_unsubscribe_tokens) for transactional sends. Ensure one
-        // exists for the recipient and reuse it across sends.
-        let unsubscribeToken: string | null = null;
-        try {
+        // Ensure an unsubscribe token exists for each recipient (required by Lovable Emails).
+        async function ensureUnsubscribeToken(email: string): Promise<string> {
           const { data: existing } = await supabaseAdmin
             .from("email_unsubscribe_tokens")
             .select("token")
-            .eq("email", TO)
+            .eq("email", email)
             .maybeSingle();
-          if (existing?.token) {
-            unsubscribeToken = existing.token as string;
-          } else {
-            const newToken = crypto.randomUUID();
-            const { data: inserted, error: insErr } = await supabaseAdmin
-              .from("email_unsubscribe_tokens")
-              .insert({ token: newToken, email: TO })
-              .select("token")
-              .single();
-            if (insErr) throw insErr;
-            unsubscribeToken = inserted.token as string;
-          }
-        } catch (err) {
-          console.error("[bug-report] failed to ensure unsubscribe token", err);
-          return Response.json(
-            { error: "Email setup failed", ticketNumber },
-            { status: 500 },
-          );
+          if (existing?.token) return existing.token as string;
+          const newToken = crypto.randomUUID();
+          const { data: inserted, error: insErr } = await supabaseAdmin
+            .from("email_unsubscribe_tokens")
+            .insert({ token: newToken, email })
+            .select("token")
+            .single();
+          if (insErr) throw insErr;
+          return inserted.token as string;
         }
 
-        const emailPayload = {
-          to: TO,
-          from: FROM,
-          sender_domain: SENDER_DOMAIN,
-          subject,
-          html,
-          text,
-          purpose: "transactional",
-          label: "bug-report",
-          reply_to: data.contactEmail,
-          idempotency_key: `bug-report-${ticketId ?? crypto.randomUUID()}`,
-          unsubscribe_token: unsubscribeToken,
-        };
-
-        console.log("[bug-report] sending email", {
-          hasHtml: !!emailPayload.html,
-          htmlLen: emailPayload.html.length,
-          hasText: !!emailPayload.text,
-          textLen: emailPayload.text.length,
-          subjectLen: emailPayload.subject.length,
-          sender_domain: emailPayload.sender_domain,
-        });
-
-        try {
-          await sendLovableEmail(emailPayload, {
-            apiKey,
-            sendUrl: process.env.LOVABLE_SEND_URL,
-          });
-          if (ticketId) {
-            await supabaseAdmin
-              .from("bug_tickets")
-              .update({ email_sent: true })
-              .eq("id", ticketId);
+        const results: Array<{ recipient: string; ok: boolean; error?: string }> = [];
+        for (const recipient of RECIPIENTS) {
+          try {
+            const unsubscribeToken = await ensureUnsubscribeToken(recipient);
+            const emailPayload = {
+              to: recipient,
+              from: FROM,
+              sender_domain: SENDER_DOMAIN,
+              subject,
+              html,
+              text,
+              purpose: "transactional",
+              label: "bug-report",
+              reply_to: data.contactEmail,
+              idempotency_key: `bug-report-${ticketId ?? "noid"}-${recipient}`,
+              unsubscribe_token: unsubscribeToken,
+            };
+            console.log("[bug-report] sending email", {
+              recipient,
+              sender_domain: emailPayload.sender_domain,
+              htmlLen: emailPayload.html.length,
+            });
+            await sendLovableEmail(emailPayload, {
+              apiKey,
+              sendUrl: process.env.LOVABLE_SEND_URL,
+            });
+            results.push({ recipient, ok: true });
+            console.log("[bug-report] sent ok", { recipient });
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[bug-report] email send failed", { recipient, msg });
+            results.push({ recipient, ok: false, error: msg });
           }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.error("[bug-report] email send failed", msg);
-          if (ticketId) {
-            await supabaseAdmin
-              .from("bug_tickets")
-              .update({ email_sent: false, email_error: msg.slice(0, 1000) })
-              .eq("id", ticketId);
-          }
+        }
+
+        const anyOk = results.some((r) => r.ok);
+        const errorSummary = results
+          .filter((r) => !r.ok)
+          .map((r) => `${r.recipient}: ${r.error}`)
+          .join(" | ");
+
+        if (ticketId) {
+          await supabaseAdmin
+            .from("bug_tickets")
+            .update({
+              email_sent: anyOk,
+              email_error: errorSummary ? errorSummary.slice(0, 1000) : null,
+            })
+            .eq("id", ticketId);
+        }
+
+        if (!anyOk) {
           return Response.json(
-            { error: "Email send failed", ticketNumber },
+            { error: "Email send failed", ticketNumber, results },
             { status: 502 },
           );
         }
 
-        return Response.json({ ok: true, ticketNumber });
+        return Response.json({ ok: true, ticketNumber, results });
       },
     },
   },
