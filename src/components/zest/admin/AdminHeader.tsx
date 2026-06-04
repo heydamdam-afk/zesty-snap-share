@@ -60,7 +60,7 @@ export function AdminHeader() {
             to="/my-events"
             className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowRight className="h-3.5 w-3.5" />
             <span>Mes events</span>
           </Link>
         </div>
