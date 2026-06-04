@@ -3,21 +3,12 @@ import { useRouterState } from "@tanstack/react-router";
 import { Bug, Lock, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-type Severity = "critique" | "elevee" | "moyenne" | "faible";
-
 type Screenshot = {
   name: string;
   contentType: string;
   dataUrl: string;
   size: number;
 };
-
-const SEVERITIES: { value: Severity; label: string }[] = [
-  { value: "critique", label: "🔴 Critique (bloque l'app)" },
-  { value: "elevee", label: "🟠 Élevée" },
-  { value: "moyenne", label: "🟡 Moyenne" },
-  { value: "faible", label: "🟢 Faible" },
-];
 
 const ACCENT = "#FF4842";
 const ACCENT_LIGHT = "rgba(255,72,66,0.12)";
@@ -107,7 +98,6 @@ export function BugReportWidget() {
 
 function BugReportModal({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState("");
-  const [severity, setSeverity] = useState<Severity | "">("");
   const [asWho, setAsWho] = useState("");
   const [wasDoing, setWasDoing] = useState("");
   const [wantedTo, setWantedTo] = useState("");
@@ -167,7 +157,6 @@ function BugReportModal({ onClose }: { onClose: () => void }) {
   const canSubmit =
     !submitting &&
     title.trim().length > 0 &&
-    !!severity &&
     asWho.trim().length > 0 &&
     wasDoing.trim().length > 0 &&
     wantedTo.trim().length > 0 &&
@@ -198,7 +187,7 @@ function BugReportModal({ onClose }: { onClose: () => void }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !severity) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -207,7 +196,6 @@ function BugReportModal({ onClose }: { onClose: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          severity,
           asWho: asWho.trim(),
           wasDoing: wasDoing.trim(),
           wantedTo: wantedTo.trim(),
@@ -357,33 +345,6 @@ function BugReportModal({ onClose }: { onClose: () => void }) {
                 maxLength={200}
                 style={inputStyle}
               />
-            </Field>
-
-            <Field label="Sévérité" required>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {SEVERITIES.map((s) => {
-                  const active = severity === s.value;
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => setSeverity(s.value)}
-                      style={{
-                        padding: "8px 14px",
-                        borderRadius: 999,
-                        border: "none",
-                        cursor: "pointer",
-                        background: active ? ACCENT : BG_NEUTRAL,
-                        color: active ? "#fff" : TEXT_SECONDARY,
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
             </Field>
 
             <Field label="Que s'est-il passé ?" required>
