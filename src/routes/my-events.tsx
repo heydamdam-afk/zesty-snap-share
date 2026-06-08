@@ -176,6 +176,7 @@ function statusKind(ev: EventRow): StatusKind {
 
 function MyEvents() {
   const navigate = useNavigate();
+  const { profile: sessionProfile } = useSession();
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -211,21 +212,10 @@ function MyEvents() {
         .slice(0, 2)
         .map((s) => s[0]?.toUpperCase() ?? "")
         .join("") || "?";
-      let avatarUrl: string | null = meta.avatar_url ?? null;
-      let displayInitials = initials;
-      if (session?.user.id) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("avatar_url, avatar_name, prenom, nom")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (prof?.avatar_url) avatarUrl = prof.avatar_url;
-        const nameSource = prof?.prenom || prof?.avatar_name || display;
-        const parts = nameSource.split(/[\s@.]+/).filter(Boolean).slice(0, 2);
-        const initFromProfile = parts.map((s) => s[0]?.toUpperCase() ?? "").join("");
-        if (initFromProfile) displayInitials = initFromProfile;
-      }
-      setUser({ email, initials: displayInitials, avatar_url: avatarUrl });
+      // Avatar + initials are derived from session.profile (single source of
+      // truth). We still keep email/initials fallback here for the moment
+      // before the profile loads.
+      setUser({ email, initials, avatar_url: meta.avatar_url ?? null });
 
       await supabase.rpc("link_admin_user_id");
 
