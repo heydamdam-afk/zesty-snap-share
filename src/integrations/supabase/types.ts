@@ -1127,6 +1127,16 @@ export type Database = {
         }[]
       }
       get_event_contact: { Args: { _event_id: string }; Returns: string }
+      get_profiles_by_emails: {
+        Args: { _emails: string[] }
+        Returns: {
+          avatar_name: string
+          avatar_url: string
+          email: string
+          nom: string
+          prenom: string
+        }[]
+      }
       is_device_banned: {
         Args: { _device_id: string; _event_id: string }
         Returns: boolean
