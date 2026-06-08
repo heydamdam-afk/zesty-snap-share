@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { Crown, Loader2, Trash2, UserPlus, ArrowUpRight } from "lucide-react";
 import { z } from "zod";
+import { Avatar } from "../Avatar";
 
 type AdminRow = {
   id: string;
@@ -26,6 +27,12 @@ type AdminRow = {
   role: "organisateur" | "secondaire";
   user_id: string | null;
   created_at: string;
+};
+
+type ProfileOverlay = {
+  avatar_url: string | null;
+  avatar_name: string | null;
+  prenom: string | null;
 };
 
 const inviteSchema = z.object({
@@ -38,6 +45,7 @@ export function AdminsSection() {
   const isOrg = useIsOrganisateur();
 
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [profiles, setProfiles] = useState<Map<string, ProfileOverlay>>(new Map());
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [prenom, setPrenom] = useState("");
@@ -60,7 +68,31 @@ export function AdminsSection() {
       toast.error("Impossible de charger les admins");
       return;
     }
-    setAdmins((data ?? []) as AdminRow[]);
+    const list = (data ?? []) as AdminRow[];
+    setAdmins(list);
+
+    const emails = list.map((a) => a.email).filter(Boolean);
+    if (emails.length > 0) {
+      const { data: profs, error: pErr } = await supabase.rpc(
+        "get_profiles_by_emails",
+        { _emails: emails },
+      );
+      if (!pErr && profs) {
+        const m = new Map<string, ProfileOverlay>();
+        for (const p of profs) {
+          if (p.email) {
+            m.set(p.email.toLowerCase(), {
+              avatar_url: p.avatar_url ?? null,
+              avatar_name: p.avatar_name ?? null,
+              prenom: p.prenom ?? null,
+            });
+          }
+        }
+        setProfiles(m);
+      }
+    } else {
+      setProfiles(new Map());
+    }
   }, [event.id]);
 
   useEffect(() => {
@@ -167,16 +199,22 @@ export function AdminsSection() {
           {admins.map((a) => {
             const isMe = a.id === adminId;
             const isOrganisateur = a.role === "organisateur";
+            const prof = profiles.get(a.email.toLowerCase());
+            const displayName =
+              prof?.avatar_name || prof?.prenom || a.prenom || a.email.split("@")[0];
+            const init = (displayName?.[0] ?? "?").toUpperCase();
             return (
               <li
                 key={a.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {a.prenom ?? a.email.split("@")[0]}
-                    </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar initials={init} src={prof?.avatar_url ?? null} size="sm" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {displayName}
+                      </p>
                     {isMe && (
                       <Badge variant="outline" className="text-[10px]">
                         Vous
@@ -199,6 +237,7 @@ export function AdminsSection() {
                   <p className="truncate text-xs text-muted-foreground">
                     {a.email}
                   </p>
+                  </div>
                 </div>
                 {isOrg && !isOrganisateur && (
                   <div className="flex shrink-0 items-center gap-1">
