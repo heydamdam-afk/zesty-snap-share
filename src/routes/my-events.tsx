@@ -595,6 +595,14 @@ function MyEvents() {
             label="Organisateur"
           />
           <FilterPill
+            active={roleFilter === "secondaire"}
+            onClick={() =>
+              setRoleFilter(roleFilter === "secondaire" ? "all" : "secondaire")
+            }
+            icon={<UserIcon size={12} />}
+            label="Admin secondaire"
+          />
+          <FilterPill
             active={roleFilter === "invite"}
             onClick={() => setRoleFilter(roleFilter === "invite" ? "all" : "invite")}
             icon={<UserIcon size={12} />}
