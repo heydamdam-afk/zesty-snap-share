@@ -76,6 +76,8 @@ export function ProfileModal({ open, onClose, onAvatarChange }: ProfileModalProp
       setUserId(user.id);
       setAuthEmail(user.email ?? "");
       setEmailConfirmed(!!user.email_confirmed_at);
+      // Supabase stocke le nouvel email en attente de confirmation dans user.new_email
+      const pendingEmail = (user as unknown as { new_email?: string | null }).new_email ?? null;
       const { data: profile } = await supabase
         .from("profiles")
         .select("avatar_url, avatar_name, prenom, nom, email, telephone, date_naissance")
@@ -85,17 +87,22 @@ export function ProfileModal({ open, onClose, onAvatarChange }: ProfileModalProp
         avatar_url: null, avatar_name: "", prenom: "", nom: "",
         email: user.email ?? "", telephone: "", date_naissance: "",
       };
+      const displayEmail = pendingEmail || p.email || user.email || "";
       const next: Profile = {
         avatar_url: p.avatar_url,
         avatar_name: p.avatar_name ?? "",
         prenom: p.prenom ?? "",
         nom: p.nom ?? "",
-        email: p.email ?? user.email ?? "",
+        email: displayEmail,
         telephone: p.telephone ?? "",
         date_naissance: p.date_naissance ?? "",
       };
       setForm(next);
-      initialEmailRef.current = next.email ?? "";
+      initialEmailRef.current = (user.email ?? p.email ?? "").toLowerCase();
+      if (pendingEmail) {
+        setEmailNotice(`Un email de confirmation a été envoyé à ${pendingEmail}. L'email sera mis à jour après confirmation.`);
+        setEmailConfirmed(false);
+      }
     } finally {
       setLoading(false);
     }
