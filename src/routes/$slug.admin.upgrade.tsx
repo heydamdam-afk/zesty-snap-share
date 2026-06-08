@@ -209,7 +209,7 @@ function AddonCard({
       <ul className="mt-4 space-y-2 text-sm text-foreground">
         <li className="flex items-center gap-2">
           <Check className="h-4 w-4 text-primary" />
-          100 photos au total
+          150 photos au total
         </li>
         <li className="flex items-center gap-2">
           <Check className="h-4 w-4 text-primary" />
