@@ -48,6 +48,10 @@ export function EventSettingsSection() {
       ? `${window.location.origin}/e/${event.slug}`
       : `/e/${event.slug}`;
 
+  const isClosed =
+    event.status !== "active" ||
+    (event.expire_at ? new Date(event.expire_at).getTime() <= Date.now() : false);
+
   const handleDownloadQr = () => {
     const canvas = qrRef.current?.querySelector("canvas");
     if (!canvas) {
@@ -284,19 +288,27 @@ export function EventSettingsSection() {
             description="Les invités peuvent publier des photos."
             checked={uploadsActifs}
             onChange={setUploadsActifs}
+            disabled={isClosed}
           />
           <ToggleRow
             label="Commentaires"
             description="Les invités peuvent commenter les photos."
             checked={commentairesActifs}
             onChange={setCommentairesActifs}
+            disabled={isClosed}
           />
           <ToggleRow
             label="Likes"
             description="Les invités peuvent liker les photos."
             checked={likesActifs}
             onChange={setLikesActifs}
+            disabled={isClosed}
           />
+          {isClosed && (
+            <p className="text-xs text-muted-foreground">
+              Cette galerie est clôturée — les uploads, commentaires et likes sont désactivés.
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-border bg-secondary/40 p-4">
@@ -358,11 +370,13 @@ function ToggleRow({
   description,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -370,7 +384,11 @@ function ToggleRow({
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch
+        checked={disabled ? false : checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+      />
     </div>
   );
 }
