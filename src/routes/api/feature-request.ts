@@ -12,6 +12,7 @@ const BodySchema = z.object({
   asWho: z.string().trim().min(1).max(500),
   wantTo: z.string().trim().min(1).max(500),
   because: z.string().trim().min(1).max(1000),
+  details: z.string().trim().max(2000).optional().default(""),
   beneficiaries: z.array(z.string().max(80)).max(10).optional().default([]),
   importance: z.string().trim().min(1).max(50),
   email: z.string().trim().email().max(255),

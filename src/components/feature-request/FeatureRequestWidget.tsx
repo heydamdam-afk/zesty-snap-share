@@ -409,6 +409,16 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
                 onFocus={(e) => (e.target.style.borderColor = ACCENT)}
                 onBlur={(e) => (e.target.style.borderColor = BORDER)}
               />
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                placeholder="Détail du besoin / de la nouvelle fonctionnalité (ex : une interface drag & drop avec prévisualisation miniature, accessible sur mobile)"
+                rows={4}
+                maxLength={2000}
+                style={{ ...inputStyle, resize: "vertical", marginTop: 8 }}
+                onFocus={(e) => (e.target.style.borderColor = ACCENT)}
+                onBlur={(e) => (e.target.style.borderColor = BORDER)}
+              />
             </Field>
 
             <Field label="Qui d'autre en bénéficierait ?">
