@@ -145,7 +145,7 @@ export function FeatureRequestWidget() {
   );
 }
 
-function FeatureRequestModal({ onClose }: { onClose: () => void }) {
+export function FeatureRequestModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [asWho, setAsWho] = useState("");
   const [wantTo, setWantTo] = useState("");
