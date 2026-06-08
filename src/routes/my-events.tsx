@@ -686,7 +686,7 @@ function MyEvents() {
         style={{
           padding: "0 24px 32px",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
           gap: 16,
         }}
       >
