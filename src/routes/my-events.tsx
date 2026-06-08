@@ -737,6 +737,11 @@ function MyEvents() {
 
       {featureOpen && <FeatureRequestModal onClose={() => setFeatureOpen(false)} />}
       {bugOpen && <BugReportModal onClose={() => setBugOpen(false)} />}
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onAvatarChange={(url) => setUser((u) => (u ? { ...u, avatar_url: url } : u))}
+      />
     </div>
   );
 }
