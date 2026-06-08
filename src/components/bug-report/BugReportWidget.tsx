@@ -46,6 +46,7 @@ function shouldShowOnPath(pathname: string): boolean {
   if (pathname.startsWith("/e/")) return false; // public guest gallery
   if (pathname.startsWith("/closed")) return false;
   if (pathname.startsWith("/lovable/")) return false;
+  if (pathname === "/my-events" || pathname.startsWith("/my-events/")) return false;
   return true;
 }
 
