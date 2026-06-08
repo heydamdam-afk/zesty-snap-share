@@ -123,7 +123,7 @@ export function FeatureRequestWidget() {
         style={{
           position: "fixed",
           right: 24,
-          bottom: 24,
+          bottom: 84,
           padding: "12px 20px",
           borderRadius: 100,
           background: ACCENT,
