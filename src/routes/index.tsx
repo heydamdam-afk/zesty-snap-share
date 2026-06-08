@@ -674,7 +674,12 @@ async function routeAfterAuth(
   navigate: ReturnType<typeof useNavigate>,
 ): Promise<void> {
   // Lier les éventuels event_admins invités par email
-  await supabase.rpc("link_admin_user_id");
+  try {
+    const { error } = await supabase.rpc("link_admin_user_id");
+    if (error) console.warn("[login] link_admin_user_id failed", error);
+  } catch (err) {
+    console.warn("[login] link_admin_user_id failed", err);
+  }
 
   // Honor ?redirect= if it points to a safe internal path.
   if (typeof window !== "undefined") {
@@ -685,7 +690,5 @@ async function routeAfterAuth(
     }
   }
 
-  const { data } = await supabase.rpc("my_admin_events");
-  const events = (data as Array<{ slug: string }> | null) ?? [];
-  navigate({ to: "/my-events" });
+  await navigate({ to: "/my-events", replace: true });
 }
