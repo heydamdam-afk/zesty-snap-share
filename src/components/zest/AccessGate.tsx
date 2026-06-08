@@ -68,6 +68,25 @@ const step1Schema = z.object({
 
 const FIRSTNAME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
 
+async function clearInvalidAuthSession() {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return;
+    const { error } = await supabase.auth.getUser();
+    if (error) await supabase.auth.signOut({ scope: "local" } as never);
+  } catch {
+    try { await supabase.auth.signOut({ scope: "local" } as never); } catch { /* noop */ }
+  }
+}
+
+function accessErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/jwt|session|token|auth/i.test(message)) {
+    return "Votre session locale était expirée. Réessayez maintenant.";
+  }
+  return "Connexion impossible pour le moment. Vérifiez le code et l’email, puis réessayez.";
+}
+
 function readAttempts() {
   const lockUntil = Number(localStorage.getItem(LOGIN_KEYS.lockUntil) || 0);
   if (lockUntil && Date.now() < lockUntil)
@@ -274,6 +293,7 @@ export function AccessGate({
 
     setS1Loading(true);
     try {
+      await clearInvalidAuthSession();
       const deviceId = getOrCreateDeviceId();
       const res = await tryReconnectToEvent({
         code: parsed.data.code,
@@ -288,10 +308,11 @@ export function AccessGate({
 
       if (resolvedEvent) {
         const emailNorm = parsed.data.email.trim().toLowerCase();
-        const { data: isAdmin } = await supabase.rpc(
+        const { data: isAdmin, error: adminErr } = await supabase.rpc(
           "is_email_admin_of_event",
           { _event_id: resolvedEvent.id, _email: emailNorm },
         );
+        if (adminErr) console.warn("[AccessGate] admin check failed", adminErr);
         if (isAdmin === true) {
           setEventInfo(resolvedEvent);
           setAdminDetected({ slug: resolvedEvent.slug });
@@ -332,6 +353,9 @@ export function AccessGate({
         return;
       }
       setGlobalError("Connexion impossible, réessayez.");
+    } catch (err) {
+      console.error("[AccessGate] step1 failed", err);
+      setGlobalError(accessErrorMessage(err));
     } finally {
       setS1Loading(false);
     }
