@@ -26,7 +26,7 @@ export const PLANS: Plan[] = [
     duree_jours: 7,
     stripe_price_id: null,
     is_top: false,
-    description_courte: '100 photos',
+    description_courte: '50 photos',
     description_usage: 'Idéal pour tester ou un petit moment entre amis.',
   },
   {
