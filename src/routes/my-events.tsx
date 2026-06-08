@@ -267,6 +267,7 @@ function MyEvents() {
           </div>
         )}
       </main>
+      <FeatureRequestWidget />
     </div>
   );
 }
