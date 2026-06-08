@@ -2,9 +2,15 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Eye } from "lucide-react";
 import { ZestLogo } from "@/components/zest/Logo";
 import { useAdminContext } from "./AdminContext";
+import { Avatar } from "@/components/zest/Avatar";
+import { useSession } from "@/contexts/SessionProvider";
 
 export function AdminHeader() {
   const { event, role } = useAdminContext();
+  const { profile } = useSession();
+  const displayName =
+    profile?.avatar_name || profile?.prenom || profile?.email?.split("@")[0] || "";
+  const initials = (displayName?.[0] ?? "?").toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
@@ -14,7 +20,8 @@ export function AdminHeader() {
           <p className="truncate text-sm font-semibold text-foreground">
             {event.titre}
           </p>
-          <span
+          <div className="mt-0.5 flex items-center gap-2">
+            <span
             className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
               role === "organisateur"
                 ? "bg-primary/10 text-primary"
@@ -23,6 +30,13 @@ export function AdminHeader() {
           >
             {role === "organisateur" ? "Organisateur" : "Admin secondaire"}
           </span>
+            {displayName && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Avatar initials={initials} src={profile?.avatar_url ?? null} size="sm" />
+                <span className="truncate">{displayName}</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Mobile : 2 boutons icônes uniquement */}
