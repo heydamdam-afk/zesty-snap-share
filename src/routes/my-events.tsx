@@ -80,7 +80,7 @@ type EventRow = {
   invites_count: number;
 };
 
-type RoleFilter = "all" | "organisateur" | "invite";
+type RoleFilter = "all" | "organisateur" | "secondaire" | "invite";
 type StatusFilter = "all" | "actif" | "expiring" | "deleting";
 
 const EVENT_TYPES: Array<{
@@ -373,12 +373,8 @@ function MyEvents() {
     return events.filter((e) => {
       if (q && !e.titre.toLowerCase().includes(q)) return false;
       if (roleFilter === "organisateur" && e.role !== "organisateur") return false;
-      if (
-        roleFilter === "invite" &&
-        e.role !== "invite" &&
-        e.role !== "secondaire"
-      )
-        return false;
+      if (roleFilter === "secondaire" && e.role !== "secondaire") return false;
+      if (roleFilter === "invite" && e.role !== "invite") return false;
       if (statusFilter !== "all" && statusKind(e) !== statusFilter) return false;
       return true;
     });
@@ -597,6 +593,14 @@ function MyEvents() {
             }
             icon={<Crown size={12} />}
             label="Organisateur"
+          />
+          <FilterPill
+            active={roleFilter === "secondaire"}
+            onClick={() =>
+              setRoleFilter(roleFilter === "secondaire" ? "all" : "secondaire")
+            }
+            icon={<UserIcon size={12} />}
+            label="Admin secondaire"
           />
           <FilterPill
             active={roleFilter === "invite"}
