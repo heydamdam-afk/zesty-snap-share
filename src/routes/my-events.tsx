@@ -461,23 +461,23 @@ function MyEvents() {
               width: 32,
               height: 32,
               borderRadius: "50%",
-              background: user?.avatar_url ? "transparent" : COLORS.primary,
+              background: user?.avatar_url ? "#fff" : COLORS.primary,
               color: "#fff",
-              border: `2px solid ${COLORS.border}`,
+              border: `2.5px solid #E85A4F`,
               display: "grid",
               placeItems: "center",
               cursor: "pointer",
               fontWeight: 600,
               fontSize: 12,
               overflow: "hidden",
-              padding: 0,
+              padding: 2,
             }}
           >
             {user?.avatar_url ? (
               <img
                 src={user.avatar_url}
                 alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
               />
             ) : (
               user?.initials ?? "?"
