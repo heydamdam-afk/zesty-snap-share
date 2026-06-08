@@ -21,7 +21,7 @@ export const PLANS: Plan[] = [
     nom: 'Découverte',
     prix_cents: 0,
     quota_mo: 1024,
-    max_photos: 100,
+    max_photos: 50,
     max_invites: 10,
     duree_jours: 7,
     stripe_price_id: null,
