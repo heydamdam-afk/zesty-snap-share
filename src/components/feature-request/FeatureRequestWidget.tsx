@@ -150,6 +150,7 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
   const [asWho, setAsWho] = useState("");
   const [wantTo, setWantTo] = useState("");
   const [because, setBecause] = useState("");
+  const [details, setDetails] = useState("");
   const [beneficiaries, setBeneficiaries] = useState<string[]>([]);
   const [importance, setImportance] = useState<string>("");
   const [email, setEmail] = useState("");
