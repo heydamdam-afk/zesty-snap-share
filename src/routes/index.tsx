@@ -84,8 +84,18 @@ export function Landing() {
     if (mode === "set-password") return;
     let cancel = false;
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (cancel || !data.session?.user) return;
+      // Verify the session is actually valid with the auth server (getUser
+      // revalidates against the backend). A stale local session — e.g. after
+      // an email change confirmed in another tab — would otherwise trigger an
+      // auto-redirect loop to /my-events that bounces back to /login.
+      const { data, error } = await supabase.auth.getUser();
+      if (cancel) return;
+      if (error || !data.user) {
+        // Purge the invalid local session so signInWithPassword can proceed
+        // cleanly from this page.
+        try { await supabase.auth.signOut({ scope: "local" } as never); } catch { /* noop */ }
+        return;
+      }
       await routeAfterAuth(navigate);
     })();
     return () => {
