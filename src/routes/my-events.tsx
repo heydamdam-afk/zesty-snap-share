@@ -464,36 +464,53 @@ function MyEvents() {
           >
             <Plus size={14} /> Créer un événement
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Profil"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: user?.avatar_url ? "#fff" : COLORS.primary,
-              color: "#fff",
-              border: `2.5px solid #E85A4F`,
-              display: "grid",
-              placeItems: "center",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: 12,
-              overflow: "hidden",
-              padding: 2,
-            }}
-          >
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-              />
-            ) : (
-              user?.initials ?? "?"
-            )}
-          </button>
+          {(() => {
+            const displayAvatar = sessionProfile?.avatar_url ?? user?.avatar_url ?? null;
+            const nameSource =
+              sessionProfile?.avatar_name ||
+              sessionProfile?.prenom ||
+              user?.email ||
+              "";
+            const computedInitials =
+              nameSource
+                .split(/[\s@.]+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((s) => s[0]?.toUpperCase() ?? "")
+                .join("") || user?.initials || "?";
+            return (
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Profil"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: displayAvatar ? "#fff" : COLORS.primary,
+                  color: "#fff",
+                  border: `2.5px solid #E85A4F`,
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  overflow: "hidden",
+                  padding: 2,
+                }}
+              >
+                {displayAvatar ? (
+                  <img
+                    src={displayAvatar}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                  />
+                ) : (
+                  computedInitials
+                )}
+              </button>
+            );
+          })()}
           {menuOpen && (
             <div
               role="menu"
