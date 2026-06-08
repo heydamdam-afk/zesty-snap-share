@@ -27,6 +27,7 @@ import { ProfileModal } from "@/components/zest/ProfileModal";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-events")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Mes événements — Kapsul" },
