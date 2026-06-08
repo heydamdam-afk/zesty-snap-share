@@ -221,6 +221,7 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
           asWho: asWho.trim(),
           wantTo: wantTo.trim(),
           because: because.trim(),
+          details: details.trim(),
           beneficiaries,
           importance,
           email: email.trim(),
