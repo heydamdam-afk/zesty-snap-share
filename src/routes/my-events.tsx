@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FeatureRequestModal } from "@/components/feature-request/FeatureRequestWidget";
 import { BugReportModal } from "@/components/bug-report/BugReportWidget";
 import { ProfileModal } from "@/components/zest/ProfileModal";
+import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-events")({
