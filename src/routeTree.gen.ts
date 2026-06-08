@@ -22,6 +22,7 @@ import { Route as PlatformCouponsRouteImport } from './routes/platform.coupons'
 import { Route as ESlugRouteImport } from './routes/e.$slug'
 import { Route as CreateEventSuccessRouteImport } from './routes/create-event.success'
 import { Route as CreateEventCheckoutRouteImport } from './routes/create-event.checkout'
+import { Route as ApiFeatureRequestRouteImport } from './routes/api/feature-request'
 import { Route as ApiBugReportRouteImport } from './routes/api/bug-report'
 import { Route as SlugAdminIndexRouteImport } from './routes/$slug.admin.index'
 import { Route as ApiPublicR2UploadRouteImport } from './routes/api/public/r2-upload'
@@ -99,6 +100,11 @@ const CreateEventCheckoutRoute = CreateEventCheckoutRouteImport.update({
   path: '/create-event/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFeatureRequestRoute = ApiFeatureRequestRouteImport.update({
+  id: '/api/feature-request',
+  path: '/api/feature-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBugReportRoute = ApiBugReportRouteImport.update({
   id: '/api/bug-report',
   path: '/api/bug-report',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
   '/api/bug-report': typeof ApiBugReportRoute
+  '/api/feature-request': typeof ApiFeatureRequestRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
   '/api/bug-report': typeof ApiBugReportRoute
+  '/api/feature-request': typeof ApiFeatureRequestRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/set-password': typeof SetPasswordRoute
   '/api/bug-report': typeof ApiBugReportRoute
+  '/api/feature-request': typeof ApiFeatureRequestRoute
   '/create-event/checkout': typeof CreateEventCheckoutRoute
   '/create-event/success': typeof CreateEventSuccessRoute
   '/e/$slug': typeof ESlugRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/set-password'
     | '/api/bug-report'
+    | '/api/feature-request'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/set-password'
     | '/api/bug-report'
+    | '/api/feature-request'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/set-password'
     | '/api/bug-report'
+    | '/api/feature-request'
     | '/create-event/checkout'
     | '/create-event/success'
     | '/e/$slug'
@@ -327,6 +339,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetPasswordRoute: typeof SetPasswordRoute
   ApiBugReportRoute: typeof ApiBugReportRoute
+  ApiFeatureRequestRoute: typeof ApiFeatureRequestRoute
   CreateEventCheckoutRoute: typeof CreateEventCheckoutRoute
   CreateEventSuccessRoute: typeof CreateEventSuccessRoute
   ESlugRoute: typeof ESlugRoute
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateEventCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/feature-request': {
+      id: '/api/feature-request'
+      path: '/api/feature-request'
+      fullPath: '/api/feature-request'
+      preLoaderRoute: typeof ApiFeatureRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/bug-report': {
       id: '/api/bug-report'
       path: '/api/bug-report'
@@ -527,6 +547,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SetPasswordRoute: SetPasswordRoute,
   ApiBugReportRoute: ApiBugReportRoute,
+  ApiFeatureRequestRoute: ApiFeatureRequestRoute,
   CreateEventCheckoutRoute: CreateEventCheckoutRoute,
   CreateEventSuccessRoute: CreateEventSuccessRoute,
   ESlugRoute: ESlugRoute,
