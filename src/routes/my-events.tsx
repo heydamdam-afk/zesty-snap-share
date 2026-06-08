@@ -386,7 +386,7 @@ function MyEvents() {
     <div
       style={{
         minHeight: "100vh",
-        background: COLORS.bgPage,
+        background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
         fontFamily: "'Public Sans', system-ui, sans-serif",
         color: COLORS.textPrimary,
       }}
