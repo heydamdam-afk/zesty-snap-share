@@ -51,7 +51,7 @@ function buildHtml(d: z.infer<typeof BodySchema>): string {
 
     ${section(
       "BESOIN (USER STORY)",
-      row("En tant que", d.asWho) + row("Je veux", d.wantTo) + row("Parce que", d.because),
+      row("En tant que", d.asWho) + row("Je veux", d.wantTo) + row("Parce que", d.because) + row("Détail du besoin", d.details),
     )}
     ${section(
       "CONTEXTE",
@@ -74,6 +74,7 @@ function buildText(d: z.infer<typeof BodySchema>): string {
     `  En tant que : ${d.asWho}`,
     `  Je veux : ${d.wantTo}`,
     `  Parce que : ${d.because}`,
+    `  Détail du besoin : ${d.details || "Non renseigné"}`,
     "",
     `Bénéficiaires : ${d.beneficiaries.length ? d.beneficiaries.join(", ") : "Non renseigné"}`,
     `Importance : ${d.importance}`,
