@@ -12,6 +12,7 @@ const BodySchema = z.object({
   asWho: z.string().trim().min(1).max(500),
   wantTo: z.string().trim().min(1).max(500),
   because: z.string().trim().min(1).max(1000),
+  details: z.string().trim().max(2000).optional().default(""),
   beneficiaries: z.array(z.string().max(80)).max(10).optional().default([]),
   importance: z.string().trim().min(1).max(50),
   email: z.string().trim().email().max(255),
@@ -50,7 +51,7 @@ function buildHtml(d: z.infer<typeof BodySchema>): string {
 
     ${section(
       "BESOIN (USER STORY)",
-      row("En tant que", d.asWho) + row("Je veux", d.wantTo) + row("Parce que", d.because),
+      row("En tant que", d.asWho) + row("Je veux", d.wantTo) + row("Parce que", d.because) + row("Détail du besoin", d.details),
     )}
     ${section(
       "CONTEXTE",
@@ -73,6 +74,7 @@ function buildText(d: z.infer<typeof BodySchema>): string {
     `  En tant que : ${d.asWho}`,
     `  Je veux : ${d.wantTo}`,
     `  Parce que : ${d.because}`,
+    `  Détail du besoin : ${d.details || "Non renseigné"}`,
     "",
     `Bénéficiaires : ${d.beneficiaries.length ? d.beneficiaries.join(", ") : "Non renseigné"}`,
     `Importance : ${d.importance}`,

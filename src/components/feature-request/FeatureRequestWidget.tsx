@@ -150,6 +150,7 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
   const [asWho, setAsWho] = useState("");
   const [wantTo, setWantTo] = useState("");
   const [because, setBecause] = useState("");
+  const [details, setDetails] = useState("");
   const [beneficiaries, setBeneficiaries] = useState<string[]>([]);
   const [importance, setImportance] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -220,6 +221,7 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
           asWho: asWho.trim(),
           wantTo: wantTo.trim(),
           because: because.trim(),
+          details: details.trim(),
           beneficiaries,
           importance,
           email: email.trim(),
@@ -404,6 +406,16 @@ function FeatureRequestModal({ onClose }: { onClose: () => void }) {
                 rows={3}
                 maxLength={1000}
                 style={{ ...inputStyle, resize: "vertical" }}
+                onFocus={(e) => (e.target.style.borderColor = ACCENT)}
+                onBlur={(e) => (e.target.style.borderColor = BORDER)}
+              />
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                placeholder="Détail du besoin / de la nouvelle fonctionnalité (ex : une interface drag & drop avec prévisualisation miniature, accessible sur mobile)"
+                rows={4}
+                maxLength={2000}
+                style={{ ...inputStyle, resize: "vertical", marginTop: 8 }}
                 onFocus={(e) => (e.target.style.borderColor = ACCENT)}
                 onBlur={(e) => (e.target.style.borderColor = BORDER)}
               />
