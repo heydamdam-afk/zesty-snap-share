@@ -397,7 +397,7 @@ function MyEvents() {
           background: "#fff",
           borderBottom: `0.5px solid ${COLORS.border}`,
           padding: "0 24px",
-          height: 56,
+          height: 48,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
