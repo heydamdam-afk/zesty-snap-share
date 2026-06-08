@@ -520,7 +520,7 @@ function MyEvents() {
                 label="Profil"
                 onClick={() => {
                   setMenuOpen(false);
-                  window.location.href = "/settings/profil";
+                  setProfileOpen(true);
                 }}
               />
               <MenuItem
