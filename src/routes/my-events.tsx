@@ -489,7 +489,7 @@ function MyEvents() {
               style={{
                 position: "absolute",
                 right: 0,
-                top: 44,
+                top: 40,
                 width: 220,
                 background: "#fff",
                 border: `0.5px solid ${COLORS.border}`,
