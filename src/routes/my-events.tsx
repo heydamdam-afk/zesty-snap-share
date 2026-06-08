@@ -397,7 +397,7 @@ function MyEvents() {
           background: "#fff",
           borderBottom: `0.5px solid ${COLORS.border}`,
           padding: "0 24px",
-          height: 48,
+          height: 60,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -489,7 +489,7 @@ function MyEvents() {
               style={{
                 position: "absolute",
                 right: 0,
-                top: 40,
+                top: 48,
                 width: 220,
                 background: "#fff",
                 border: `0.5px solid ${COLORS.border}`,
