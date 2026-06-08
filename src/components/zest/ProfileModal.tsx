@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Camera, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSession } from "@/contexts/SessionProvider";
 
 const COLORS = {
   primary: "#FF4842",
@@ -36,6 +37,7 @@ export interface ProfileModalProps {
 }
 
 export function ProfileModal({ open, onClose, onAvatarChange }: ProfileModalProps) {
+  const { setProfile } = useSession();
   const [userId, setUserId] = useState<string | null>(null);
   const [authEmail, setAuthEmail] = useState<string>("");
   const [emailConfirmed, setEmailConfirmed] = useState(false);
@@ -148,6 +150,11 @@ export function ProfileModal({ open, onClose, onAvatarChange }: ProfileModalProp
       if (updErr) throw updErr;
       setForm((f) => ({ ...f, avatar_url: url }));
       onAvatarChange?.(url);
+      setProfile((prev) =>
+        prev
+          ? { ...prev, avatar_url: url }
+          : { avatar_url: url, avatar_name: null, prenom: null, nom: null, email: null },
+      );
       toast.success("Photo de profil mise à jour");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Échec de l'envoi";
@@ -170,6 +177,13 @@ export function ProfileModal({ open, onClose, onAvatarChange }: ProfileModalProp
         date_naissance: form.date_naissance || null,
       }).eq("id", userId);
       if (error) throw error;
+      setProfile((prev) => ({
+        avatar_url: prev?.avatar_url ?? form.avatar_url ?? null,
+        avatar_name: form.avatar_name || null,
+        prenom: form.prenom || null,
+        nom: form.nom || null,
+        email: prev?.email ?? authEmail ?? null,
+      }));
 
       const newEmail = (form.email ?? "").trim().toLowerCase();
       const oldEmail = (initialEmailRef.current ?? "").trim().toLowerCase();

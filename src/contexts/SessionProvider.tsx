@@ -27,16 +27,30 @@ import { loadGuest, saveGuest } from "@/components/zest/AccessGate";
 
 export type SessionStatus = "loading" | "admin" | "guest" | "anonymous";
 
+export interface SessionProfile {
+  avatar_url: string | null;
+  avatar_name: string | null;
+  prenom: string | null;
+  nom: string | null;
+  email: string | null;
+}
+
 export interface SessionContextValue {
   status: SessionStatus;
   /** Supabase Auth user (organiser/admin), if signed in. */
   user: User | null;
   /** Event-scoped guest session (may also be set for an admin viewing an event). */
   guest: GuestSession | null;
+  /** Public profile fields for the signed-in user (single source of truth for avatar + display name). */
+  profile: SessionProfile | null;
   /** `true` as soon as Supabase Auth + storage have been resolved once. */
   hydrated: boolean;
   /** Update the event-scoped guest session and persist it. */
   setGuest: (g: GuestSession | null | ((prev: GuestSession | null) => GuestSession | null)) => void;
+  /** Update the profile fields locally so all consumers re-render immediately. */
+  setProfile: (p: SessionProfile | null | ((prev: SessionProfile | null) => SessionProfile | null)) => void;
+  /** Re-fetch profile from DB (no-op if not signed in). */
+  refreshProfile: () => Promise<void>;
   /** Full logout: revoke Supabase session AND clear all guest storage. */
   signOut: () => Promise<void>;
 }
@@ -46,6 +60,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [guest, setGuestState] = useState<GuestSession | null>(null);
+  const [profile, setProfileState] = useState<SessionProfile | null>(null);
   const [hydrated, setHydrated] = useState(false);
   // Track previous auth user id so we can detect transitions and wipe stale
   // guest data when a NEW Supabase user signs in (cross-session conflict).
@@ -66,10 +81,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           setGuestState(null);
           prevUserIdRef.current = session.user.id;
+          await loadProfileFor(session.user.id, setProfileState);
         } else {
           const stored = loadGuest();
           setUser(null);
           setGuestState(stored);
+          setProfileState(null);
           prevUserIdRef.current = null;
         }
       } finally {
@@ -95,6 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           clearGuestSession({ keepDeviceId: true });
           setUser(null);
           setGuestState(null);
+          setProfileState(null);
           prevUserIdRef.current = null;
           return;
         }
@@ -105,9 +123,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (prevId !== nextId) {
           clearGuestSession({ keepDeviceId: true });
           setGuestState(null);
+          setProfileState(null);
         }
         setUser(nextUser);
         prevUserIdRef.current = nextId;
+        if (nextId && prevId !== nextId) {
+          void loadProfileFor(nextId, setProfileState);
+        }
       },
     );
     return () => {
@@ -124,6 +146,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setProfile = useCallback<SessionContextValue["setProfile"]>((next) => {
+    setProfileState((prev) => (typeof next === "function" ? next(prev) : next));
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    const uid = prevUserIdRef.current;
+    if (!uid) return;
+    await loadProfileFor(uid, setProfileState);
+  }, []);
+
   const signOut = useCallback<SessionContextValue["signOut"]>(async () => {
     // N'appelle Supabase Auth que s'il existe vraiment une session admin :
     // sinon on déclenche un "Invalid Refresh Token" inutile quand un invité
@@ -138,6 +170,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     clearGuestSession({ keepDeviceId: true });
     setUser(null);
     setGuestState(null);
+    setProfileState(null);
     prevUserIdRef.current = null;
   }, [user]);
 
@@ -150,8 +183,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     : "anonymous";
 
   const value = useMemo<SessionContextValue>(
-    () => ({ status, user, guest, hydrated, setGuest, signOut }),
-    [status, user, guest, hydrated, setGuest, signOut],
+    () => ({ status, user, guest, profile, hydrated, setGuest, setProfile, refreshProfile, signOut }),
+    [status, user, guest, profile, hydrated, setGuest, setProfile, refreshProfile, signOut],
   );
 
   return (
@@ -165,4 +198,30 @@ export function useSession(): SessionContextValue {
     throw new Error("useSession must be used inside <SessionProvider>");
   }
   return ctx;
+}
+
+async function loadProfileFor(
+  userId: string,
+  setter: (p: SessionProfile | null) => void,
+) {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("avatar_url, avatar_name, prenom, nom, email")
+      .eq("id", userId)
+      .maybeSingle();
+    setter(
+      data
+        ? {
+            avatar_url: data.avatar_url ?? null,
+            avatar_name: data.avatar_name ?? null,
+            prenom: data.prenom ?? null,
+            nom: data.nom ?? null,
+            email: data.email ?? null,
+          }
+        : null,
+    );
+  } catch (e) {
+    console.error("[SessionProvider] loadProfile failed", e);
+  }
 }

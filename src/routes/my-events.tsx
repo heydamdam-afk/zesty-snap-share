@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FeatureRequestModal } from "@/components/feature-request/FeatureRequestWidget";
 import { BugReportModal } from "@/components/bug-report/BugReportWidget";
 import { ProfileModal } from "@/components/zest/ProfileModal";
+import { useSession } from "@/contexts/SessionProvider";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-events")({
@@ -175,6 +176,7 @@ function statusKind(ev: EventRow): StatusKind {
 
 function MyEvents() {
   const navigate = useNavigate();
+  const { profile: sessionProfile } = useSession();
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -210,21 +212,10 @@ function MyEvents() {
         .slice(0, 2)
         .map((s) => s[0]?.toUpperCase() ?? "")
         .join("") || "?";
-      let avatarUrl: string | null = meta.avatar_url ?? null;
-      let displayInitials = initials;
-      if (session?.user.id) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("avatar_url, avatar_name, prenom, nom")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (prof?.avatar_url) avatarUrl = prof.avatar_url;
-        const nameSource = prof?.prenom || prof?.avatar_name || display;
-        const parts = nameSource.split(/[\s@.]+/).filter(Boolean).slice(0, 2);
-        const initFromProfile = parts.map((s) => s[0]?.toUpperCase() ?? "").join("");
-        if (initFromProfile) displayInitials = initFromProfile;
-      }
-      setUser({ email, initials: displayInitials, avatar_url: avatarUrl });
+      // Avatar + initials are derived from session.profile (single source of
+      // truth). We still keep email/initials fallback here for the moment
+      // before the profile loads.
+      setUser({ email, initials, avatar_url: meta.avatar_url ?? null });
 
       await supabase.rpc("link_admin_user_id");
 
@@ -473,36 +464,53 @@ function MyEvents() {
           >
             <Plus size={14} /> Créer un événement
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Profil"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: user?.avatar_url ? "#fff" : COLORS.primary,
-              color: "#fff",
-              border: `2.5px solid #E85A4F`,
-              display: "grid",
-              placeItems: "center",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: 12,
-              overflow: "hidden",
-              padding: 2,
-            }}
-          >
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-              />
-            ) : (
-              user?.initials ?? "?"
-            )}
-          </button>
+          {(() => {
+            const displayAvatar = sessionProfile?.avatar_url ?? user?.avatar_url ?? null;
+            const nameSource =
+              sessionProfile?.avatar_name ||
+              sessionProfile?.prenom ||
+              user?.email ||
+              "";
+            const computedInitials =
+              nameSource
+                .split(/[\s@.]+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((s) => s[0]?.toUpperCase() ?? "")
+                .join("") || user?.initials || "?";
+            return (
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Profil"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: displayAvatar ? "#fff" : COLORS.primary,
+                  color: "#fff",
+                  border: `2.5px solid #E85A4F`,
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  overflow: "hidden",
+                  padding: 2,
+                }}
+              >
+                {displayAvatar ? (
+                  <img
+                    src={displayAvatar}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                  />
+                ) : (
+                  computedInitials
+                )}
+              </button>
+            );
+          })()}
           {menuOpen && (
             <div
               role="menu"
