@@ -154,7 +154,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>
