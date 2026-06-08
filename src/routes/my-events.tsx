@@ -36,6 +36,9 @@ export const Route = createFileRoute("/my-events")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
+      // Purge any stale local session (e.g. after an email change confirmed
+      // elsewhere) so /login can re-authenticate without bouncing back here.
+      try { await supabase.auth.signOut({ scope: "local" } as never); } catch { /* noop */ }
       throw redirect({ to: "/login" });
     }
   },
