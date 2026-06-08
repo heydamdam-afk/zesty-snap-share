@@ -960,6 +960,45 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_name: string | null
+          avatar_url: string | null
+          created_at: string
+          date_naissance: string | null
+          email: string | null
+          id: string
+          nom: string | null
+          prenom: string | null
+          telephone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          email?: string | null
+          id: string
+          nom?: string | null
+          prenom?: string | null
+          telephone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          email?: string | null
+          id?: string
+          nom?: string | null
+          prenom?: string | null
+          telephone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string

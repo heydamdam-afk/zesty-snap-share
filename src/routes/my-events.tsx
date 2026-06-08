@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { FeatureRequestModal } from "@/components/feature-request/FeatureRequestWidget";
 import { BugReportModal } from "@/components/bug-report/BugReportWidget";
+import { ProfileModal } from "@/components/zest/ProfileModal";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-events")({
@@ -183,6 +184,7 @@ function MyEvents() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [featureOpen, setFeatureOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -204,7 +206,21 @@ function MyEvents() {
         .slice(0, 2)
         .map((s) => s[0]?.toUpperCase() ?? "")
         .join("") || "?";
-      setUser({ email, initials, avatar_url: meta.avatar_url ?? null });
+      let avatarUrl: string | null = meta.avatar_url ?? null;
+      let displayInitials = initials;
+      if (session?.user.id) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("avatar_url, avatar_name, prenom, nom")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (prof?.avatar_url) avatarUrl = prof.avatar_url;
+        const nameSource = prof?.prenom || prof?.avatar_name || display;
+        const parts = nameSource.split(/[\s@.]+/).filter(Boolean).slice(0, 2);
+        const initFromProfile = parts.map((s) => s[0]?.toUpperCase() ?? "").join("");
+        if (initFromProfile) displayInitials = initFromProfile;
+      }
+      setUser({ email, initials: displayInitials, avatar_url: avatarUrl });
 
       await supabase.rpc("link_admin_user_id");
 
@@ -504,7 +520,7 @@ function MyEvents() {
                 label="Profil"
                 onClick={() => {
                   setMenuOpen(false);
-                  window.location.href = "/settings/profil";
+                  setProfileOpen(true);
                 }}
               />
               <MenuItem
@@ -721,6 +737,11 @@ function MyEvents() {
 
       {featureOpen && <FeatureRequestModal onClose={() => setFeatureOpen(false)} />}
       {bugOpen && <BugReportModal onClose={() => setBugOpen(false)} />}
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onAvatarChange={(url) => setUser((u) => (u ? { ...u, avatar_url: url } : u))}
+      />
     </div>
   );
 }
