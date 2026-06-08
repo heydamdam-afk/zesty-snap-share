@@ -1,8 +1,28 @@
-Je vais corriger le blocage de connexion lié à une ancienne session locale invalide après le changement d'email.
+## Objectif
+Corriger le blocage quand un invité saisit son email et son code d’accès sur une page événement.
 
-Plan :
-1. Sur la page de connexion, remplacer la vérification automatique basée sur la session locale par une vérification utilisateur réellement valide.
-2. Si l'ancienne session est refusée par le backend, la nettoyer localement au lieu de rediriger automatiquement vers `/my-events`.
-3. Dans la protection de `/my-events`, nettoyer aussi les sessions invalides avant de renvoyer vers `/login`, pour éviter la boucle login → my-events → login.
-4. Garder le comportement actuel après une vraie connexion réussie : liaison des événements, puis redirection vers `/my-events` ou vers le `redirect` demandé.
-5. Ajuster le message d'erreur de connexion pour afficher une erreur claire si les identifiants sont incorrects, sans rester bloqué sur le bouton `…`.
+## Ce que je vais modifier
+1. **Sécuriser le submit invité**
+   - Ajouter une gestion d’erreur explicite autour de la vérification code/email.
+   - Éviter que le bouton reste en chargement ou que l’écran semble bloqué si une requête échoue.
+
+2. **Corriger les erreurs non affichées**
+   - Si la recherche de l’événement, la vérification admin, ou les fonctions d’invité échouent, afficher un message clair au lieu d’un blocage silencieux.
+   - Réactiver correctement le bouton après l’erreur.
+
+3. **Nettoyer le cas “session locale incohérente”**
+   - Si une ancienne session invité ou admin interfère avec l’accès invité, la nettoyer localement avant de retenter l’entrée.
+   - Ne pas supprimer le code/email saisis par l’utilisateur.
+
+4. **Conserver le comportement existant**
+   - Code incorrect : compteur de tentatives inchangé.
+   - Invité existant : entrée directe dans la galerie.
+   - Nouvel invité : passage à l’étape prénom/avatar.
+   - Organisateur détecté : proposition d’accès espace admin.
+
+## Fichiers concernés
+- `src/components/zest/AccessGate.tsx`
+- éventuellement `src/lib/zest-actions.ts` si l’erreur vient d’une fonction de validation trop fragile.
+
+## Validation
+Après correction, je vérifierai que le parcours code + email ne reste plus bloqué et qu’un message utilisateur apparaît en cas d’échec réseau/base/auth.
