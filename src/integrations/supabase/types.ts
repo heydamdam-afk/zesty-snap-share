@@ -1127,6 +1127,17 @@ export type Database = {
         }[]
       }
       get_event_contact: { Args: { _event_id: string }; Returns: string }
+      get_expiring_events_in_days: {
+        Args: { _days: number }
+        Returns: {
+          event_id: string
+          expire_at: string
+          owner_email: string
+          owner_prenom: string
+          slug: string
+          titre: string
+        }[]
+      }
       get_profiles_by_emails: {
         Args: { _emails: string[] }
         Returns: {
