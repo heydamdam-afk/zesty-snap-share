@@ -35,6 +35,7 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicN8nExpiringEventsRouteImport } from './routes/api/public/n8n/expiring-events'
+import { Route as ApiPublicN8nEventsToFreezeRouteImport } from './routes/api/public/n8n/events-to-freeze'
 
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
@@ -169,6 +170,12 @@ const ApiPublicN8nExpiringEventsRoute =
     path: '/api/public/n8n/expiring-events',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicN8nEventsToFreezeRoute =
+  ApiPublicN8nEventsToFreezeRouteImport.update({
+    id: '/api/public/n8n/events-to-freeze',
+    path: '/api/public/n8n/events-to-freeze',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
+  '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -220,6 +228,7 @@ export interface FileRoutesByTo {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin': typeof SlugAdminIndexRoute
+  '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -249,6 +258,7 @@ export interface FileRoutesById {
   '/api/public/freeze-complete': typeof ApiPublicFreezeCompleteRoute
   '/api/public/r2-upload': typeof ApiPublicR2UploadRoute
   '/$slug/admin/': typeof SlugAdminIndexRoute
+  '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
+    | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin'
+    | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
@@ -335,6 +347,7 @@ export interface FileRouteTypes {
     | '/api/public/freeze-complete'
     | '/api/public/r2-upload'
     | '/$slug/admin/'
+    | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
@@ -364,6 +377,7 @@ export interface RootRouteChildren {
   ApiPublicFreezeCompleteRoute: typeof ApiPublicFreezeCompleteRoute
   ApiPublicR2UploadRoute: typeof ApiPublicR2UploadRoute
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
+  ApiPublicN8nEventsToFreezeRoute: typeof ApiPublicN8nEventsToFreezeRoute
   ApiPublicN8nExpiringEventsRoute: typeof ApiPublicN8nExpiringEventsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -555,6 +569,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicN8nExpiringEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/n8n/events-to-freeze': {
+      id: '/api/public/n8n/events-to-freeze'
+      path: '/api/public/n8n/events-to-freeze'
+      fullPath: '/api/public/n8n/events-to-freeze'
+      preLoaderRoute: typeof ApiPublicN8nEventsToFreezeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -580,6 +601,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFreezeCompleteRoute: ApiPublicFreezeCompleteRoute,
   ApiPublicR2UploadRoute: ApiPublicR2UploadRoute,
   SlugAdminIndexRoute: SlugAdminIndexRoute,
+  ApiPublicN8nEventsToFreezeRoute: ApiPublicN8nEventsToFreezeRoute,
   ApiPublicN8nExpiringEventsRoute: ApiPublicN8nExpiringEventsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
