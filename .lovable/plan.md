@@ -1,65 +1,70 @@
-## Contexte schéma (vérifié)
+## Principe
 
-- `events` n'a **pas** de FK vers `profiles`. Le propriétaire d'un event est l'**organisateur** stocké dans `event_admins` (`role = 'organisateur'`), avec `email` (text) et `user_id` (uuid, peut être NULL).
-- `events.contact` contient bien un email texte, mais ce n'est pas la source de vérité fiable. La bonne jointure est :
-  ```
-  events.id  ──►  event_admins.event_id  (role='organisateur')
-  event_admins.email  ──►  profiles.email  (lower-case match)
-  ```
-- `profiles` expose `email`, `prenom`, `avatar_name`. `event_admins` expose aussi `prenom`.
+n8n ne tape plus jamais Supabase directement. Il appelle uniquement des endpoints `/api/public/*` de ton app, tous sécurisés par `Authorization: Bearer <N8N_CRON_SECRET>` (secret inchangé, déjà présent côté n8n et côté Lovable). L'app fait les requêtes Supabase côté serveur avec `service_role` — clé jamais exposée.
 
-## Plan — partie Supabase uniquement
+## Existant réutilisé (pas de changement)
 
-### 1. Nouvelle RPC `get_expiring_events_in_days(_days int)`
+- `POST /api/public/expire-events` — change le statut d'un event (`active→expired` puis `expired→archived`), renvoie `admins_emails`.
+- `POST /api/public/freeze-complete` — callback après génération du ZIP, écrit `zip_download_url`, passe l'event en `frozen`, renvoie `admins_emails`.
 
-`SECURITY DEFINER`, lecture seule, retour strictement minimal :
+## Nouveaux endpoints à créer
 
-- `event_id uuid`
-- `titre text`
-- `slug text`
-- `expire_at timestamptz`
-- `owner_email text` (l'email de l'organisateur)
-- `owner_prenom text` (depuis `profiles.prenom` si dispo, sinon `event_admins.prenom`)
+### A. `GET /api/public/n8n/expiring-events?days=30`
+Workflow J+30 (rappel d'expiration).
+- Header : `Authorization: Bearer <N8N_CRON_SECRET>`
+- Query : `days` (entier, défaut 30)
+- Implémentation : appel de la RPC existante `get_expiring_events_in_days(_days)` via `supabaseAdmin`
+- Retour : `{ events: [{ event_id, titre, slug, expire_at, owner_email, owner_prenom }] }`
 
-Pas de `contact`, pas de `stripe_session_id`, pas de `paid_amount_cents`, pas de `cover_url`, pas de `lieu`.
+### B. `GET /api/public/n8n/events-to-freeze`
+Workflow J+37 (freeze automatique).
+- Header : `Authorization: Bearer <N8N_CRON_SECRET>`
+- Implémentation : SELECT events où `status = 'expired' AND expire_at < now() - interval '7 days'`, puis jointure `event_admins` pour les emails de tous les admins
+- Retour : `{ events: [{ event_id, titre, slug, expire_at, admins_emails: [] }] }`
+- n8n enchaîne ensuite : pour chaque event → génère le ZIP → appelle `POST /api/public/freeze-complete` (existant).
 
-Filtres :
-- `status = 'active'`
-- `expire_at::date = (now() + _days * interval '1 day')::date` — fenêtre journalière exacte pour éviter doubles envois.
+### C. `GET /api/public/n8n/marketing-to-sync?limit=100`
+Workflow sync marketing — lecture.
+- Header : `Authorization: Bearer <N8N_CRON_SECRET>`
+- Query : `limit` (entier, défaut 100, max 500)
+- Implémentation : SELECT `marketing_contacts` où `rgpd_consent = true AND brevo_synced = false`
+- Retour : `{ contacts: [{ id, email, prenom, role, event_id, nom_event, date_event, statut_event }] }`
 
-Paramètre `_days` (au lieu de hardcoder 30) pour que la même RPC serve J+30, J+7, J+1, etc. — un seul objet à maintenir.
+### D. `POST /api/public/n8n/marketing-mark-synced`
+Workflow sync marketing — écriture après envoi Brevo.
+- Header : `Authorization: Bearer <N8N_CRON_SECRET>`
+- Body : `{ ids: string[] }` (UUIDs des contacts synchronisés)
+- Implémentation : `UPDATE marketing_contacts SET brevo_synced = true WHERE id = ANY($1)`
+- Retour : `{ updated_count: number }`
 
-Permissions : `GRANT EXECUTE ... TO service_role` uniquement. **Pas** `anon`/`authenticated` — n8n appellera avec la clé `service_role`.
+## Sécurité
 
-### 2. Documentation des 3 workflows n8n
+- Auth `Authorization: Bearer` (cohérent avec les 2 endpoints existants).
+- Validation Zod sur tous les inputs (query + body).
+- Retour JSON normalisé (`{ ok, ... }` ou `{ error, ... }`).
+- Aucune PII exposée au-delà du strict nécessaire (pas de `contact`, pas de `stripe_session_id`, etc.).
 
-Je te livre, pour chacun, **uniquement** ce que le node Supabase doit lire :
+## Récap configuration n8n (à coller dans tes nodes HTTP Request)
 
-**Workflow J+30 (rappel d'expiration)**
-- Appel : RPC `get_expiring_events_in_days` avec `{ "_days": 30 }`
-- Retour : voir ci-dessus.
+**Base URL** : `https://app.kapsul.events` (custom domain — stable).
 
-**Workflow J+37 (freeze / archivage automatique)**
-- Lecture directe table `events`
-- Colonnes minimales : `id, titre, slug, status, expire_at`
-- Filtre : `status = 'expired' AND expire_at < now() - interval '7 days'`
-- Pour récupérer les destinataires email : lire `event_admins` (`email`) filtré sur `event_id`. Ne pas lire `events.contact`.
-- L'écriture du statut doit passer par l'endpoint existant `/api/public/expire-events` (déjà sécurisé par `N8N_CRON_SECRET`), **pas** par un UPDATE direct.
+**Header commun à tous les nodes** :
+```
+Authorization: Bearer {{ $env.N8N_CRON_SECRET }}
+```
 
-**Workflow sync marketing**
-- Lecture table `marketing_contacts`
-- Colonnes : `id, email, prenom, role, event_id, nom_event, date_event, statut_event, rgpd_consent, brevo_synced, updated_at`
-- Filtre typique : `rgpd_consent = true AND brevo_synced = false`
-- Écriture : `UPDATE marketing_contacts SET brevo_synced = true WHERE id = ...`
+| Workflow | Étape | Méthode | URL | Body |
+|---|---|---|---|---|
+| **J+30 rappel** | 1. Lister | GET | `/api/public/n8n/expiring-events?days=30` | — |
+| **J+37 freeze** | 1. Lister | GET | `/api/public/n8n/events-to-freeze` | — |
+| **J+37 freeze** | 2. Pour chaque event : marquer frozen + ZIP | POST | `/api/public/freeze-complete` | `{ "event_id": "...", "zip_download_url": "https://..." }` |
+| **Sync marketing** | 1. Lister | GET | `/api/public/n8n/marketing-to-sync?limit=100` | — |
+| **Sync marketing** | 2. Marquer synchronisés (après Brevo) | POST | `/api/public/n8n/marketing-mark-synced` | `{ "ids": ["uuid1", "uuid2"] }` |
+| **Transitions statut (optionnel)** | Passer un event à expired/archived | POST | `/api/public/expire-events` | `{ "id": "uuid", "status": "expired" }` |
 
-### 3. Livrables pour toi
+## Hors périmètre
 
-Une fois la migration appliquée, je te fournis dans la réponse finale :
-- Le SQL exact de la RPC créée
-- Un exemple d'appel n8n complet (URL `https://<project>.supabase.co/rest/v1/rpc/get_expiring_events_in_days`, headers `apikey` + `Authorization: Bearer <service_role>`, body `{"_days":30}`)
-- Un récap des trois nodes Supabase à configurer
-
-## Hors périmètre (confirmé)
-- Pas de reconfiguration n8n
-- Pas de changement de RLS sur `events` / `event_admins` / `marketing_contacts`
-- Pas de modification de la table `events` ni de ses colonnes
+- Pas de reconfiguration n8n (tu le fais).
+- Pas de nouvelle RPC Supabase (on réutilise `get_expiring_events_in_days`).
+- Pas de rotation du secret.
+- Pas de changement RLS.
