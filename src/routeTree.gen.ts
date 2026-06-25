@@ -34,6 +34,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicN8nMarketingToSyncRouteImport } from './routes/api/public/n8n/marketing-to-sync'
 import { Route as ApiPublicN8nExpiringEventsRouteImport } from './routes/api/public/n8n/expiring-events'
 import { Route as ApiPublicN8nEventsToFreezeRouteImport } from './routes/api/public/n8n/events-to-freeze'
 
@@ -164,6 +165,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicN8nMarketingToSyncRoute =
+  ApiPublicN8nMarketingToSyncRouteImport.update({
+    id: '/api/public/n8n/marketing-to-sync',
+    path: '/api/public/n8n/marketing-to-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicN8nExpiringEventsRoute =
   ApiPublicN8nExpiringEventsRouteImport.update({
     id: '/api/public/n8n/expiring-events',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/$slug/admin/': typeof SlugAdminIndexRoute
   '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
+  '/api/public/n8n/marketing-to-sync': typeof ApiPublicN8nMarketingToSyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -230,6 +238,7 @@ export interface FileRoutesByTo {
   '/$slug/admin': typeof SlugAdminIndexRoute
   '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
+  '/api/public/n8n/marketing-to-sync': typeof ApiPublicN8nMarketingToSyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -260,6 +269,7 @@ export interface FileRoutesById {
   '/$slug/admin/': typeof SlugAdminIndexRoute
   '/api/public/n8n/events-to-freeze': typeof ApiPublicN8nEventsToFreezeRoute
   '/api/public/n8n/expiring-events': typeof ApiPublicN8nExpiringEventsRoute
+  '/api/public/n8n/marketing-to-sync': typeof ApiPublicN8nMarketingToSyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/$slug/admin/'
     | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
+    | '/api/public/n8n/marketing-to-sync'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/$slug/admin'
     | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
+    | '/api/public/n8n/marketing-to-sync'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
     | '/$slug/admin/'
     | '/api/public/n8n/events-to-freeze'
     | '/api/public/n8n/expiring-events'
+    | '/api/public/n8n/marketing-to-sync'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -379,6 +392,7 @@ export interface RootRouteChildren {
   SlugAdminIndexRoute: typeof SlugAdminIndexRoute
   ApiPublicN8nEventsToFreezeRoute: typeof ApiPublicN8nEventsToFreezeRoute
   ApiPublicN8nExpiringEventsRoute: typeof ApiPublicN8nExpiringEventsRoute
+  ApiPublicN8nMarketingToSyncRoute: typeof ApiPublicN8nMarketingToSyncRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -562,6 +576,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/n8n/marketing-to-sync': {
+      id: '/api/public/n8n/marketing-to-sync'
+      path: '/api/public/n8n/marketing-to-sync'
+      fullPath: '/api/public/n8n/marketing-to-sync'
+      preLoaderRoute: typeof ApiPublicN8nMarketingToSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/n8n/expiring-events': {
       id: '/api/public/n8n/expiring-events'
       path: '/api/public/n8n/expiring-events'
@@ -603,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   SlugAdminIndexRoute: SlugAdminIndexRoute,
   ApiPublicN8nEventsToFreezeRoute: ApiPublicN8nEventsToFreezeRoute,
   ApiPublicN8nExpiringEventsRoute: ApiPublicN8nExpiringEventsRoute,
+  ApiPublicN8nMarketingToSyncRoute: ApiPublicN8nMarketingToSyncRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
